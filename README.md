@@ -91,3 +91,25 @@ Before we dive into building:
 
 Once locked in, we’ll begin building out core modules step-by-step.
 
+
+## 🚀 Running the API
+1. Install the dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Start the development server:
+   ```bash
+   uvicorn app:app --reload
+   ```
+
+The API exposes simple endpoints, including `/health` and `/db-check`.
+
+## 🔍 Testing
+This project uses `pytest` for testing. Sample tests validate the
+health endpoint and confirm that the API can connect to MySQL.
+To run the tests:
+
+```bash
+pip install -r requirements.txt
+pytest
+```
