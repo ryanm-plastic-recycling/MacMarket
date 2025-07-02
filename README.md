@@ -91,3 +91,25 @@ Before we dive into building:
 
 Once locked in, we’ll begin building out core modules step-by-step.
 
+
+## 🏃️ Backend Setup
+
+A simple FastAPI backend lives in `backend/`. It exposes an example endpoint that retrieves placeholder market data from a MySQL database.
+
+1. Install dependencies:
+
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+2. Configure MySQL connection via environment variables:
+   `MYSQL_HOST`, `MYSQL_USER`, `MYSQL_PASSWORD`, `MYSQL_DATABASE`.
+
+3. Run the development server:
+
+```bash
+uvicorn main:app --reload
+```
+
+Visit `http://localhost:8000/market-data` to test the endpoint.
