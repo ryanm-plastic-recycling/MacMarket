@@ -91,18 +91,23 @@ Before we dive into building:
 
 Once locked in, we’ll begin building out core modules step-by-step.
 
-
 ## 🚀 Running the API
-1. Install the dependencies:
+## Alert Preference System
+
+This example includes a basic FastAPI backend and a very simple frontend page to manage alert preferences. The database schema is defined in `schema.sql`.
+
+### Running locally
+1. Install Python dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-2. Start the development server:
+2. Set up a MySQL database and load `schema.sql`.
+3. Configure the `DATABASE_URL` environment variable if different from the default in `backend/app/database.py`.
+4. Start the API:
    ```bash
-   uvicorn app:app --reload
+   uvicorn backend.app.main:app --reload
    ```
-
-The API exposes simple endpoints, including `/health` and `/db-check`.
+5. Open `frontend/index.html` in a browser to view or modify alerts.
 
 ## 🔍 Testing
 This project uses `pytest` for testing. Sample tests validate the
@@ -113,3 +118,5 @@ To run the tests:
 pip install -r requirements.txt
 pytest
 ```
+
+The API exposes simple endpoints, including `/health` and `/db-check`.
