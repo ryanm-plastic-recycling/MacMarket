@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Alert Preferences</title>
+    <script>
+        async function loadAlerts() {
+            const userId = document.getElementById('user').value;
+            const res = await fetch(`/users/${userId}/alerts`);
+            const alerts = await res.json();
+            const list = document.getElementById('alerts');
+            list.innerHTML = '';
+            alerts.forEach(a => {
+                const li = document.createElement('li');
+                li.textContent = `${a.id} - ${a.alert_type} - enabled: ${a.enabled}`;
+                list.appendChild(li);
+            });
+        }
+
+        async function addAlert() {
+            const userId = document.getElementById('user').value;
+            const type = document.getElementById('type').value;
+            const enabled = document.getElementById('enabled').checked;
+            await fetch(`/users/${userId}/alerts`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({alert_type: type, enabled})
+            });
+            loadAlerts();
+        }
+    </script>
+</head>
+<body>
+    <h1>Alert Preferences</h1>
+    <label>User ID: <input id="user" type="number" value="1"/></label>
+    <button onclick="loadAlerts()">Load Alerts</button>
+    <ul id="alerts"></ul>
+    <h2>Add Alert</h2>
+    <label>Type:
+        <select id="type">
+            <option value="email">Email</option>
+            <option value="sms">SMS</option>
+        </select>
+    </label>
+    <label>Enabled: <input id="enabled" type="checkbox" checked></label>
+    <button onclick="addAlert()">Add</button>
+</body>
+</html>
