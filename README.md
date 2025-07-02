@@ -91,7 +91,6 @@ Before we dive into building:
 
 Once locked in, we’ll begin building out core modules step-by-step.
 
-
 ## Alert Preference System
 
 This example includes a basic FastAPI backend and a very simple frontend page to manage alert preferences. The database schema is defined in `schema.sql`.
