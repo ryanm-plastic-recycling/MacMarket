@@ -49,7 +49,7 @@ Planned support for:
 | LLM          | OpenAI ChatGPT API                      |
 | Market Data  | Alpha Vantage, Binance API, etc.        |
 | News Parsing | NewsAPI, GPT summarization              |
-| Database     | Postgres or SQLite                      |
+| Database     | MySQL                      |
 | Hosting      | GitHub Pages (frontend), API hosted TBD |
 
 ## 📊 Key Features
