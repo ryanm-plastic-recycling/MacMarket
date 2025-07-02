@@ -1,6 +1,9 @@
 fastapi
 uvicorn
+
+mysql-connector-python
+pytest
 SQLAlchemy
 pydantic
-mysql-connector-python
 Jinja2
+

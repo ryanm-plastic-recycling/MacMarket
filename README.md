@@ -91,6 +91,7 @@ Before we dive into building:
 
 Once locked in, we’ll begin building out core modules step-by-step.
 
+## 🚀 Running the API
 ## Alert Preference System
 
 This example includes a basic FastAPI backend and a very simple frontend page to manage alert preferences. The database schema is defined in `schema.sql`.
@@ -107,3 +108,15 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    uvicorn backend.app.main:app --reload
    ```
 5. Open `frontend/index.html` in a browser to view or modify alerts.
+
+## 🔍 Testing
+This project uses `pytest` for testing. Sample tests validate the
+health endpoint and confirm that the API can connect to MySQL.
+To run the tests:
+
+```bash
+pip install -r requirements.txt
+pytest
+```
+
+The API exposes simple endpoints, including `/health` and `/db-check`.
