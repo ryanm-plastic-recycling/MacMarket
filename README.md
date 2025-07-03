@@ -110,11 +110,11 @@ This example includes a basic FastAPI backend and a very simple frontend page to
 4. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:password@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
-5. Start the API:
+5. Start the API on your preferred port (e.g. 9500):
    ```bash
-   uvicorn backend.app.main:app --reload
+   uvicorn backend.app.main:app --reload --port 9500
    ```
-6. Navigate to `http://localhost:8000/` to view or modify alerts or this might be `frontend/index.html`.
+6. Navigate to `http://localhost:9500/` to view or modify alerts or this might be `frontend/index.html`.
 
 
 ## 🔍 Testing
