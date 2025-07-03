@@ -107,7 +107,9 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    ```sql
    INSERT INTO users (email) VALUES ('test@example.com');
    ```
-4. Configure the `DATABASE_URL` environment variable if different from the default in `backend/app/database.py`.
+4. Configure the `DATABASE_URL` environment variable if different from the default
+   (`mysql+mysqlconnector://user:password@localhost:3306/macmarket`) defined in
+   `backend/app/database.py`.
 5. Start the API:
    ```bash
    uvicorn backend.app.main:app --reload
