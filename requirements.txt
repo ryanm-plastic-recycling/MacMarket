@@ -5,3 +5,6 @@ pytest
 SQLAlchemy
 pydantic
 email-validator
+
+yfinance
+requests

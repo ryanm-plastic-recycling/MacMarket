@@ -2,47 +2,74 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Alert Preferences</title>
-    <script>
-        async function loadAlerts() {
-            const userId = document.getElementById('user').value;
-            const res = await fetch(`/users/${userId}/alerts`);
-            const alerts = await res.json();
-            const list = document.getElementById('alerts');
-            list.innerHTML = '';
-            alerts.forEach(a => {
-                const li = document.createElement('li');
-                li.textContent = `${a.id} - ${a.alert_type} - enabled: ${a.enabled}`;
-                list.appendChild(li);
-            });
-        }
-
-        async function addAlert() {
-            const userId = document.getElementById('user').value;
-            const type = document.getElementById('type').value;
-            const enabled = document.getElementById('enabled').checked;
-            await fetch(`/users/${userId}/alerts`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({alert_type: type, enabled})
-            });
-            loadAlerts();
-        }
-    </script>
+    <title>MacMarket</title>
+    <style>
+        body { margin:0; font-family: Arial, Helvetica, sans-serif; }
+        header { background:#222; color:#fff; padding:10px; display:flex; align-items:center; justify-content:space-between; }
+        header h1 { margin:0; flex-grow:1; text-align:center; font-size:1.5em; }
+        #menu { cursor:pointer; font-size:1.2em; padding:0 10px; }
+        #time { font-size:0.9em; }
+        #ticker-bar { background:#333; color:#fff; overflow:hidden; white-space:nowrap; padding:5px; }
+        .ticker-item { display:inline-block; margin-right:20px; }
+        .up { color:#0f0; }
+        .down { color:#f00; }
+        #news { padding:20px; }
+    </style>
 </head>
-<body>
-    <h1>Alert Preferences</h1>
-    <label>User ID: <input id="user" type="number" value="1"/></label>
-    <button onclick="loadAlerts()">Load Alerts</button>
-    <ul id="alerts"></ul>
-    <h2>Add Alert</h2>
-    <label>Type:
-        <select id="type">
-            <option value="email">Email</option>
-            <option value="sms">SMS</option>
-        </select>
-    </label>
-    <label>Enabled: <input id="enabled" type="checkbox" checked></label>
-    <button onclick="addAlert()">Add</button>
+<body onload="init();">
+<header>
+    <div id="menu">&#9776;</div>
+    <h1>MacMarket</h1>
+    <div id="time"></div>
+</header>
+<div id="ticker-bar"></div>
+<section id="news"></section>
+<script>
+function updateTime() {
+    const now = new Date();
+    document.getElementById('time').textContent = now.toLocaleString();
+}
+async function loadTicker() {
+    const symbols = ['AAPL','MSFT','GOOGL','AMZN','TSLA','SPY','QQQ','GLD','BTC-USD','ETH-USD'];
+    const res = await fetch('/api/ticker?symbols=' + symbols.join(','));
+    const data = await res.json();
+    const bar = document.getElementById('ticker-bar');
+    bar.innerHTML = '';
+    data.data.forEach(item => {
+        const span = document.createElement('span');
+        const cls = item.change_percent >= 0 ? 'up' : 'down';
+        span.className = 'ticker-item ' + cls;
+        if(item.price === null) {
+            span.textContent = `${item.symbol} N/A`;
+        } else {
+            span.textContent = `${item.symbol} ${item.price.toFixed(2)} (${item.change_percent.toFixed(2)}%)`;
+        }
+        bar.appendChild(span);
+    });
+}
+async function loadNews() {
+    const res = await fetch('/api/news');
+    const data = await res.json();
+    const newsSec = document.getElementById('news');
+    newsSec.innerHTML = '<h2>Latest News</h2>';
+    const ul = document.createElement('ul');
+    data.articles.forEach(a => {
+        const li = document.createElement('li');
+        const link = document.createElement('a');
+        link.href = a.url;
+        link.textContent = a.title;
+        link.target = '_blank';
+        li.appendChild(link);
+        ul.appendChild(li);
+    });
+    newsSec.appendChild(ul);
+}
+function init() {
+    updateTime();
+    setInterval(updateTime, 1000);
+    loadTicker();
+    loadNews();
+}
+</script>
 </body>
 </html>
