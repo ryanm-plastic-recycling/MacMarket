@@ -97,7 +97,8 @@ Once locked in, we’ll begin building out core modules step-by-step.
 This example includes a basic FastAPI backend and a very simple frontend page to manage alert preferences. The database schema is defined in `schema.sql`.
 
 ### Running locally
-1. Install Python dependencies:
+1. Install Python dependencies using the consolidated requirements file in the
+   project root:
    ```bash
    pip install -r requirements.txt
    ```
@@ -120,7 +121,7 @@ health endpoint and confirm that the API can connect to MySQL.
 To run the tests:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt  # install dependencies from the root file
 pytest
 ```
 
