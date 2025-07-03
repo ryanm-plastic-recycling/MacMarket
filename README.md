@@ -111,7 +111,8 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    ```bash
    uvicorn backend.app.main:app --reload
    ```
-6. Open `frontend/index.html` in a browser to view or modify alerts.
+6. Navigate to `http://localhost:8000/` to view or modify alerts or this might be `frontend/index.html`.
+
 
 ## 🔍 Testing
 This project uses `pytest` for testing. Sample tests validate the
