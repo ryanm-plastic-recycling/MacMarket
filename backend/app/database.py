@@ -19,8 +19,8 @@ def connect_to_db():
     url = engine.url
     return mysql.connector.connect(
         host=url.host or "localhost",
-        user=url.username or "user",
-        password=url.password or "password",
+        user=url.username or "root",
+        password=url.password or "Pio1600Neer$!",
         database=url.database or "",
         port=url.port or 3306,
     )
