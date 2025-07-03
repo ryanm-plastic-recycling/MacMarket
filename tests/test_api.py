@@ -17,7 +17,7 @@ def test_db_check_success(monkeypatch):
     def dummy_connect():
         return DummyConn()
 
-    monkeypatch.setattr("db.connect_to_db", dummy_connect)
+    monkeypatch.setattr("backend.app.database.connect_to_db", dummy_connect)
     response = client.get("/db-check")
     assert response.status_code == 200
     assert response.json() == {"status": "connected"}

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from db import connect_to_db
+from backend.app.database import connect_to_db
 
 app = FastAPI()
 
