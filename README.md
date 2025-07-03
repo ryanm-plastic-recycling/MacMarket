@@ -102,12 +102,16 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    pip install -r requirements.txt
    ```
 2. Set up a MySQL database and load `schema.sql`.
-3. Configure the `DATABASE_URL` environment variable if different from the default in `backend/app/database.py`.
-4. Start the API:
+3. Insert at least one user so alerts can be created:
+   ```sql
+   INSERT INTO users (email) VALUES ('test@example.com');
+   ```
+4. Configure the `DATABASE_URL` environment variable if different from the default in `backend/app/database.py`.
+5. Start the API:
    ```bash
    uvicorn backend.app.main:app --reload
    ```
-5. Open `frontend/index.html` in a browser to view or modify alerts.
+6. Open `frontend/index.html` in a browser to view or modify alerts.
 
 ## 🔍 Testing
 This project uses `pytest` for testing. Sample tests validate the
