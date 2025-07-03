@@ -5,7 +5,7 @@ import mysql.connector
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+mysqlconnector://user:password@localhost:3306/macmarket"
+    "mysql+mysqlconnector://root:Pio1600Neer$!@localhost:3306/macmarket"
 )
 
 engine = create_engine(DATABASE_URL, echo=True, future=True)
@@ -19,8 +19,8 @@ def connect_to_db():
     url = engine.url
     return mysql.connector.connect(
         host=url.host or "localhost",
-        user=url.username or "root",
-        password=url.password or "Pio1600Neer$!",
+        user=url.username or "user",
+        password=url.password or "password",
         database=url.database or "",
         port=url.port or 3306,
     )
