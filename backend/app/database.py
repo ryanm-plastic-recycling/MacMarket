@@ -5,7 +5,7 @@ import mysql.connector
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+mysqlconnector://user:password@localhost:3306/macmarket"
+    "mysql+mysqlconnector://root:Pio1600Neer$!@localhost:3306/macmarket"
 )
 
 engine = create_engine(DATABASE_URL, echo=True, future=True)
