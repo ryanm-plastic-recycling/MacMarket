@@ -1,10 +1,21 @@
 from sqlalchemy.orm import Session
+from typing import List
 from . import models, schemas
 
 # User helper functions
 
 def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
+
+
+def get_or_create_user(db: Session, email: str) -> models.User:
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        user = models.User(email=email)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
 
 # AlertPreference CRUD
 
@@ -35,4 +46,16 @@ def update_alert(db: Session, alert_obj: models.AlertPreference, alert: schemas.
 
 def delete_alert(db: Session, alert_obj: models.AlertPreference):
     db.delete(alert_obj)
+    db.commit()
+
+
+# User ticker helpers
+def get_tickers(db: Session, user_id: int):
+    return db.query(models.UserTicker).filter(models.UserTicker.user_id == user_id).all()
+
+
+def set_user_tickers(db: Session, user_id: int, tickers: List[str]):
+    db.query(models.UserTicker).filter(models.UserTicker.user_id == user_id).delete()
+    for sym in tickers:
+        db.add(models.UserTicker(user_id=user_id, symbol=sym))
     db.commit()

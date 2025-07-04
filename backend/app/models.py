@@ -35,3 +35,16 @@ class AlertPreference(Base):
     )
 
     user = relationship("User", back_populates="alerts")
+
+
+class UserTicker(Base):
+    __tablename__ = "user_tickers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    symbol = Column(String(10), nullable=False)
+    created_at = Column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text('CURRENT_TIMESTAMP'),
+    )

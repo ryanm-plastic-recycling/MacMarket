@@ -7,7 +7,10 @@
         body { margin:0; font-family: Arial, Helvetica, sans-serif; }
         header { background:#222; color:#fff; padding:10px; display:flex; align-items:center; justify-content:space-between; }
         header h1 { margin:0; flex-grow:1; text-align:center; font-size:1.5em; }
-        #menu { cursor:pointer; font-size:1.2em; padding:0 10px; }
+        #menu { cursor:pointer; font-size:1.2em; padding:0 10px; position:relative; }
+        #menu-options { display:none; position:absolute; right:0; background:#222; padding:5px; }
+        #menu-options div { padding:5px 10px; cursor:pointer; }
+        #menu-options div:hover { background:#444; }
         #time { font-size:0.9em; }
         #ticker-bar { background:#333; color:#fff; overflow:hidden; white-space:nowrap; padding:5px; }
         .ticker-item { display:inline-block; margin-right:20px; }
@@ -18,20 +21,37 @@
 </head>
 <body onload="init();">
 <header>
-    <div id="menu">&#9776;</div>
+    <div id="menu">&#9776;
+        <div id="menu-options">
+            <div id="login-option">Login</div>
+            <div id="edit-option" style="display:none;">Edit Ticker</div>
+        </div>
+    </div>
     <h1>MacMarket</h1>
     <div id="time"></div>
 </header>
 <div id="ticker-bar"></div>
 <section id="news"></section>
 <script>
+let userId = null;
+let tickerSymbols = ['AAPL','MSFT','GOOGL','AMZN','TSLA','SPY','QQQ','GLD','BTC-USD','ETH-USD'];
+
 function updateTime() {
     const now = new Date();
     document.getElementById('time').textContent = now.toLocaleString();
 }
+
 async function loadTicker() {
-    const symbols = ['AAPL','MSFT','GOOGL','AMZN','TSLA','SPY','QQQ','GLD','BTC-USD','ETH-USD'];
-    const res = await fetch('/api/ticker?symbols=' + symbols.join(','));
+    if(userId){
+        const resp = await fetch(`/api/users/${userId}/tickers`);
+        if(resp.ok){
+            const data = await resp.json();
+            if(data.tickers && data.tickers.length){
+                tickerSymbols = data.tickers;
+            }
+        }
+    }
+    const res = await fetch('/api/ticker?symbols=' + tickerSymbols.join(','));
     const data = await res.json();
     const bar = document.getElementById('ticker-bar');
     bar.innerHTML = '';
@@ -64,9 +84,39 @@ async function loadNews() {
     });
     newsSec.appendChild(ul);
 }
+
+function initMenu(){
+    const menu = document.getElementById('menu');
+    const options = document.getElementById('menu-options');
+    menu.addEventListener('click', () => {
+        options.style.display = options.style.display === 'block' ? 'none' : 'block';
+    });
+    document.getElementById('login-option').addEventListener('click', async () => {
+        const email = prompt('Enter email:');
+        if(!email) return;
+        const res = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+        const data = await res.json();
+        userId = data.user_id;
+        document.getElementById('edit-option').style.display = 'block';
+        options.style.display = 'none';
+        loadTicker();
+    });
+    document.getElementById('edit-option').addEventListener('click', async () => {
+        const input = prompt('Enter comma separated tickers:', tickerSymbols.join(','));
+        if(!input) return;
+        tickerSymbols = input.split(',').map(s => s.trim()).filter(Boolean);
+        if(userId){
+            await fetch(`/api/users/${userId}/tickers`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tickers: tickerSymbols})});
+        }
+        options.style.display = 'none';
+        loadTicker();
+    });
+}
+
 function init() {
     updateTime();
     setInterval(updateTime, 1000);
+    initMenu();
     loadTicker();
     loadNews();
 }

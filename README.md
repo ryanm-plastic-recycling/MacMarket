@@ -107,14 +107,24 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    ```sql
    INSERT INTO users (email) VALUES ('test@example.com');
    ```
-4. Configure the `DATABASE_URL` environment variable if different from the default
+4. If upgrading from a previous version, create the `user_tickers` table to store custom ticker lists:
+   ```sql
+   CREATE TABLE user_tickers (
+       id INT AUTO_INCREMENT PRIMARY KEY,
+       user_id INT NOT NULL,
+       symbol VARCHAR(10) NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+   );
+   ```
+5. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:password@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
-5. Start the API on your preferred port (e.g. 9500):
+6. Start the API on your preferred port (e.g. 9500):
    ```bash
    uvicorn app:app --reload --port 9500
    ```
-6. Navigate to `http://localhost:9500/` to view or modify alerts or this might be `frontend/index.html`.
+7. Navigate to `http://localhost:9500/` to view or modify alerts or this might be `frontend/index.html`.
 
 
 ## 🔍 Testing
