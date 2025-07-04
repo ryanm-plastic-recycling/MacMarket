@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from pathlib import Path
 import yfinance as yf
 import requests
+import pandas as pd
 
 app = FastAPI()
 
@@ -69,6 +70,22 @@ def ticker_data(symbols: str):
         except Exception:
             data.append({"symbol": symbol, "price": None, "change_percent": None})
     return {"data": data}
+
+
+@app.get("/api/history")
+def price_history(symbol: str, period: str = "1mo", interval: str = "1d"):
+    """Return historical close prices for a symbol."""
+    try:
+        t = yf.Ticker(symbol)
+        hist = t.history(period=period, interval=interval)
+        if hist.empty:
+            raise ValueError("no data")
+        hist = hist.reset_index()
+        dates = [d.strftime("%Y-%m-%d") for d in hist["Date"]]
+        closes = [float(c) if pd.notna(c) else None for c in hist["Close"]]
+        return {"symbol": symbol, "dates": dates, "close": closes}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/news")
