@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Account - MacMarket</title>
+    <style>
+        body { margin:0; font-family: Arial, Helvetica, sans-serif; }
+        #sidebar { position:fixed; left:0; top:0; bottom:0; width:180px; background:#222; color:#fff; padding-top:60px; }
+        #sidebar a { color:#fff; display:block; padding:10px; text-decoration:none; }
+        #sidebar a:hover { background:#444; }
+        main { margin-left:180px; padding:20px; }
+    </style>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+</div>
+<main>
+    <h2>Account</h2>
+    <p id="welcome"></p>
+    <p><a href="tickers.html">Manage Tickers</a></p>
+</main>
+<script>
+    const user = localStorage.getItem('username');
+    if(!user){
+        window.location.href = 'login.html';
+    } else {
+        document.getElementById('welcome').textContent = 'Welcome ' + user;
+    }
+</script>
+</body>
+</html>

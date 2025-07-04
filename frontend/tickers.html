@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tickers - MacMarket</title>
+    <style>
+        body { margin:0; font-family: Arial, Helvetica, sans-serif; }
+        #sidebar { position:fixed; left:0; top:0; bottom:0; width:180px; background:#222; color:#fff; padding-top:60px; }
+        #sidebar a { color:#fff; display:block; padding:10px; text-decoration:none; }
+        #sidebar a:hover { background:#444; }
+        main { margin-left:180px; padding:20px; }
+        table { border-collapse: collapse; }
+        td { padding:4px 8px; }
+    </style>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+</div>
+<main>
+    <h2>Manage Tickers</h2>
+    <table id="ticker-table"><tbody id="tickers-body"></tbody></table>
+    <input id="new-ticker" placeholder="Add ticker">
+    <button id="add-ticker">Add</button>
+    <div>
+        <button id="save-tickers">Save</button>
+    </div>
+</main>
+<script>
+    const userId = localStorage.getItem('userId');
+    if(!userId){
+        window.location.href = 'login.html';
+    }
+    const defaults = ['AAPL','MSFT','GOOGL','AMZN','TSLA','SPY','QQQ','GLD','BTC-USD','ETH-USD'];
+    async function loadTickers(){
+        let current = [];
+        const res = await fetch(`/api/users/${userId}/tickers`);
+        if(res.ok){
+            current = (await res.json()).tickers;
+        }
+        const body = document.getElementById('tickers-body');
+        body.innerHTML='';
+        function addRow(sym, checked){
+            const tr=document.createElement('tr');
+            const cb=document.createElement('input');
+            cb.type='checkbox';
+            cb.value=sym;
+            if(checked) cb.checked=true;
+            const td1=document.createElement('td');
+            td1.appendChild(cb);
+            const td2=document.createElement('td');
+            td2.textContent=sym;
+            tr.appendChild(td1); tr.appendChild(td2);
+            body.appendChild(tr);
+        }
+        defaults.forEach(sym=> addRow(sym, current.includes(sym)) );
+        current.filter(s=>!defaults.includes(s)).forEach(sym=> addRow(sym, true));
+    }
+    document.getElementById('add-ticker').addEventListener('click', ()=>{
+        const val=document.getElementById('new-ticker').value.trim();
+        if(val){
+            const body=document.getElementById('tickers-body');
+            const tr=document.createElement('tr');
+            const cb=document.createElement('input');
+            cb.type='checkbox'; cb.value=val; cb.checked=true;
+            tr.innerHTML=`<td></td><td>${val}</td>`;
+            tr.firstChild.appendChild(cb);
+            body.appendChild(tr);
+            document.getElementById('new-ticker').value='';
+        }
+    });
+    document.getElementById('save-tickers').addEventListener('click', async ()=>{
+        const checked = Array.from(document.querySelectorAll('#tickers-body input[type=checkbox]')).filter(c=>c.checked).map(c=>c.value);
+        await fetch(`/api/users/${userId}/tickers`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tickers: checked})});
+        alert('Saved!');
+    });
+    window.onload=loadTickers;
+</script>
+</body>
+</html>
