@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException
-from backend.app.database import connect_to_db
+from fastapi import FastAPI, HTTPException, Depends
+from backend.app.database import connect_to_db, SessionLocal, engine
+from sqlalchemy.orm import Session
+from backend.app import models, crud, schemas
 
 from fastapi.responses import HTMLResponse
 from pathlib import Path
@@ -7,6 +9,16 @@ import yfinance as yf
 import requests
 
 app = FastAPI()
+
+models.Base.metadata.create_all(bind=engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @app.get("/health")
@@ -68,3 +80,24 @@ def news():
     except Exception:
         articles = []
     return {"articles": articles}
+
+
+@app.post("/api/login")
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+    """Create or fetch a user by email."""
+    db_user = crud.get_or_create_user(db, user.email)
+    return {"user_id": db_user.id, "email": db_user.email}
+
+
+@app.get("/api/users/{user_id}/tickers")
+def get_user_tickers(user_id: int, db: Session = Depends(get_db)):
+    """Return the list of tickers for a user."""
+    tickers = crud.get_tickers(db, user_id)
+    return {"tickers": [t.symbol for t in tickers]}
+
+
+@app.put("/api/users/{user_id}/tickers")
+def update_user_tickers(user_id: int, ticker_list: schemas.TickerList, db: Session = Depends(get_db)):
+    """Replace a user's tickers with the provided list."""
+    crud.set_user_tickers(db, user_id, ticker_list.tickers)
+    return {"tickers": ticker_list.tickers}

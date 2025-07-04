@@ -30,3 +30,11 @@ class User(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+
+
+class TickerList(BaseModel):
+    tickers: list[str]
