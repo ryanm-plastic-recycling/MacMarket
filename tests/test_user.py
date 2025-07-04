@@ -68,3 +68,5 @@ def test_update_password(monkeypatch):
         json={"username": "demo2", "password": "new", "captcha_token": "x", "otp": "123"},
     )
     assert resp.status_code == 200
+    assert resp.json()["user_id"] == uid
+
