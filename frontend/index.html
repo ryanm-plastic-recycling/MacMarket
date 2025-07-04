@@ -17,6 +17,9 @@
         .up { color:#0f0; }
         .down { color:#f00; }
         #news { padding:20px; }
+        #charts { display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:20px; }
+        canvas { width:100%; height:300px; }
+        #chart-controls { padding:0 20px; }
     </style>
 </head>
 <body onload="init();">
@@ -33,11 +36,33 @@
 </header>
 <main>
 <div id="ticker-bar"></div>
+<div id="chart-controls">Time range:
+    <select id="range-select">
+        <option value="1mo">1M</option>
+        <option value="3mo">3M</option>
+        <option value="6mo">6M</option>
+        <option value="1y">1Y</option>
+    </select>
+</div>
+<div id="charts">
+    <canvas id="chart-spy"></canvas>
+    <canvas id="chart-qqq"></canvas>
+    <canvas id="chart-btc"></canvas>
+    <canvas id="chart-gld"></canvas>
+</div>
 <section id="news"></section>
 </main>
-<script>
-let userId = null;
-let tickerSymbols = ['AAPL','MSFT','GOOGL','AMZN','TSLA','SPY','QQQ','GLD','BTC-USD','ETH-USD'];
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    let userId = null;
+    let tickerSymbols = ['AAPL','MSFT','GOOGL','AMZN','TSLA','SPY','QQQ','GLD','BTC-USD','ETH-USD'];
+    const chartSymbols = [
+        {id: 'chart-spy', symbol: 'SPY', name: 'S&P 500'},
+        {id: 'chart-qqq', symbol: 'QQQ', name: 'Nasdaq 100'},
+        {id: 'chart-btc', symbol: 'BTC-USD', name: 'Bitcoin'},
+        {id: 'chart-gld', symbol: 'GLD', name: 'Gold'}
+    ];
+    const charts = {};
 
 function updateTime() {
     const now = new Date();
@@ -88,6 +113,21 @@ async function loadNews() {
     newsSec.appendChild(ul);
 }
 
+async function loadCharts(){
+    const period = document.getElementById('range-select').value;
+    for(const cfg of chartSymbols){
+        const res = await fetch(`/api/history?symbol=${cfg.symbol}&period=${period}`);
+        const data = await res.json();
+        const ctx = document.getElementById(cfg.id).getContext('2d');
+        if(charts[cfg.id]) charts[cfg.id].destroy();
+        charts[cfg.id] = new Chart(ctx, {
+            type: 'line',
+            data: { labels: data.dates, datasets: [{ label: cfg.name, data: data.close, borderColor: '#3e95cd', fill:false }] },
+            options: { responsive:true, maintainAspectRatio:false, scales:{ x:{ display:false } } }
+        });
+    }
+}
+
 function init() {
     updateTime();
     setInterval(updateTime, 1000);
@@ -97,6 +137,8 @@ function init() {
     }
     loadTicker();
     loadNews();
+    loadCharts();
+    document.getElementById('range-select').addEventListener('change', loadCharts);
 }
 </script>
 </body>
