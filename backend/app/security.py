@@ -4,7 +4,7 @@ import requests
 
 def verify_recaptcha(token: str) -> bool:
     """Verify a reCAPTCHA token with Google's API."""
-    secret = os.getenv("RECAPTCHA_SECRET")
+    secret = os.getenv("RECAPTCHA_SECRET", "6LeE23crAAAAALzZ5iH_8dN7eHGRIeD04uMR7cr9")
     if not secret:
         return False
     try:
