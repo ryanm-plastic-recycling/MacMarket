@@ -125,8 +125,13 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    uvicorn app:app --reload --port 9500
    ```
 7. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
-   backend also serves `login.html`, `account.html`, and `tickers.html` so you can
-   visit them directly via `/login.html`, `/account.html`, and `/tickers.html`.
+   backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
+   visit them directly via `/login.html`, `/account.html`, `/tickers.html`, and `/admin.html`.
+
+### Managing users
+* Log in with an admin account (set `is_admin` in the database or via the admin panel).
+* The admin panel is available at `/admin.html` and lists all users.
+* Use the panel to toggle admin rights or update user passwords.
 
 
 ## 🔍 Testing

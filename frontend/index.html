@@ -25,6 +25,7 @@
     <a href="login.html">Login</a>
     <a href="account.html">Account</a>
     <a href="tickers.html">Tickers</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
 </div>
 <header>
     <h1>MacMarket</h1>
@@ -91,6 +92,9 @@ function init() {
     updateTime();
     setInterval(updateTime, 1000);
     userId = localStorage.getItem('userId');
+    if(localStorage.getItem('isAdmin') === '1'){
+        document.getElementById('admin-link').style.display='block';
+    }
     loadTicker();
     loadNews();
 }

@@ -27,6 +27,7 @@ class AlertPreference(AlertPreferenceBase):
 class User(BaseModel):
     id: int
     username: str
+    is_admin: bool = False
     email: Optional[EmailStr] = None
 
     class Config:
@@ -35,6 +36,10 @@ class User(BaseModel):
 
 class UserLogin(BaseModel):
     username: str
+    password: str
+
+
+class PasswordUpdate(BaseModel):
     password: str
 
 

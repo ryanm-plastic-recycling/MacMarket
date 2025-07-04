@@ -108,7 +108,7 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
         db_user = crud.get_or_create_user(db, user.username, user.password)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    return {"user_id": db_user.id, "username": db_user.username}
+    return {"user_id": db_user.id, "username": db_user.username, "is_admin": db_user.is_admin}
 
 
 @app.get("/api/users/{user_id}/tickers")
@@ -125,11 +125,36 @@ def update_user_tickers(user_id: int, ticker_list: schemas.TickerList, db: Sessi
     return {"tickers": ticker_list.tickers}
 
 
+@app.get("/api/admin/users")
+def admin_users(db: Session = Depends(get_db)):
+    """Return all users for admin management."""
+    users = crud.get_users(db)
+    return {"users": [{"id": u.id, "username": u.username, "email": u.email, "is_admin": u.is_admin} for u in users]}
+
+
+@app.put("/api/admin/users/{user_id}/password")
+def admin_update_password(user_id: int, pw: schemas.PasswordUpdate, db: Session = Depends(get_db)):
+    """Set a new password for a user."""
+    user = crud.set_user_password(db, user_id, pw.password)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "updated"}
+
+
+@app.put("/api/admin/users/{user_id}/admin")
+def admin_toggle(user_id: int, is_admin: bool, db: Session = Depends(get_db)):
+    """Update admin flag for a user."""
+    user = crud.set_admin_status(db, user_id, is_admin)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "updated", "is_admin": user.is_admin}
+
+
 # Serve simple static HTML pages for the frontend
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html"}
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "admin.html"}
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():

@@ -22,6 +22,7 @@ client = TestClient(app)
 def test_login_and_tickers():
     resp = client.post("/api/login", json={"username": "demo", "password": "pass"})
     assert resp.status_code == 200
+    assert resp.json()["is_admin"] is False
     user_id = resp.json()["user_id"]
 
     resp = client.put(f"/api/users/{user_id}/tickers", json={"tickers": ["AAPL", "MSFT"]})
@@ -30,3 +31,13 @@ def test_login_and_tickers():
     resp = client.get(f"/api/users/{user_id}/tickers")
     assert resp.status_code == 200
     assert resp.json()["tickers"] == ["AAPL", "MSFT"]
+
+
+def test_update_password():
+    resp = client.post("/api/login", json={"username": "demo2", "password": "old"})
+    assert resp.status_code == 200
+    uid = resp.json()["user_id"]
+    resp = client.put(f"/api/admin/users/{uid}/password", json={"password": "new"})
+    assert resp.status_code == 200
+    resp = client.post("/api/login", json={"username": "demo2", "password": "new"})
+    assert resp.status_code == 200
