@@ -2,6 +2,8 @@ from fastapi import FastAPI, HTTPException, Depends
 from backend.app.database import connect_to_db, SessionLocal, engine
 from sqlalchemy.orm import Session
 from backend.app import models, crud, schemas
+from backend.app.security import verify_recaptcha
+import pyotp
 
 from fastapi.responses import HTMLResponse
 from pathlib import Path
@@ -120,11 +122,16 @@ def news():
 
 @app.post("/api/login")
 def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
-    """Create or fetch a user by username and password."""
+    """Create or fetch a user after verifying reCAPTCHA and OTP."""
+    if not verify_recaptcha(user.captcha_token):
+        raise HTTPException(status_code=401, detail="Invalid captcha")
     try:
         db_user = crud.get_or_create_user(db, user.username, user.password)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    totp = pyotp.TOTP(db_user.totp_secret)
+    if not totp.verify(user.otp):
+        raise HTTPException(status_code=401, detail="Invalid OTP")
     return {"user_id": db_user.id, "username": db_user.username, "is_admin": db_user.is_admin}
 
 
