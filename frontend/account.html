@@ -22,13 +22,18 @@
     <h2>Account</h2>
     <p id="welcome"></p>
     <p><a href="tickers.html">Manage Tickers</a></p>
+    <p id="admin-link" style="display:none;"><a href="admin.html">Admin Panel</a></p>
 </main>
 <script>
     const user = localStorage.getItem('username');
+    const isAdmin = localStorage.getItem('isAdmin') === '1';
     if(!user){
         window.location.href = 'login.html';
     } else {
         document.getElementById('welcome').textContent = 'Welcome ' + user;
+        if(isAdmin){
+            document.getElementById('admin-link').style.display = 'block';
+        }
     }
 </script>
 </body>

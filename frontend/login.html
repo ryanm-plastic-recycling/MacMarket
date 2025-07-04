@@ -37,6 +37,7 @@
             const data = await resp.json();
             localStorage.setItem('userId', data.user_id);
             localStorage.setItem('username', data.username);
+            localStorage.setItem('isAdmin', data.is_admin ? '1' : '0');
             window.location.href = 'account.html';
         } else {
             alert('Login failed');

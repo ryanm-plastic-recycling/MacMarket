@@ -28,6 +28,30 @@ def get_or_create_user(db: Session, username: str, password: str, email: Optiona
             raise ValueError("Invalid credentials")
     return user
 
+
+def set_user_password(db: Session, user_id: int, password: str):
+    user = get_user(db, user_id)
+    if user:
+        user.password_hash = _hash(password)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+def set_admin_status(db: Session, user_id: int, is_admin: bool):
+    user = get_user(db, user_id)
+    if user:
+        user.is_admin = is_admin
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+def get_users(db: Session) -> List[models.User]:
+    return db.query(models.User).all()
+
 # AlertPreference CRUD
 
 def get_alert(db: Session, user_id: int, alert_id: int):
