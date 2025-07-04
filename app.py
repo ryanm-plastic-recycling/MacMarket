@@ -149,6 +149,15 @@ def update_user_tickers(user_id: int, ticker_list: schemas.TickerList, db: Sessi
     return {"tickers": ticker_list.tickers}
 
 
+@app.put("/api/users/{user_id}/email")
+def update_user_email(user_id: int, email: schemas.EmailUpdate, db: Session = Depends(get_db)):
+    """Update the email address for a user."""
+    user = crud.set_user_email(db, user_id, email.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"email": user.email}
+
+
 @app.get("/api/admin/users")
 def admin_users(db: Session = Depends(get_db)):
     """Return all users for admin management."""

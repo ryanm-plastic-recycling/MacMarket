@@ -102,3 +102,14 @@ def set_user_tickers(db: Session, user_id: int, tickers: List[str]):
     for sym in tickers:
         db.add(models.UserTicker(user_id=user_id, symbol=sym))
     db.commit()
+
+
+def set_user_email(db: Session, user_id: int, email: str):
+    """Update a user's email and return the updated user."""
+    user = get_user(db, user_id)
+    if user:
+        user.email = email
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user

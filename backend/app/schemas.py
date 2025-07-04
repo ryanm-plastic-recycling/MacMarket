@@ -47,3 +47,7 @@ class PasswordUpdate(BaseModel):
 
 class TickerList(BaseModel):
     tickers: list[str]
+
+
+class EmailUpdate(BaseModel):
+    email: EmailStr
