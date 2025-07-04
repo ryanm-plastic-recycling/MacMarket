@@ -12,6 +12,9 @@ app = FastAPI()
 
 models.Base.metadata.create_all(bind=engine)
 
+# Directory containing the HTML frontend files
+FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
+
 
 def get_db():
     db = SessionLocal()
@@ -40,8 +43,8 @@ def db_check():
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    """Serve the frontend page."""
-    html_path = Path(__file__).resolve().parent / "frontend" / "index.html"
+    """Serve the main frontend page."""
+    html_path = FRONTEND_DIR / "index.html"
     return html_path.read_text()
 
 
@@ -120,3 +123,15 @@ def update_user_tickers(user_id: int, ticker_list: schemas.TickerList, db: Sessi
     """Replace a user's tickers with the provided list."""
     crud.set_user_tickers(db, user_id, ticker_list.tickers)
     return {"tickers": ticker_list.tickers}
+
+
+# Serve simple static HTML pages for the frontend
+@app.get("/{page_name}", response_class=HTMLResponse)
+def serve_page(page_name: str):
+    """Return one of the bundled frontend HTML pages."""
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html"}
+    if page_name in allowed_pages:
+        html_file = FRONTEND_DIR / page_name
+        if html_file.exists():
+            return html_file.read_text()
+    raise HTTPException(status_code=404, detail="Not Found")

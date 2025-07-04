@@ -124,7 +124,9 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    ```bash
    uvicorn app:app --reload --port 9500
    ```
-7. Navigate to `http://localhost:9500/` to view or modify alerts or this might be `frontend/index.html`.
+7. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
+   backend also serves `login.html`, `account.html`, and `tickers.html` so you can
+   visit them directly via `/login.html`, `/account.html`, and `/tickers.html`.
 
 
 ## 🔍 Testing
