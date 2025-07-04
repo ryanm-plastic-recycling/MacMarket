@@ -112,7 +112,7 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    `backend/app/database.py`.
 5. Start the API on your preferred port (e.g. 9500):
    ```bash
-   uvicorn backend.app.main:app --reload --port 9500
+   uvicorn app:app --reload --port 9500
    ```
 6. Navigate to `http://localhost:9500/` to view or modify alerts or this might be `frontend/index.html`.
 
