@@ -17,8 +17,17 @@
         .up { color:#0f0; }
         .down { color:#f00; }
         #news { padding:20px; }
-        #charts { display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:20px; }
-        canvas { width:100%; height:300px; }
+        #charts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            padding: 20px;
+        }
+        #charts canvas {
+            flex: 1 1 calc(50% - 20px);
+            max-width: calc(50% - 20px);
+            height: 250px;
+        }
         #chart-controls { padding:0 20px; }
     </style>
 </head>
