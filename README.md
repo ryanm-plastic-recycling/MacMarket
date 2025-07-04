@@ -118,7 +118,7 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    );
    ```
 5. Configure the `DATABASE_URL` environment variable if different from the default
-   (`mysql+mysqlconnector://user:password@localhost:3306/macmarket`) defined in
+   (`mysql+mysqlconnector://user:pass@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
 6. Start the API on your preferred port (e.g. 9500):
    ```bash

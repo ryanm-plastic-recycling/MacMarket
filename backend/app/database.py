@@ -3,9 +3,11 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 import mysql.connector
 
+# Connection string for SQLAlchemy. Use an environment variable in production
+# to avoid committing credentials. The fallback uses local development values.
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+mysqlconnector://root:Pio1600Neer$!@localhost:3306/macmarket"
+    "mysql+mysqlconnector://user:pass@localhost:3306/macmarket",
 )
 
 engine = create_engine(DATABASE_URL, echo=True, future=True)
