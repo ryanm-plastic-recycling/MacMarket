@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from . import models, schemas
+import hashlib
 
 # User helper functions
 
@@ -8,13 +9,23 @@ def get_user(db: Session, user_id: int):
     return db.query(models.User).filter(models.User.id == user_id).first()
 
 
-def get_or_create_user(db: Session, email: str) -> models.User:
-    user = db.query(models.User).filter(models.User.email == email).first()
+def get_user_by_username(db: Session, username: str):
+    return db.query(models.User).filter(models.User.username == username).first()
+
+def _hash(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def get_or_create_user(db: Session, username: str, password: str, email: Optional[str] = None) -> models.User:
+    user = get_user_by_username(db, username)
     if not user:
-        user = models.User(email=email)
+        user = models.User(username=username, password_hash=_hash(password), email=email)
         db.add(user)
         db.commit()
         db.refresh(user)
+    else:
+        if user.password_hash != _hash(password):
+            raise ValueError("Invalid credentials")
     return user
 
 # AlertPreference CRUD

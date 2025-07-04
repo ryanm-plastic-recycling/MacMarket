@@ -70,23 +70,42 @@ def ticker_data(symbols: str):
 
 @app.get("/api/news")
 def news():
-    """Fetch simple finance-related news articles."""
+    """Fetch finance-related news articles from multiple sources."""
+    articles = []
     try:
         res = requests.get("https://hn.algolia.com/api/v1/search", params={"query": "market", "tags": "story"})
-        articles = [
+        articles.extend([
             {"title": h.get("title"), "url": h.get("url")}
-            for h in res.json().get("hits", [])[:10]
-        ]
+            for h in res.json().get("hits", [])[:5]
+        ])
     except Exception:
-        articles = []
+        pass
+    def add_rss(url):
+        try:
+            r = requests.get(url)
+            from xml.etree import ElementTree
+            root = ElementTree.fromstring(r.content)
+            for item in root.findall('.//item')[:5]:
+                title = item.findtext('title')
+                link = item.findtext('link')
+                if title and link:
+                    articles.append({"title": title, "url": link})
+        except Exception:
+            pass
+    add_rss('https://feeds.foxnews.com/foxnews/business')
+    add_rss('https://www.bloomberg.com/feed/podcast/etf-report.xml')
+    add_rss('https://feeds.foxbusiness.com/foxbusiness/markets')
     return {"articles": articles}
 
 
 @app.post("/api/login")
 def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
-    """Create or fetch a user by email."""
-    db_user = crud.get_or_create_user(db, user.email)
-    return {"user_id": db_user.id, "email": db_user.email}
+    """Create or fetch a user by username and password."""
+    try:
+        db_user = crud.get_or_create_user(db, user.username, user.password)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return {"user_id": db_user.id, "username": db_user.username}
 
 
 @app.get("/api/users/{user_id}/tickers")

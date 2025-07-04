@@ -20,7 +20,7 @@ app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 def test_login_and_tickers():
-    resp = client.post("/api/login", json={"email": "demo@example.com"})
+    resp = client.post("/api/login", json={"username": "demo", "password": "pass"})
     assert resp.status_code == 200
     user_id = resp.json()["user_id"]
 

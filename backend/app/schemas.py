@@ -26,14 +26,16 @@ class AlertPreference(AlertPreferenceBase):
 
 class User(BaseModel):
     id: int
-    email: EmailStr
+    username: str
+    email: Optional[EmailStr] = None
 
     class Config:
         orm_mode = True
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    username: str
+    password: str
 
 
 class TickerList(BaseModel):
