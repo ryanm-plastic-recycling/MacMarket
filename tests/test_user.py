@@ -69,7 +69,6 @@ def test_update_password(monkeypatch):
     )
     assert resp.status_code == 200
 
-
 def test_update_email(monkeypatch):
     monkeypatch.setattr("backend.app.security.verify_recaptcha", lambda token: True)
     class DummyTOTP:
@@ -86,3 +85,4 @@ def test_update_email(monkeypatch):
     resp = client.put(f"/api/users/{uid}/email", json={"email": "user@example.com"})
     assert resp.status_code == 200
     assert resp.json()["email"] == "user@example.com"
+
