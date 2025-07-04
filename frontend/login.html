@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Login - MacMarket</title>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         body { margin:0; font-family: Arial, Helvetica, sans-serif; }
         #sidebar { position:fixed; left:0; top:0; bottom:0; width:180px; background:#222; color:#fff; padding-top:60px; }
@@ -24,6 +25,8 @@
     <form id="login-form">
         <label>Username<input type="text" id="username"></label>
         <label>Password<input type="password" id="password"></label>
+        <label>OTP<input type="text" id="otp"></label>
+        <div class="g-recaptcha" data-sitekey="YOUR_SITE_KEY"></div>
         <button type="submit">Login</button>
     </form>
 </main>
@@ -32,7 +35,13 @@
         e.preventDefault();
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-        const resp = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username, password})});
+        const otp = document.getElementById('otp').value;
+        const captcha_token = grecaptcha.getResponse();
+        const resp = await fetch('/api/login', {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({username, password, otp, captcha_token})
+        });
         if(resp.ok){
             const data = await resp.json();
             localStorage.setItem('userId', data.user_id);

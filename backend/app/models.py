@@ -15,6 +15,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     is_admin = Column(Boolean, default=False)
     email = Column(String(255), unique=True, nullable=True)
+    totp_secret = Column(String(32), nullable=False)
     created_at = Column(
         TIMESTAMP,
         nullable=False,

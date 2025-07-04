@@ -19,13 +19,21 @@ def _hash(password: str) -> str:
 def get_or_create_user(db: Session, username: str, password: str, email: Optional[str] = None) -> models.User:
     user = get_user_by_username(db, username)
     if not user:
-        user = models.User(username=username, password_hash=_hash(password), email=email)
+        import pyotp
+        secret = pyotp.random_base32()
+        user = models.User(username=username, password_hash=_hash(password), email=email, totp_secret=secret)
         db.add(user)
         db.commit()
         db.refresh(user)
     else:
         if user.password_hash != _hash(password):
             raise ValueError("Invalid credentials")
+        if not user.totp_secret:
+            import pyotp
+            user.totp_secret = pyotp.random_base32()
+            db.add(user)
+            db.commit()
+            db.refresh(user)
     return user
 
 
