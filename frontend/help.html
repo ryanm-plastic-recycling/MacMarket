@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Help - MacMarket</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="theme.js"></script>
+    <style>main h2{margin-top:40px;}</style>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+    <a href="signals.html">Signals</a>
+    <a href="journal.html">Journal</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
+    <a href="#" id="logout-link">Logout</a>
+    <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+    </select>
+</div>
+<header>
+    <h1>MacMarket Help</h1>
+    <div id="user-info"></div>
+    <div id="time"></div>
+</header>
+<main>
+    <h2 id="index">Dashboard</h2>
+    <p>The main dashboard shows a scrolling ticker, quick price tiles and news feeds. Use the <em>Pause</em> button to stop the ticker. Tiles show the first four symbols from your saved list.</p>
+
+    <h2 id="login">Login</h2>
+    <p>Enter your username and password to sign in. If OTP is enabled on your account, provide the six digit code. CAPTCHA can be disabled in local testing.</p>
+
+    <h2 id="account">Account</h2>
+    <p>Update your username, email and password. Enable two-factor authentication by checking <em>Enable OTP</em>. A link to manage tickers and, if you are an administrator, to the admin panel is provided.</p>
+
+    <h2 id="tickers">Tickers</h2>
+    <p>Manage the list of symbols tracked across the site. Add or remove tickers and press <em>Save</em> to store them. These symbols populate the dashboard ticker and drive recommendation data.</p>
+
+    <h2 id="signals">Signals</h2>
+    <p>Retrieve trading insights. Enter a symbol and click <em>Get Signal</em> to see news sentiment and a simple technical signal. Paste macroeconomic commentary into the text box and click <em>Analyze</em> for an LLM-generated outlook. Use <em>Get Recommendations</em> to fetch trade suggestions based on your saved tickers.</p>
+
+    <h2 id="journal">Journal</h2>
+    <p>Record your trades and review current positions. Existing entries appear in the table. Fill out the form to add a new journal entry.</p>
+
+    <h2 id="admin">Admin</h2>
+    <p>The admin panel lists all users. Toggle admin status or reset a user’s password from this screen. Only accounts marked as admin can access this page.</p>
+</main>
+</body>
+</html>
