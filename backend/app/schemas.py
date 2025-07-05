@@ -41,6 +41,13 @@ class UserLogin(BaseModel):
     otp: str
 
 
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    captcha_token: str
+    email: Optional[EmailStr] = None
+
+
 class PasswordUpdate(BaseModel):
     password: str
 

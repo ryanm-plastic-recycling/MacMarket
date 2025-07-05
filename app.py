@@ -120,13 +120,25 @@ def news():
     return {"articles": articles}
 
 
-@app.post("/api/login")
-def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
-    """Create or fetch a user after verifying reCAPTCHA and OTP."""
+@app.post("/api/register")
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """Create a new user account and return the TOTP secret."""
     if not verify_recaptcha(user.captcha_token):
         raise HTTPException(status_code=401, detail="Invalid captcha")
     try:
-        db_user = crud.get_or_create_user(db, user.username, user.password)
+        db_user = crud.create_user(db, user.username, user.password, user.email)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="User already exists")
+    return {"user_id": db_user.id, "totp_secret": db_user.totp_secret}
+
+
+@app.post("/api/login")
+def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
+    """Authenticate an existing user."""
+    if not verify_recaptcha(user.captcha_token):
+        raise HTTPException(status_code=401, detail="Invalid captcha")
+    try:
+        db_user = crud.authenticate_user(db, user.username, user.password)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     totp = pyotp.TOTP(db_user.totp_secret)

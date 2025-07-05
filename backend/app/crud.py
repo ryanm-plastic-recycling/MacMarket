@@ -15,25 +15,30 @@ def get_user_by_username(db: Session, username: str):
 def _hash(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
 
+def create_user(db: Session, username: str, password: str, email: Optional[str] = None) -> models.User:
+    """Create a new user. Raises ValueError if username already exists."""
+    if get_user_by_username(db, username):
+        raise ValueError("User already exists")
+    import pyotp
+    secret = pyotp.random_base32()
+    user = models.User(username=username, password_hash=_hash(password), email=email, totp_secret=secret)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
 
-def get_or_create_user(db: Session, username: str, password: str, email: Optional[str] = None) -> models.User:
+
+def authenticate_user(db: Session, username: str, password: str) -> models.User:
+    """Return user if credentials are valid, otherwise raise ValueError."""
     user = get_user_by_username(db, username)
-    if not user:
+    if not user or user.password_hash != _hash(password):
+        raise ValueError("Invalid credentials")
+    if not user.totp_secret:
         import pyotp
-        secret = pyotp.random_base32()
-        user = models.User(username=username, password_hash=_hash(password), email=email, totp_secret=secret)
+        user.totp_secret = pyotp.random_base32()
         db.add(user)
         db.commit()
         db.refresh(user)
-    else:
-        if user.password_hash != _hash(password):
-            raise ValueError("Invalid credentials")
-        if not user.totp_secret:
-            import pyotp
-            user.totp_secret = pyotp.random_base32()
-            db.add(user)
-            db.commit()
-            db.refresh(user)
     return user
 
 
