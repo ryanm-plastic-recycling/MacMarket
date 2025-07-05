@@ -123,7 +123,6 @@ This example includes a basic FastAPI backend and a very simple frontend page to
        symbol VARCHAR(10) NOT NULL,
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-
    );
    ```
    Generate a TOTP secret using:
