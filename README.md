@@ -95,6 +95,7 @@ Once locked in, we’ll begin building out core modules step-by-step.
 ## Alert Preference System
 
 This example includes a basic FastAPI backend and a very simple frontend page to manage alert preferences. The database schema is defined in `schema.sql`.
+Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `TWILIO_SID`, `TWILIO_TOKEN`, and `TWILIO_FROM`.
 
 ### Running locally
 1. Install Python dependencies using the consolidated requirements file in the
@@ -138,17 +139,20 @@ This example includes a basic FastAPI backend and a very simple frontend page to
 6. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:pass@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
-7. The login page uses Google reCAPTCHA (v2). The default site key is
+7. Optionally set `API_DAILY_QUOTA` to limit requests per IP (default `1000`).
+   Set `OPENAI_API_KEY` to enable macro signal generation.
+8. The login page uses Google reCAPTCHA (v2). The default site key is
    `6Lcu13grAAAAAMTzxfk-P3JUjd9Au8LEddHXRATW` and the default secret key is
    `6Lcu13grAAAAAHhpUM7ba7SLORGjd_XNYnta1WGJ`. You can override the secret by
    setting the `RECAPTCHA_SECRET` environment variable.
-8. Start the API on your preferred port (e.g. 9500):
+9. Start the API on your preferred port (e.g. 9500):
    ```bash
    uvicorn app:app --reload --host 0.0.0.0 --port 9500
    ```
-9. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
+10. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
    backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
    visit them directly via `/login.html`, `/account.html`, `/tickers.html`, and `/admin.html`.
+11. Additional pages `signals.html` and `journal.html` provide interfaces for the new endpoints.
 
 ### Risk Management Module
 
@@ -169,6 +173,16 @@ CREATE TABLE positions (
 
 The API exposes `/api/users/<id>/risk` which calculates exposure from these positions and
 uses an LLM (if configured) to suggest potential actions.
+
+### Signals, Journal, and Backtesting
+Several additional endpoints are available:
+
+* `GET /api/signals/<symbol>` &mdash; returns news sentiment and technical signals for a ticker.
+* `POST /api/macro-signal` with a JSON body `{"text": "..."}` to interpret macroeconomic commentary via an LLM.
+* `GET /api/backtest/<symbol>` &mdash; runs a simple SMA crossover backtest.
+* `GET /api/users/<id>/journal` and `POST /api/users/<id>/journal` &mdash; manage personal trade journal entries.
+
+The frontend now includes `signals.html` and `journal.html` pages to interact with these endpoints.
 
 ### Optional Security Flags
 You can disable certain login checks for local testing by setting environment

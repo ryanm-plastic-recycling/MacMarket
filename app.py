@@ -320,7 +320,7 @@ def theme_js():
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "admin.html"}
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "admin.html"}
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():

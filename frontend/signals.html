@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Signals - MacMarket</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="theme.js"></script>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+    <a href="signals.html">Signals</a>
+    <a href="journal.html">Journal</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
+    <a href="#" id="logout-link">Logout</a>
+    <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+    </select>
+</div>
+<main>
+    <h2>Signals</h2>
+    <div>
+        <label>Symbol <input id="symbol"></label>
+        <button id="get-signal">Get Signal</button>
+    </div>
+    <pre id="signal-output"></pre>
+    <h3>Macro Outlook</h3>
+    <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
+    <br><button id="run-macro">Analyze</button>
+    <pre id="macro-output"></pre>
+</main>
+<script>
+if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
+
+async function fetchSignal(){
+    const sym = document.getElementById('symbol').value.trim();
+    if(!sym) return;
+    const res = await fetch(`/api/signals/${sym}`);
+    document.getElementById('signal-output').textContent = await res.text();
+}
+
+async function fetchMacro(){
+    const text = document.getElementById('macro-text').value;
+    const res = await fetch('/api/macro-signal', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text})});
+    document.getElementById('macro-output').textContent = await res.text();
+}
+
+document.getElementById('get-signal').addEventListener('click', fetchSignal);
+document.getElementById('run-macro').addEventListener('click', fetchMacro);
+</script>
+</body>
+</html>

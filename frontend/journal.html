@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Journal - MacMarket</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="theme.js"></script>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+    <a href="signals.html">Signals</a>
+    <a href="journal.html">Journal</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
+    <a href="#" id="logout-link">Logout</a>
+    <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+    </select>
+</div>
+<main>
+    <h2>Trade Journal</h2>
+    <table id="journal-table">
+        <thead>
+            <tr><th>Date</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Rationale</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <form id="journal-form">
+        <label>Symbol <input id="symbol"></label>
+        <label>Action
+            <select id="action">
+                <option value="buy">Buy</option>
+                <option value="sell">Sell</option>
+            </select>
+        </label>
+        <label>Quantity <input type="number" id="quantity" step="0.01"></label>
+        <label>Price <input type="number" id="price" step="0.01"></label>
+        <label>Rationale <input id="rationale"></label>
+        <button type="submit">Add</button>
+    </form>
+</main>
+<script>
+const userId = localStorage.getItem('userId');
+if(!userId){ window.location.href = 'login.html'; }
+if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
+
+async function loadJournal(){
+    const res = await fetch(`/api/users/${userId}/journal`);
+    if(!res.ok) return;
+    const data = await res.json();
+    const body = document.querySelector('#journal-table tbody');
+    body.innerHTML='';
+    data.forEach(e => {
+        const tr = document.createElement('tr');
+        const when = new Date(e.created_at).toLocaleString();
+        tr.innerHTML = `<td>${when}</td><td>${e.symbol}</td><td>${e.action}</td>`+
+            `<td>${e.quantity}</td><td>${e.price}</td><td>${e.rationale||''}</td>`;
+        body.appendChild(tr);
+    });
+}
+
+document.getElementById('journal-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const payload = {
+        symbol: document.getElementById('symbol').value.trim(),
+        action: document.getElementById('action').value,
+        quantity: parseFloat(document.getElementById('quantity').value),
+        price: parseFloat(document.getElementById('price').value),
+        rationale: document.getElementById('rationale').value.trim()
+    };
+    await fetch(`/api/users/${userId}/journal`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    document.getElementById('journal-form').reset();
+    loadJournal();
+});
+
+window.onload = loadJournal;
+</script>
+</body>
+</html>
