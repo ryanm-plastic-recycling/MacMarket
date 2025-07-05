@@ -143,7 +143,10 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
         db_user = crud.authenticate_user(db, user.username, user.password)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    if os.getenv("DISABLE_OTP", "").lower() not in {"1", "true", "yes"}:
+    if (
+        os.getenv("DISABLE_OTP", "").lower() not in {"1", "true", "yes"}
+        and db_user.otp_enabled
+    ):
         totp = pyotp.TOTP(db_user.totp_secret)
         if not totp.verify(user.otp or ""):
             raise HTTPException(status_code=401, detail="Invalid OTP")
@@ -171,6 +174,39 @@ def update_user_email(user_id: int, email: schemas.EmailUpdate, db: Session = De
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"email": user.email}
+
+
+@app.put("/api/users/{user_id}/password")
+def update_user_password(user_id: int, pw: schemas.PasswordUpdate, db: Session = Depends(get_db)):
+    """Allow a user to change their own password."""
+    user = crud.set_user_password(db, user_id, pw.password)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "updated"}
+
+
+@app.put("/api/users/{user_id}/username")
+def update_username(user_id: int, data: schemas.UsernameUpdate, db: Session = Depends(get_db)):
+    """Allow a user to change their username."""
+    try:
+        user = crud.set_username(db, user_id, data.username)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="User already exists")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"username": user.username}
+
+
+@app.put("/api/users/{user_id}/otp")
+def update_otp(user_id: int, data: schemas.OtpUpdate, db: Session = Depends(get_db)):
+    """Enable or disable OTP for a user. Returns the secret when enabling."""
+    user = crud.set_otp_enabled(db, user_id, data.otp_enabled)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    resp = {"otp_enabled": user.otp_enabled}
+    if user.otp_enabled:
+        resp["totp_secret"] = user.totp_secret
+    return resp
 
 
 @app.get("/api/admin/users")

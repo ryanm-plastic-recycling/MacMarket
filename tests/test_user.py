@@ -99,6 +99,39 @@ def test_update_email(monkeypatch):
     assert resp.json()["email"] == "user@example.com"
 
 
+def test_enable_otp_and_username_change(monkeypatch):
+    monkeypatch.setattr("backend.app.security.verify_recaptcha", lambda token: True)
+
+    class DummyTOTP:
+        def verify(self, otp):
+            return otp == "000000"
+
+    monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+
+    client.post(
+        "/api/register",
+        json={"username": "demo5", "password": "pass", "captcha_token": "x"},
+    )
+    resp = client.post(
+        "/api/login",
+        json={"username": "demo5", "password": "pass", "captcha_token": "x"},
+    )
+    uid = resp.json()["user_id"]
+
+    resp = client.put(f"/api/users/{uid}/otp", json={"otp_enabled": True})
+    assert resp.status_code == 200
+
+    resp = client.post(
+        "/api/login",
+        json={"username": "demo5", "password": "pass", "captcha_token": "x", "otp": "000000"},
+    )
+    assert resp.status_code == 200
+
+    resp = client.put(f"/api/users/{uid}/username", json={"username": "demo6"})
+    assert resp.status_code == 200
+    assert resp.json()["username"] == "demo6"
+
+
 def test_login_security_disabled(monkeypatch):
     os.environ["DISABLE_CAPTCHA"] = "1"
     os.environ["DISABLE_OTP"] = "1"

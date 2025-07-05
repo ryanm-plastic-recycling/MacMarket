@@ -21,7 +21,13 @@ def create_user(db: Session, username: str, password: str, email: Optional[str] 
         raise ValueError("User already exists")
     import pyotp
     secret = pyotp.random_base32()
-    user = models.User(username=username, password_hash=_hash(password), email=email, totp_secret=secret)
+    user = models.User(
+        username=username,
+        password_hash=_hash(password),
+        email=email,
+        totp_secret=secret,
+        otp_enabled=False,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -33,12 +39,6 @@ def authenticate_user(db: Session, username: str, password: str) -> models.User:
     user = get_user_by_username(db, username)
     if not user or user.password_hash != _hash(password):
         raise ValueError("Invalid credentials")
-    if not user.totp_secret:
-        import pyotp
-        user.totp_secret = pyotp.random_base32()
-        db.add(user)
-        db.commit()
-        db.refresh(user)
     return user
 
 
@@ -114,6 +114,30 @@ def set_user_email(db: Session, user_id: int, email: str):
     user = get_user(db, user_id)
     if user:
         user.email = email
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+def set_username(db: Session, user_id: int, username: str):
+    """Update a user's username and return the updated user."""
+    if get_user_by_username(db, username):
+        raise ValueError("User already exists")
+    user = get_user(db, user_id)
+    if user:
+        user.username = username
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+
+def set_otp_enabled(db: Session, user_id: int, enabled: bool):
+    """Enable or disable OTP for the user."""
+    user = get_user(db, user_id)
+    if user:
+        user.otp_enabled = enabled
         db.add(user)
         db.commit()
         db.refresh(user)

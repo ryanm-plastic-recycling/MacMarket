@@ -16,6 +16,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     email = Column(String(255), unique=True, nullable=True)
     totp_secret = Column(String(32), nullable=False)
+    otp_enabled = Column(Boolean, default=False)
     created_at = Column(
         TIMESTAMP,
         nullable=False,
