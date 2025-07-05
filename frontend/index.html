@@ -67,7 +67,8 @@ async function loadTicker() {
         if(item.price === null) {
             span.textContent = `${item.symbol} N/A`;
         } else {
-            span.textContent = `${item.symbol} ${item.price.toFixed(2)} (${item.change_percent.toFixed(2)}%)`;
+            const priceStr = item.price < 1 ? item.price.toFixed(5) : item.price.toFixed(2);
+            span.textContent = `${item.symbol} ${priceStr} (${item.change_percent.toFixed(2)}%)`;
         }
         track.appendChild(span);
     });
@@ -86,7 +87,8 @@ function updateTiles(tickerData){
             div.textContent = `${sym} N/A`;
         } else {
             const cls = item.change_percent >= 0 ? 'up' : 'down';
-            div.innerHTML = `<h3>${sym}</h3><p class="${cls}">${item.price.toFixed(2)} (${item.change_percent.toFixed(2)}%)</p>`;
+            const priceStr = item.price < 1 ? item.price.toFixed(5) : item.price.toFixed(2);
+            div.innerHTML = `<h3>${sym}</h3><p class="${cls}">${priceStr} (${item.change_percent.toFixed(2)}%)</p>`;
         }
         container.appendChild(div);
     });
