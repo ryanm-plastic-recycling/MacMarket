@@ -120,9 +120,10 @@ This example includes a basic FastAPI backend and a very simple frontend page to
 5. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:pass@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
-6. The login page uses Google reCAPTCHA. The default site key and secret are
-   already configured in the code, but you can override the secret by setting the
-   `RECAPTCHA_SECRET` environment variable.
+6. The login page uses Google reCAPTCHA (v2). The default site key is
+   `6Lcu13grAAAAAMTzxfk-P3JUjd9Au8LEddHXRATW` and the default secret key is
+   `6Lcu13grAAAAAHhpUM7ba7SLORGjd_XNYnta1WGJ`. You can override the secret by
+   setting the `RECAPTCHA_SECRET` environment variable.
 7. Start the API on your preferred port (e.g. 9500):
    ```bash
    uvicorn app:app --reload --host 0.0.0.0 --port 9500

@@ -127,13 +127,19 @@ async function loadCharts(){
     for(const cfg of chartSymbols){
         const res = await fetch(`/api/history?symbol=${cfg.symbol}&period=${period}`);
         const data = await res.json();
-        const ctx = document.getElementById(cfg.id).getContext('2d');
-        if(charts[cfg.id]) charts[cfg.id].destroy();
-        charts[cfg.id] = new Chart(ctx, {
-            type: 'line',
-            data: { labels: data.dates, datasets: [{ label: cfg.name, data: data.close, borderColor: '#3e95cd', fill:false }] },
-            options: { responsive:true, maintainAspectRatio:false, scales:{ x:{ display:false } } }
-        });
+        const canvas = document.getElementById(cfg.id);
+        const ctx = canvas.getContext('2d');
+        if(charts[cfg.id]){
+            charts[cfg.id].data.labels = data.dates;
+            charts[cfg.id].data.datasets[0].data = data.close;
+            charts[cfg.id].update();
+        } else {
+            charts[cfg.id] = new Chart(ctx, {
+                type: 'line',
+                data: { labels: data.dates, datasets: [{ label: cfg.name, data: data.close, borderColor: '#3e95cd', fill:false }] },
+                options: { responsive:true, maintainAspectRatio:false, animation:false, scales:{ x:{ display:false } } }
+            });
+        }
     }
 }
 
