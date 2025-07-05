@@ -3,6 +3,7 @@ from backend.app.database import connect_to_db, SessionLocal, engine
 from sqlalchemy.orm import Session
 from backend.app import models, crud, schemas
 from backend.app.security import verify_recaptcha
+from backend.app import risk
 import pyotp
 import os
 
@@ -93,17 +94,18 @@ def price_history(symbol: str, period: str = "1mo", interval: str = "1d"):
 
 @app.get("/api/news")
 def news():
-    """Fetch finance-related news articles from multiple sources."""
-    articles = []
+    """Fetch finance and world news articles from multiple sources."""
+    market = []
+    world = []
     try:
         res = requests.get("https://hn.algolia.com/api/v1/search", params={"query": "market", "tags": "story"})
-        articles.extend([
+        market.extend([
             {"title": h.get("title"), "url": h.get("url")}
             for h in res.json().get("hits", [])[:5]
         ])
     except Exception:
         pass
-    def add_rss(url):
+    def add_rss(url, dest):
         try:
             r = requests.get(url)
             from xml.etree import ElementTree
@@ -112,13 +114,15 @@ def news():
                 title = item.findtext('title')
                 link = item.findtext('link')
                 if title and link:
-                    articles.append({"title": title, "url": link})
+                    dest.append({"title": title, "url": link})
         except Exception:
             pass
-    add_rss('https://feeds.foxnews.com/foxnews/business')
-    add_rss('https://www.bloomberg.com/feed/podcast/etf-report.xml')
-    add_rss('https://feeds.foxbusiness.com/foxbusiness/markets')
-    return {"articles": articles}
+    add_rss('https://feeds.foxnews.com/foxnews/business', market)
+    add_rss('https://www.bloomberg.com/feed/podcast/etf-report.xml', market)
+    add_rss('https://feeds.foxbusiness.com/foxbusiness/markets', market)
+    add_rss('https://rss.nytimes.com/services/xml/rss/nyt/World.xml', world)
+    add_rss('https://feeds.bbci.co.uk/news/world/rss.xml', world)
+    return {"market": market, "world": world}
 
 
 @app.post("/api/register")
@@ -207,6 +211,16 @@ def update_otp(user_id: int, data: schemas.OtpUpdate, db: Session = Depends(get_
     if user.otp_enabled:
         resp["totp_secret"] = user.totp_secret
     return resp
+
+
+@app.get("/api/users/{user_id}/risk")
+def get_user_risk(user_id: int, db: Session = Depends(get_db)):
+    """Return basic risk metrics and LLM suggestions for a user."""
+    positions = risk.get_positions(db, user_id)
+    exposure = risk.calculate_exposure(positions)
+    summary = f"User {user_id} portfolio exposure: {exposure}"
+    suggestion = risk.llm_suggestion(summary)
+    return {"exposure": exposure, "suggestion": suggestion}
 
 
 @app.get("/api/admin/users")
