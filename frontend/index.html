@@ -12,7 +12,12 @@
         #sidebar a:hover { background:#444; }
         main { margin-left:180px; }
         #time { position:absolute; top:10px; right:10px; color:#fff; font-size:0.9em; }
-        #ticker-bar { background:#333; color:#fff; overflow:hidden; white-space:nowrap; padding:5px; }
+        #ticker-bar { background:#333; color:#fff; overflow:hidden; white-space:nowrap; padding:5px; position:relative; }
+        #ticker-track { display:inline-block; white-space:nowrap; padding-left:100%; animation: ticker-scroll 30s linear infinite; }
+        @keyframes ticker-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
         .ticker-item { display:inline-block; margin-right:20px; }
         .up { color:#0f0; }
         .down { color:#f00; }
@@ -44,7 +49,7 @@
     <div id="time"></div>
 </header>
 <main>
-<div id="ticker-bar"></div>
+<div id="ticker-bar"><div id="ticker-track"></div></div>
 <div id="chart-controls">Time range:
     <select id="range-select">
         <option value="1mo">1M</option>
@@ -53,24 +58,14 @@
         <option value="1y">1Y</option>
     </select>
 </div>
-<div id="charts">
-    <canvas id="chart-spy"></canvas>
-    <canvas id="chart-qqq"></canvas>
-    <canvas id="chart-btc"></canvas>
-    <canvas id="chart-gld"></canvas>
-</div>
+<div id="charts"></div>
 <section id="news"></section>
 </main>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     let userId = null;
     let tickerSymbols = ['AAPL','MSFT','GOOGL','AMZN','TSLA','SPY','QQQ','GLD','BTC-USD','ETH-USD'];
-    const chartSymbols = [
-        {id: 'chart-spy', symbol: 'SPY', name: 'S&P 500'},
-        {id: 'chart-qqq', symbol: 'QQQ', name: 'Nasdaq 100'},
-        {id: 'chart-btc', symbol: 'BTC-USD', name: 'Bitcoin'},
-        {id: 'chart-gld', symbol: 'GLD', name: 'Gold'}
-    ];
+    let chartSymbols = [];
     const charts = {};
 
 function updateTime() {
@@ -88,10 +83,11 @@ async function loadTicker() {
             }
         }
     }
+    chartSymbols = tickerSymbols.slice(0, 4);
     const res = await fetch('/api/ticker?symbols=' + tickerSymbols.join(','));
     const data = await res.json();
-    const bar = document.getElementById('ticker-bar');
-    bar.innerHTML = '';
+    const track = document.getElementById('ticker-track');
+    track.innerHTML = '';
     data.data.forEach(item => {
         const span = document.createElement('span');
         const cls = item.change_percent >= 0 ? 'up' : 'down';
@@ -101,8 +97,9 @@ async function loadTicker() {
         } else {
             span.textContent = `${item.symbol} ${item.price.toFixed(2)} (${item.change_percent.toFixed(2)}%)`;
         }
-        bar.appendChild(span);
+        track.appendChild(span);
     });
+    track.innerHTML += track.innerHTML; // duplicate for smooth scroll
 }
 async function loadNews() {
     const res = await fetch('/api/news');
@@ -124,29 +121,42 @@ async function loadNews() {
 
 async function loadCharts(){
     const period = document.getElementById('range-select').value;
-    for(const cfg of chartSymbols){
-        const res = await fetch(`/api/history?symbol=${cfg.symbol}&period=${period}`);
+    for(let i = 0; i < chartSymbols.length; i++){
+        const symbol = chartSymbols[i];
+        const res = await fetch(`/api/history?symbol=${symbol}&period=${period}`);
         const data = await res.json();
-        const ctx = document.getElementById(cfg.id).getContext('2d');
-        if(charts[cfg.id]) charts[cfg.id].destroy();
-        charts[cfg.id] = new Chart(ctx, {
+        const canvasId = `chart-${i}`;
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        if(charts[canvasId]) charts[canvasId].destroy();
+        charts[canvasId] = new Chart(ctx, {
             type: 'line',
-            data: { labels: data.dates, datasets: [{ label: cfg.name, data: data.close, borderColor: '#3e95cd', fill:false }] },
+            data: { labels: data.dates, datasets: [{ label: symbol, data: data.close, borderColor: '#3e95cd', fill:false }] },
             options: { responsive:true, maintainAspectRatio:false, animation:false, scales:{ x:{ display:false } } }
         });
     }
 }
 
-function init() {
+function setupCharts(){
+    const div = document.getElementById('charts');
+    div.innerHTML = '';
+    chartSymbols.forEach((sym, idx) => {
+        const canvas = document.createElement('canvas');
+        canvas.id = `chart-${idx}`;
+        div.appendChild(canvas);
+    });
+}
+
+async function init() {
     updateTime();
     setInterval(updateTime, 1000);
     userId = localStorage.getItem('userId');
     if(localStorage.getItem('isAdmin') === '1'){
         document.getElementById('admin-link').style.display='block';
     }
-    loadTicker();
+    await loadTicker();
+    setupCharts();
+    await loadCharts();
     loadNews();
-    loadCharts();
     document.getElementById('range-select').addEventListener('change', loadCharts);
 }
 </script>
