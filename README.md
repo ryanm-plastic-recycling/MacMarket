@@ -147,6 +147,19 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
    visit them directly via `/login.html`, `/account.html`, `/tickers.html`, and `/admin.html`.
 
+### Optional Security Flags
+You can disable certain login checks for local testing by setting environment
+variables before starting the server:
+
+* `DISABLE_CAPTCHA=1` &mdash; bypasses the reCAPTCHA challenge.
+* `DISABLE_OTP=1` &mdash; bypasses TOTP verification.
+
+Example:
+
+```bash
+DISABLE_CAPTCHA=1 DISABLE_OTP=1 uvicorn app:app --reload --host 0.0.0.0 --port 9500
+```
+
 ### Managing users
 * Log in with an admin account (set `is_admin` in the database or via the admin panel).
 * The admin panel is available at `/admin.html` and lists all users.
