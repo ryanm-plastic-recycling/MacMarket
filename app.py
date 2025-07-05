@@ -5,6 +5,10 @@ from backend.app import models, crud, schemas
 from backend.app.security import verify_recaptcha
 from backend.app import risk
 import pyotp
+from backend.app import signals, backtest, alerts
+from datetime import datetime
+from fastapi import Request
+from fastapi.middleware.base import BaseHTTPMiddleware
 import os
 
 from fastapi.responses import HTMLResponse, Response
@@ -15,6 +19,25 @@ import pandas as pd
 
 app = FastAPI()
 
+class QuotaMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+        self.limit = int(os.getenv("API_DAILY_QUOTA", "1000"))
+        self.counts = {}
+        self.day = datetime.utcnow().date()
+
+    async def dispatch(self, request: Request, call_next):
+        current = datetime.utcnow().date()
+        if current != self.day:
+            self.counts = {}
+            self.day = current
+        ip = request.client.host
+        self.counts[ip] = self.counts.get(ip, 0) + 1
+        if self.counts[ip] > self.limit:
+            return Response("API quota exceeded", status_code=429)
+        return await call_next(request)
+
+app.add_middleware(QuotaMiddleware)
 models.Base.metadata.create_all(bind=engine)
 
 # Directory containing the HTML frontend files
@@ -254,6 +277,28 @@ def admin_toggle(user_id: int, is_admin: bool, db: Session = Depends(get_db)):
     return {"status": "updated", "is_admin": user.is_admin}
 
 
+@app.post("/api/users/{user_id}/journal", response_model=schemas.JournalEntry)
+def create_journal(user_id: int, entry: schemas.JournalEntryCreate, db: Session = Depends(get_db)):
+    return crud.create_journal_entry(db, user_id, entry.symbol, entry.action, entry.quantity, entry.price, entry.rationale)
+
+@app.get("/api/users/{user_id}/journal", response_model=list[schemas.JournalEntry])
+def read_journal(user_id: int, db: Session = Depends(get_db)):
+    return crud.get_journal_entries(db, user_id)
+
+@app.get("/api/signals/{symbol}")
+def get_signals(symbol: str):
+    news = signals.news_sentiment_signal(symbol)
+    tech = signals.technical_indicator_signal(symbol)
+    return {"news": news, "technical": tech}
+
+@app.post("/api/macro-signal")
+def macro_signal(data: dict):
+    return signals.macro_llm_signal(data.get("text", ""))
+
+@app.get("/api/backtest/{symbol}")
+def run_backtest(symbol: str):
+    return backtest.sma_crossover_backtest(symbol)
+
 # Serve static assets for the simple frontend
 @app.get("/style.css")
 def style_css():
@@ -275,7 +320,7 @@ def theme_js():
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "admin.html"}
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "admin.html"}
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():

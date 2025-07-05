@@ -142,3 +142,31 @@ def set_otp_enabled(db: Session, user_id: int, enabled: bool):
         db.commit()
         db.refresh(user)
     return user
+
+# Journal helpers
+
+def create_journal_entry(
+    db: Session,
+    user_id: int,
+    symbol: str,
+    action: models.ActionType,
+    quantity: float,
+    price: float,
+    rationale: str | None = None,
+) -> models.JournalEntry:
+    entry = models.JournalEntry(
+        user_id=user_id,
+        symbol=symbol,
+        action=action,
+        quantity=quantity,
+        price=price,
+        rationale=rationale,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
+def get_journal_entries(db: Session, user_id: int) -> List[models.JournalEntry]:
+    return db.query(models.JournalEntry).filter(models.JournalEntry.user_id == user_id).all()

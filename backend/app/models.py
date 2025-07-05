@@ -72,3 +72,28 @@ class Position(Base):
     )
 
     user = relationship("User")
+
+class ActionType(str, enum.Enum):
+    buy = "buy"
+    sell = "sell"
+
+
+class JournalEntry(Base):
+    """User trade journal entry."""
+
+    __tablename__ = "journal_entries"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    symbol = Column(String(10), nullable=False)
+    action = Column(Enum(ActionType), nullable=False)
+    quantity = Column(DECIMAL(10, 2), nullable=False)
+    price = Column(DECIMAL(10, 2), nullable=False)
+    rationale = Column(String(1024), nullable=True)
+    created_at = Column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text('CURRENT_TIMESTAMP'),
+    )
+
+    user = relationship("User")

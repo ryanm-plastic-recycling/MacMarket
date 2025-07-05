@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from enum import Enum
+from . import models
 
 class AlertType(str, Enum):
     email = "email"
@@ -66,3 +67,22 @@ class TickerList(BaseModel):
 
 class EmailUpdate(BaseModel):
     email: EmailStr
+
+class JournalEntryBase(BaseModel):
+    symbol: str
+    action: models.ActionType
+    quantity: float
+    price: float
+    rationale: Optional[str] = None
+
+
+class JournalEntryCreate(JournalEntryBase):
+    pass
+
+
+class JournalEntry(JournalEntryBase):
+    id: int
+    user_id: int
+
+    class Config:
+        from_attributes = True
