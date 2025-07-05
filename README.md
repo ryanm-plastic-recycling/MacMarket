@@ -103,11 +103,18 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    pip install -r requirements.txt
    ```
 2. Set up a MySQL database and load `schema.sql`.
-3. Insert at least one user so alerts can be created:
+3. Insert at least one user with a username, hashed password, and TOTP secret:
    ```sql
-   INSERT INTO users (email) VALUES ('test@example.com');
+   INSERT INTO users (username, password_hash, email, totp_secret)
+   VALUES
+     ('demo', SHA2('password', 256), 'demo@example.com', 'JBSWY3DPEHPK3PXP');
    ```
-4. If upgrading from a previous version, create the `user_tickers` table to store custom ticker lists:
+   You can generate a new TOTP secret with:
+   ```bash
+   python -c "import pyotp; print(pyotp.random_base32())"
+   ```
+4. The `user_tickers` table is included in `schema.sql` and stores custom ticker lists. If your
+   database predates this table, create it with:
    ```sql
    CREATE TABLE user_tickers (
        id INT AUTO_INCREMENT PRIMARY KEY,
