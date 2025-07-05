@@ -157,6 +157,12 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     return {"user_id": db_user.id, "username": db_user.username, "is_admin": db_user.is_admin}
 
 
+@app.post("/api/logout")
+def logout():
+    """Placeholder logout endpoint."""
+    return {"status": "logged out"}
+
+
 @app.get("/api/users/{user_id}/tickers")
 def get_user_tickers(user_id: int, db: Session = Depends(get_db)):
     """Return the list of tickers for a user."""

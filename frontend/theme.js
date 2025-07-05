@@ -17,4 +17,23 @@ document.addEventListener('DOMContentLoaded', () => {
   if (select) {
     select.addEventListener('change', () => applyTheme(select.value));
   }
+  initAuth();
 });
+
+function initAuth() {
+  const link = document.getElementById('logout-link');
+  if (!link) return;
+  if (localStorage.getItem('userId')) {
+    link.style.display = 'block';
+    link.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await fetch('/api/logout', { method: 'POST' });
+      localStorage.removeItem('userId');
+      localStorage.removeItem('username');
+      localStorage.removeItem('isAdmin');
+      window.location.href = 'login.html';
+    });
+  } else {
+    link.style.display = 'none';
+  }
+}

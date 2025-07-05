@@ -48,3 +48,9 @@ def test_risk_endpoint(monkeypatch):
     assert response.status_code == 200
     assert response.json()["exposure"] == 20.0
     assert response.json()["suggestion"] == "test"
+
+
+def test_logout_endpoint():
+    response = client.post("/api/logout")
+    assert response.status_code == 200
+    assert response.json() == {"status": "logged out"}
