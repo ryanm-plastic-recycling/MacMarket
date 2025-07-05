@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from enum import Enum
+from datetime import datetime
 from . import models
 
 class AlertType(str, Enum):
@@ -86,3 +87,21 @@ class JournalEntry(JournalEntryBase):
 
     class Config:
         from_attributes = True
+
+class Position(BaseModel):
+    id: int | None = None
+    user_id: int | None = None
+    symbol: str
+    quantity: float
+    price: float
+    created_at: Optional[datetime] | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class Recommendation(BaseModel):
+    symbol: str
+    action: str
+    exit: Optional[float] = None
+    probability: float
