@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from backend.app import models, crud, schemas
 from backend.app.security import verify_recaptcha
 import pyotp
+import os
 
 from fastapi.responses import HTMLResponse
 from pathlib import Path
@@ -141,9 +142,10 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
         db_user = crud.authenticate_user(db, user.username, user.password)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-    totp = pyotp.TOTP(db_user.totp_secret)
-    if not totp.verify(user.otp):
-        raise HTTPException(status_code=401, detail="Invalid OTP")
+    if os.getenv("DISABLE_OTP", "").lower() not in {"1", "true", "yes"}:
+        totp = pyotp.TOTP(db_user.totp_secret)
+        if not totp.verify(user.otp):
+            raise HTTPException(status_code=401, detail="Invalid OTP")
     return {"user_id": db_user.id, "username": db_user.username, "is_admin": db_user.is_admin}
 
 
