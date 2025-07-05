@@ -35,3 +35,16 @@ def test_history_endpoint(monkeypatch):
     assert response.json()["symbol"] == "SPY"
     assert response.json()["close"] == [1.0, 2.0]
     assert response.json()["dates"] == ["2024-01-01", "2024-01-02"]
+
+
+def test_risk_endpoint(monkeypatch):
+    class DummyPos:
+        quantity = 10
+        price = 2
+
+    monkeypatch.setattr("app.risk.get_positions", lambda db, uid: [DummyPos()])
+    monkeypatch.setattr("app.risk.llm_suggestion", lambda summary: "test")
+    response = client.get("/api/users/1/risk")
+    assert response.status_code == 200
+    assert response.json()["exposure"] == 20.0
+    assert response.json()["suggestion"] == "test"
