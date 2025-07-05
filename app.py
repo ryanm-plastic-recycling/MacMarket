@@ -8,7 +8,7 @@ import pyotp
 from backend.app import signals, backtest, alerts
 from datetime import datetime
 from fastapi import Request
-from fastapi.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 import os
 
 from fastapi.responses import HTMLResponse, Response
