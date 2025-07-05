@@ -21,10 +21,18 @@
 <main>
     <h2>Account</h2>
     <p id="welcome"></p>
+    <form id="account-form">
+        <label>Username <input type="text" id="username"></label>
+        <label>Email <input type="email" id="email"></label>
+        <label>New Password <input type="password" id="password"></label>
+        <label><input type="checkbox" id="otp"> Enable OTP</label>
+        <button type="submit">Save</button>
+    </form>
     <p><a href="tickers.html">Manage Tickers</a></p>
     <p id="admin-link" style="display:none;"><a href="admin.html">Admin Panel</a></p>
 </main>
 <script>
+    const userId = localStorage.getItem('userId');
     const user = localStorage.getItem('username');
     const isAdmin = localStorage.getItem('isAdmin') === '1';
     if(!user){
@@ -35,6 +43,34 @@
             document.getElementById('admin-link').style.display = 'block';
         }
     }
+
+    async function loadProfile(){
+        document.getElementById('username').value = user;
+        const resp = await fetch(`/api/users/${userId}/tickers`);
+        // placeholder fetch to ensure user exists
+    }
+
+    document.getElementById('account-form').addEventListener('submit', async e=>{
+        e.preventDefault();
+        const newUser = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const pw = document.getElementById('password').value;
+        const otpEnabled = document.getElementById('otp').checked;
+        if(newUser && newUser !== user){
+            const r = await fetch(`/api/users/${userId}/username`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:newUser})});
+            if(r.ok){ localStorage.setItem('username', newUser); }
+        }
+        if(email){
+            await fetch(`/api/users/${userId}/email`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+        }
+        if(pw){
+            await fetch(`/api/users/${userId}/password`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password:pw})});
+        }
+        await fetch(`/api/users/${userId}/otp`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otp_enabled: otpEnabled})});
+        alert('Saved');
+    });
+
+    loadProfile();
 </script>
 </body>
 </html>

@@ -104,11 +104,11 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    ```
 2. Set up a MySQL database and load `schema.sql`.
 
-3. Insert at least one user with a username, hashed password, and TOTP secret:
+3. Insert at least one user with a username, hashed password, and TOTP secret. `otp_enabled` is set to `FALSE` by default so OTP is optional until enabled by the user:
    ```sql
-   INSERT INTO users (username, password_hash, email, totp_secret)
+   INSERT INTO users (username, password_hash, email, totp_secret, otp_enabled)
    VALUES
-     ('demo', SHA2('password', 256), 'demo@example.com', 'JBSWY3DPEHPK3PXP');
+     ('demo', SHA2('password', 256), 'demo@example.com', 'JBSWY3DPEHPK3PXP', FALSE);
    ```
    You can generate a new TOTP secret with:
    ```bash
@@ -131,6 +131,10 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    ```
 4. The `user_tickers` table defined in `schema.sql` stores custom ticker lists,
    so no additional setup is required.
+   If your database was created before the `otp_enabled` column was added, run:
+   ```sql
+   ALTER TABLE users ADD COLUMN otp_enabled BOOLEAN DEFAULT FALSE;
+   ```
 5. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:pass@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.

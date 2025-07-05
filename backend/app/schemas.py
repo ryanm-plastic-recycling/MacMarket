@@ -52,6 +52,14 @@ class PasswordUpdate(BaseModel):
     password: str
 
 
+class UsernameUpdate(BaseModel):
+    username: str
+
+
+class OtpUpdate(BaseModel):
+    otp_enabled: bool
+
+
 class TickerList(BaseModel):
     tickers: list[str]
 
