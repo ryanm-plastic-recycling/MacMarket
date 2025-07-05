@@ -7,7 +7,7 @@ from backend.app import risk
 import pyotp
 import os
 
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pathlib import Path
 import yfinance as yf
 import requests
@@ -246,6 +246,23 @@ def admin_toggle(user_id: int, is_admin: bool, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "updated", "is_admin": user.is_admin}
+
+
+# Serve static assets for the simple frontend
+@app.get("/style.css")
+def style_css():
+    css_file = FRONTEND_DIR / "style.css"
+    if css_file.exists():
+        return Response(css_file.read_text(), media_type="text/css")
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
+@app.get("/theme.js")
+def theme_js():
+    js_file = FRONTEND_DIR / "theme.js"
+    if js_file.exists():
+        return Response(js_file.read_text(), media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Not Found")
 
 
 # Serve simple static HTML pages for the frontend
