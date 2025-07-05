@@ -32,6 +32,10 @@ def test_login_and_tickers(monkeypatch):
             return True
 
     monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+    client.post(
+        "/api/register",
+        json={"username": "demo", "password": "pass", "captcha_token": "x"},
+    )
     resp = client.post(
         "/api/login",
         json={"username": "demo", "password": "pass", "captcha_token": "x", "otp": "123456"},
@@ -55,6 +59,10 @@ def test_update_password(monkeypatch):
             return True
 
     monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+    client.post(
+        "/api/register",
+        json={"username": "demo2", "password": "old", "captcha_token": "x"},
+    )
     resp = client.post(
         "/api/login",
         json={"username": "demo2", "password": "old", "captcha_token": "x", "otp": "123"},
@@ -76,6 +84,10 @@ def test_update_email(monkeypatch):
             return True
 
     monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+    client.post(
+        "/api/register",
+        json={"username": "demo3", "password": "pass", "captcha_token": "x"},
+    )
     resp = client.post(
         "/api/login",
         json={"username": "demo3", "password": "pass", "captcha_token": "x", "otp": "000"},
@@ -85,4 +97,30 @@ def test_update_email(monkeypatch):
     resp = client.put(f"/api/users/{uid}/email", json={"email": "user@example.com"})
     assert resp.status_code == 200
     assert resp.json()["email"] == "user@example.com"
+
+
+def test_login_security_disabled(monkeypatch):
+    os.environ["DISABLE_CAPTCHA"] = "1"
+    os.environ["DISABLE_OTP"] = "1"
+
+    monkeypatch.setattr("backend.app.security.verify_recaptcha", lambda token: True)
+    client.post(
+        "/api/register",
+        json={"username": "demo4", "password": "pass", "captcha_token": "x"},
+    )
+
+    def recaptcha_unused(token):
+        raise AssertionError("recaptcha should not be checked")
+
+    def otp_unused(secret):
+        raise AssertionError("otp should not be checked")
+
+    monkeypatch.setattr("backend.app.security.verify_recaptcha", recaptcha_unused)
+    monkeypatch.setattr("pyotp.TOTP", otp_unused)
+
+    resp = client.post(
+        "/api/login",
+        json={"username": "demo4", "password": "pass"},
+    )
+    assert resp.status_code == 200
 

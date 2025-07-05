@@ -35,12 +35,19 @@
         e.preventDefault();
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-        const otp = document.getElementById('otp').value;
-        const captcha_token = grecaptcha.getResponse();
+        const otpValue = document.getElementById('otp').value;
+        const captchaToken = grecaptcha.getResponse();
+        const payload = {username, password};
+        if(otpValue){
+            payload.otp = otpValue;
+        }
+        if(captchaToken){
+            payload.captcha_token = captchaToken;
+        }
         const resp = await fetch('/api/login', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({username, password, otp, captcha_token})
+            body: JSON.stringify(payload)
         });
         if(resp.ok){
             const data = await resp.json();

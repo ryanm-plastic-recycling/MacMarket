@@ -22,7 +22,7 @@ class AlertPreference(AlertPreferenceBase):
     user_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class User(BaseModel):
     id: int
@@ -31,14 +31,21 @@ class User(BaseModel):
     email: Optional[EmailStr] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserLogin(BaseModel):
     username: str
     password: str
+    captcha_token: Optional[str] = None
+    otp: Optional[str] = None
+
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
     captcha_token: str
-    otp: str
+    email: Optional[EmailStr] = None
 
 
 class PasswordUpdate(BaseModel):

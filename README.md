@@ -103,15 +103,26 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    pip install -r requirements.txt
    ```
 2. Set up a MySQL database and load `schema.sql`.
-3. Insert at least one user so alerts can be created. Provide a SHA-256 password
-   hash and a base32 TOTP secret:
+
+3. Insert at least one user with a username, hashed password, and TOTP secret:
    ```sql
    INSERT INTO users (username, password_hash, email, totp_secret)
-   VALUES (
-       'alice',
-       SHA2('change_me', 256),
-       'alice@example.com',
-       '<TOTP_SECRET>'
+   VALUES
+     ('demo', SHA2('password', 256), 'demo@example.com', 'JBSWY3DPEHPK3PXP');
+   ```
+   You can generate a new TOTP secret with:
+   ```bash
+   python -c "import pyotp; print(pyotp.random_base32())"
+   ```
+4. The `user_tickers` table is included in `schema.sql` and stores custom ticker lists. If your
+   database predates this table, create it with:
+   ```sql
+   CREATE TABLE user_tickers (
+       id INT AUTO_INCREMENT PRIMARY KEY,
+       user_id INT NOT NULL,
+       symbol VARCHAR(10) NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
    );
    ```
    Generate a TOTP secret using:
@@ -134,6 +145,19 @@ This example includes a basic FastAPI backend and a very simple frontend page to
 8. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
    backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
    visit them directly via `/login.html`, `/account.html`, `/tickers.html`, and `/admin.html`.
+
+### Optional Security Flags
+You can disable certain login checks for local testing by setting environment
+variables before starting the server:
+
+* `DISABLE_CAPTCHA=1` &mdash; bypasses the reCAPTCHA challenge.
+* `DISABLE_OTP=1` &mdash; bypasses TOTP verification.
+
+Example:
+
+```bash
+DISABLE_CAPTCHA=1 DISABLE_OTP=1 uvicorn app:app --reload --host 0.0.0.0 --port 9500
+```
 
 ### Managing users
 * Log in with an admin account (set `is_admin` in the database or via the admin panel).
