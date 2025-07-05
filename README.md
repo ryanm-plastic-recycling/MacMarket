@@ -60,7 +60,7 @@ Planned support for:
 - Backtesting framework (WIP)
 - Trade journal with rationale per trade
 - API quota management
-- Optional alerts via email/Slack
+- Optional alerts via email/SMS
 
 ## 🛠️ To Do
 - [ ] Decide on broker(s) to integrate
