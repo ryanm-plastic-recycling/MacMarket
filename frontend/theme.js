@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     select.addEventListener('change', () => applyTheme(select.value));
   }
   initAuth();
+  initHeader();
 });
 
 function initAuth() {
@@ -35,5 +36,22 @@ function initAuth() {
     });
   } else {
     link.style.display = 'none';
+  }
+}
+
+function initHeader() {
+  const info = document.getElementById('user-info');
+  const timeDiv = document.getElementById('time');
+  if (timeDiv) {
+    const update = () => {
+      const now = new Date();
+      timeDiv.textContent = now.toLocaleString();
+    };
+    update();
+    setInterval(update, 1000);
+  }
+  if (info) {
+    const user = localStorage.getItem('username');
+    info.textContent = user ? `Logged in as ${user}` : '';
   }
 }

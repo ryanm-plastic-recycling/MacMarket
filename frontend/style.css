@@ -83,6 +83,13 @@ main {
   font-size: 0.9em;
 }
 
+#user-info {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  font-size: 0.9em;
+}
+
 #ticker-bar {
   background: var(--ticker-bg);
   color: var(--ticker-text);
