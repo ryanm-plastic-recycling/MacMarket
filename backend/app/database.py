@@ -7,7 +7,7 @@ import mysql.connector
 # to avoid committing credentials. The fallback uses local development values.
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+mysqlconnector://user:pass@localhost:3306/macmarket",
+    "mysql+mysqlconnector://macmarket_user:MarketLLMftw2020$#@@localhost:3306/macmarket",
 )
 
 engine = create_engine(DATABASE_URL, echo=True, future=True)

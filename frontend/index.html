@@ -33,7 +33,10 @@
     </select>
 </div>
 <div id="charts"></div>
-<section id="news"></section>
+<section id="news">
+    <div id="market-news" class="news-col"></div>
+    <div id="world-news" class="news-col"></div>
+</section>
 </main>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
@@ -78,19 +81,25 @@ async function loadTicker() {
 async function loadNews() {
     const res = await fetch('/api/news');
     const data = await res.json();
-    const newsSec = document.getElementById('news');
-    newsSec.innerHTML = '<h2>Latest News</h2>';
-    const ul = document.createElement('ul');
-    data.articles.forEach(a => {
-        const li = document.createElement('li');
-        const link = document.createElement('a');
-        link.href = a.url;
-        link.textContent = a.title;
-        link.target = '_blank';
-        li.appendChild(link);
-        ul.appendChild(li);
-    });
-    newsSec.appendChild(ul);
+    const marketDiv = document.getElementById('market-news');
+    const worldDiv = document.getElementById('world-news');
+    marketDiv.innerHTML = '<h2>Market News</h2>';
+    worldDiv.innerHTML = '<h2>World News</h2>';
+    const addList = (div, articles) => {
+        const ul = document.createElement('ul');
+        articles.forEach(a => {
+            const li = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = a.url;
+            link.textContent = a.title;
+            link.target = '_blank';
+            li.appendChild(link);
+            ul.appendChild(li);
+        });
+        div.appendChild(ul);
+    };
+    addList(marketDiv, data.market || []);
+    addList(worldDiv, data.world || []);
 }
 
 async function loadCharts(){

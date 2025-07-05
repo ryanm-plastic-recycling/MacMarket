@@ -53,3 +53,22 @@ class UserTicker(Base):
         nullable=False,
         server_default=text('CURRENT_TIMESTAMP'),
     )
+
+
+class Position(Base):
+    """Represents a user's open position."""
+
+    __tablename__ = "positions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    symbol = Column(String(10), nullable=False)
+    quantity = Column(DECIMAL(10, 2), nullable=False)
+    price = Column(DECIMAL(10, 2), nullable=False)
+    created_at = Column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text('CURRENT_TIMESTAMP'),
+    )
+
+    user = relationship("User")

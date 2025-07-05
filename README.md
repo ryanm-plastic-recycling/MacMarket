@@ -129,26 +129,46 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    ```bash
    python -c "import pyotp; print(pyotp.random_base32())"
    ```
-4. The `user_tickers` table defined in `schema.sql` stores custom ticker lists,
+5. The `user_tickers` table defined in `schema.sql` stores custom ticker lists,
    so no additional setup is required.
    If your database was created before the `otp_enabled` column was added, run:
    ```sql
    ALTER TABLE users ADD COLUMN otp_enabled BOOLEAN DEFAULT FALSE;
    ```
-5. Configure the `DATABASE_URL` environment variable if different from the default
+6. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:pass@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
-6. The login page uses Google reCAPTCHA (v2). The default site key is
+7. The login page uses Google reCAPTCHA (v2). The default site key is
    `6Lcu13grAAAAAMTzxfk-P3JUjd9Au8LEddHXRATW` and the default secret key is
    `6Lcu13grAAAAAHhpUM7ba7SLORGjd_XNYnta1WGJ`. You can override the secret by
    setting the `RECAPTCHA_SECRET` environment variable.
-7. Start the API on your preferred port (e.g. 9500):
+8. Start the API on your preferred port (e.g. 9500):
    ```bash
    uvicorn app:app --reload --host 0.0.0.0 --port 9500
    ```
-8. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
+9. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
    backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
    visit them directly via `/login.html`, `/account.html`, `/tickers.html`, and `/admin.html`.
+
+### Risk Management Module
+
+The `positions` table records open positions for each user. You can create it manually if
+upgrading from an older database:
+
+```sql
+CREATE TABLE positions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    symbol VARCHAR(10) NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+The API exposes `/api/users/<id>/risk` which calculates exposure from these positions and
+uses an LLM (if configured) to suggest potential actions.
 
 ### Optional Security Flags
 You can disable certain login checks for local testing by setting environment
