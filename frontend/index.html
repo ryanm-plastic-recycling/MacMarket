@@ -3,38 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>MacMarket</title>
-    <style>
-        body { margin:0; font-family: Arial, Helvetica, sans-serif; }
-        header { background:#222; color:#fff; padding:10px; display:flex; align-items:center; justify-content:center; }
-        header h1 { margin:0; font-size:1.5em; }
-        #sidebar { position:fixed; left:0; top:0; bottom:0; width:180px; background:#222; color:#fff; padding-top:60px; }
-        #sidebar a { color:#fff; display:block; padding:10px; text-decoration:none; }
-        #sidebar a:hover { background:#444; }
-        main { margin-left:180px; }
-        #time { position:absolute; top:10px; right:10px; color:#fff; font-size:0.9em; }
-        #ticker-bar { background:#333; color:#fff; overflow:hidden; white-space:nowrap; padding:5px; position:relative; }
-        #ticker-track { display:inline-block; white-space:nowrap; padding-left:100%; animation: ticker-scroll 30s linear infinite; }
-        @keyframes ticker-scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-        .ticker-item { display:inline-block; margin-right:20px; }
-        .up { color:#0f0; }
-        .down { color:#f00; }
-        #news { padding:20px; }
-        #charts {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            padding: 20px;
-        }
-        #charts canvas {
-            flex: 1 1 calc(50% - 20px);
-            max-width: calc(50% - 20px);
-            height: 200px;
-        }
-        #chart-controls { padding:0 20px; }
-    </style>
+    <link rel="stylesheet" href="style.css">
+    <script src="theme.js"></script>
 </head>
 <body onload="init();">
 <div id="sidebar">
@@ -43,6 +13,10 @@
     <a href="account.html">Account</a>
     <a href="tickers.html">Tickers</a>
     <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
+    <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+    </select>
 </div>
 <header>
     <h1>MacMarket</h1>
