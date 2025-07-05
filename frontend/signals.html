@@ -32,11 +32,32 @@
         <label>Symbol <input id="symbol"></label>
         <button id="get-signal">Get Signal</button>
     </div>
-    <pre id="signal-output"></pre>
+    <div id="signal-container">
+        <div>
+            <h3>News Sentiment</h3>
+            <div id="news-output"></div>
+            <small>Higher score indicates more positive news coverage.</small>
+        </div>
+        <div>
+            <h3>Technical Signal</h3>
+            <div id="tech-output"></div>
+            <small>Based on 20/50 day moving average crossover.</small>
+        </div>
+    </div>
     <h3>Macro Outlook</h3>
     <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
     <br><button id="run-macro">Analyze</button>
-    <pre id="macro-output"></pre>
+    <div id="macro-output"></div>
+    <small>LLM interpretation of the provided text.</small>
+
+    <h3>Recommendations</h3>
+    <button id="get-recs">Get Recommendations</button>
+    <table id="recs-table">
+        <thead>
+            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 </main>
 <script>
 if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
@@ -45,17 +66,40 @@ async function fetchSignal(){
     const sym = document.getElementById('symbol').value.trim();
     if(!sym) return;
     const res = await fetch(`/api/signals/${sym}`);
-    document.getElementById('signal-output').textContent = await res.text();
+    if(!res.ok) return;
+    const data = await res.json();
+    document.getElementById('news-output').textContent = `Score: ${data.news.score}`;
+    document.getElementById('tech-output').textContent = data.technical.signal;
 }
 
 async function fetchMacro(){
     const text = document.getElementById('macro-text').value;
     const res = await fetch('/api/macro-signal', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text})});
-    document.getElementById('macro-output').textContent = await res.text();
+    if(!res.ok) return;
+    const data = await res.json();
+    document.getElementById('macro-output').textContent = data.outlook;
+}
+
+async function fetchRecs(){
+    const userId = localStorage.getItem('userId');
+    if(!userId) return;
+    const res = await fetch(`/api/users/${userId}/recommendations`);
+    if(!res.ok) return;
+    const data = await res.json();
+    const body = document.querySelector('#recs-table tbody');
+    body.innerHTML='';
+    data.recommendations.forEach(r => {
+        const tr = document.createElement('tr');
+        const exit = r.exit ? r.exit.toFixed(2) : '';
+        const prob = Math.round(r.probability * 100) + '%';
+        tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td>`;
+        body.appendChild(tr);
+    });
 }
 
 document.getElementById('get-signal').addEventListener('click', fetchSignal);
 document.getElementById('run-macro').addEventListener('click', fetchMacro);
+document.getElementById('get-recs').addEventListener('click', fetchRecs);
 </script>
 </body>
 </html>

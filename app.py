@@ -252,6 +252,26 @@ def get_user_risk(user_id: int, db: Session = Depends(get_db)):
     return {"exposure": exposure, "suggestion": suggestion}
 
 
+@app.get("/api/users/{user_id}/positions")
+def get_user_positions(user_id: int, db: Session = Depends(get_db)):
+    """Return all open positions for the user."""
+    positions = risk.get_positions(db, user_id)
+    data = [
+        {"symbol": p.symbol, "quantity": float(p.quantity), "price": float(p.price)}
+        for p in positions
+    ]
+    return {"positions": data}
+
+
+@app.get("/api/users/{user_id}/recommendations")
+def get_recommendations(user_id: int, db: Session = Depends(get_db)):
+    """Provide simple trade recommendations for the user's tickers."""
+    tickers = crud.get_tickers(db, user_id)
+    symbols = [t.symbol for t in tickers] if tickers else ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+    recs = signals.generate_recommendations(symbols)
+    return {"recommendations": recs}
+
+
 @app.get("/api/admin/users")
 def admin_users(db: Session = Depends(get_db)):
     """Return all users for admin management."""

@@ -69,3 +69,39 @@ def macro_llm_signal(text: str) -> dict:
         except Exception:
             pass
     return {"type": "macro_llm", "outlook": "unknown"}
+
+def _current_price(symbol: str) -> float | None:
+    """Return the latest price for a symbol."""
+    try:
+        t = yf.Ticker(symbol)
+        price = t.info.get("regularMarketPrice")
+        if price is None:
+            hist = t.history(period="1d")
+            if not hist.empty:
+                price = float(hist["Close"].iloc[-1])
+        return float(price) if price is not None else None
+    except Exception:
+        return None
+
+
+def generate_recommendations(symbols: list[str]) -> list[dict]:
+    """Return simple trade recommendations based on sentiment and technicals."""
+    recs = []
+    for sym in symbols:
+        news = news_sentiment_signal(sym)
+        tech = technical_indicator_signal(sym)
+        price = _current_price(sym)
+        score = news.get("score", 0) + (1 if tech.get("signal") == "bullish" else -1)
+        action = "buy" if score >= 0 else "sell"
+        exit_price = None
+        if price:
+            exit_price = price * (1.05 if action == "buy" else 0.95)
+        probability = round(min(0.9, 0.5 + min(abs(score) / 10, 0.4)), 2)
+        recs.append({
+            "symbol": sym,
+            "action": action,
+            "exit": exit_price,
+            "probability": probability,
+        })
+    recs.sort(key=lambda x: x["probability"], reverse=True)
+    return recs[:3]

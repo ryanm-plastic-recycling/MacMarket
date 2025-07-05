@@ -50,6 +50,37 @@ def test_risk_endpoint(monkeypatch):
     assert response.json()["suggestion"] == "test"
 
 
+def test_positions_endpoint(monkeypatch):
+    class DummyPos:
+        symbol = "AAPL"
+        quantity = 5
+        price = 10
+
+    monkeypatch.setattr("app.risk.get_positions", lambda db, uid: [DummyPos()])
+    response = client.get("/api/users/1/positions")
+    assert response.status_code == 200
+    data = response.json()["positions"][0]
+    assert data["symbol"] == "AAPL"
+    assert data["quantity"] == 5
+    assert data["price"] == 10
+
+
+def test_recommendations_endpoint(monkeypatch):
+    monkeypatch.setattr(
+        "app.crud.get_tickers", lambda db, uid: []
+    )
+    monkeypatch.setattr(
+        "app.signals.generate_recommendations",
+        lambda symbols: [
+            {"symbol": "AAPL", "action": "buy", "exit": 105, "probability": 0.6}
+        ],
+    )
+    response = client.get("/api/users/1/recommendations")
+    assert response.status_code == 200
+    rec = response.json()["recommendations"][0]
+    assert rec["symbol"] == "AAPL"
+
+
 def test_logout_endpoint():
     response = client.post("/api/logout")
     assert response.status_code == 200
