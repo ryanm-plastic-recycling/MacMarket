@@ -103,20 +103,23 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    pip install -r requirements.txt
    ```
 2. Set up a MySQL database and load `schema.sql`.
-3. Insert at least one user so alerts can be created:
+3. Insert at least one user so alerts can be created. Provide a SHA-256 password
+   hash and a base32 TOTP secret:
    ```sql
-   INSERT INTO users (email) VALUES ('test@example.com');
-   ```
-4. If upgrading from a previous version, create the `user_tickers` table to store custom ticker lists:
-   ```sql
-   CREATE TABLE user_tickers (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       user_id INT NOT NULL,
-       symbol VARCHAR(10) NOT NULL,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+   INSERT INTO users (username, password_hash, email, totp_secret)
+   VALUES (
+       'alice',
+       SHA2('change_me', 256),
+       'alice@example.com',
+       '<TOTP_SECRET>'
    );
    ```
+   Generate a TOTP secret using:
+   ```bash
+   python -c "import pyotp; print(pyotp.random_base32())"
+   ```
+4. The `user_tickers` table defined in `schema.sql` stores custom ticker lists,
+   so no additional setup is required.
 5. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:pass@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
