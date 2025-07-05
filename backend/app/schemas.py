@@ -37,8 +37,8 @@ class User(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
-    captcha_token: str
-    otp: str
+    captcha_token: Optional[str] = None
+    otp: Optional[str] = None
 
 
 class UserCreate(BaseModel):

@@ -98,3 +98,29 @@ def test_update_email(monkeypatch):
     assert resp.status_code == 200
     assert resp.json()["email"] == "user@example.com"
 
+
+def test_login_security_disabled(monkeypatch):
+    os.environ["DISABLE_CAPTCHA"] = "1"
+    os.environ["DISABLE_OTP"] = "1"
+
+    monkeypatch.setattr("backend.app.security.verify_recaptcha", lambda token: True)
+    client.post(
+        "/api/register",
+        json={"username": "demo4", "password": "pass", "captcha_token": "x"},
+    )
+
+    def recaptcha_unused(token):
+        raise AssertionError("recaptcha should not be checked")
+
+    def otp_unused(secret):
+        raise AssertionError("otp should not be checked")
+
+    monkeypatch.setattr("backend.app.security.verify_recaptcha", recaptcha_unused)
+    monkeypatch.setattr("pyotp.TOTP", otp_unused)
+
+    resp = client.post(
+        "/api/login",
+        json={"username": "demo4", "password": "pass"},
+    )
+    assert resp.status_code == 200
+
