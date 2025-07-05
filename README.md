@@ -103,6 +103,7 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    pip install -r requirements.txt
    ```
 2. Set up a MySQL database and load `schema.sql`.
+
 3. Insert at least one user with a username, hashed password, and TOTP secret:
    ```sql
    INSERT INTO users (username, password_hash, email, totp_secret)
@@ -122,8 +123,15 @@ This example includes a basic FastAPI backend and a very simple frontend page to
        symbol VARCHAR(10) NOT NULL,
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+
    );
    ```
+   Generate a TOTP secret using:
+   ```bash
+   python -c "import pyotp; print(pyotp.random_base32())"
+   ```
+4. The `user_tickers` table defined in `schema.sql` stores custom ticker lists,
+   so no additional setup is required.
 5. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://user:pass@localhost:3306/macmarket`) defined in
    `backend/app/database.py`.
