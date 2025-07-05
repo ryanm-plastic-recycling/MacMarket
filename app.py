@@ -136,15 +136,16 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.post("/api/login")
 def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     """Authenticate an existing user."""
-    if not verify_recaptcha(user.captcha_token):
-        raise HTTPException(status_code=401, detail="Invalid captcha")
+    if os.getenv("DISABLE_CAPTCHA", "").lower() not in {"1", "true", "yes"}:
+        if not verify_recaptcha(user.captcha_token or ""):
+            raise HTTPException(status_code=401, detail="Invalid captcha")
     try:
         db_user = crud.authenticate_user(db, user.username, user.password)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if os.getenv("DISABLE_OTP", "").lower() not in {"1", "true", "yes"}:
         totp = pyotp.TOTP(db_user.totp_secret)
-        if not totp.verify(user.otp):
+        if not totp.verify(user.otp or ""):
             raise HTTPException(status_code=401, detail="Invalid OTP")
     return {"user_id": db_user.id, "username": db_user.username, "is_admin": db_user.is_admin}
 
