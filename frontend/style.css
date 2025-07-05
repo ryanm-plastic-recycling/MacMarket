@@ -109,22 +109,33 @@ main {
   margin-right: 20px;
 }
 
-.up { color: #0f0; }
-.down { color: #f00; }
-
-#charts {
+#tiles {
   display: flex;
   flex-wrap: wrap;
   gap: 20px;
+  padding: 20px;
 }
 
-#charts canvas {
-  flex: 1 1 calc(50% - 20px);
-  max-width: calc(50% - 20px);
-  height: 200px;
+.tile {
+  flex: 1 1 calc(25% - 20px);
+  max-width: calc(25% - 20px);
+  border: 1px solid #ccc;
+  padding: 10px;
+  text-align: center;
+  background: var(--ticker-bg);
+  color: var(--ticker-text);
 }
 
-#chart-controls { padding: 0 20px; }
+.up { color: #0f0; }
+.down { color: #f00; }
+
+#ticker-toggle {
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
 
 #news { padding: 20px; }
 
