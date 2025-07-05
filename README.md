@@ -125,7 +125,7 @@ This example includes a basic FastAPI backend and a very simple frontend page to
    `RECAPTCHA_SECRET` environment variable.
 7. Start the API on your preferred port (e.g. 9500):
    ```bash
-   uvicorn app:app --reload --port 9500
+   uvicorn app:app --reload --host 0.0.0.0 --port 9500
    ```
 8. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
    backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
