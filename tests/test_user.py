@@ -32,6 +32,10 @@ def test_login_and_tickers(monkeypatch):
             return True
 
     monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+    client.post(
+        "/api/register",
+        json={"username": "demo", "password": "pass", "captcha_token": "x"},
+    )
     resp = client.post(
         "/api/login",
         json={"username": "demo", "password": "pass", "captcha_token": "x", "otp": "123456"},
@@ -55,6 +59,10 @@ def test_update_password(monkeypatch):
             return True
 
     monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+    client.post(
+        "/api/register",
+        json={"username": "demo2", "password": "old", "captcha_token": "x"},
+    )
     resp = client.post(
         "/api/login",
         json={"username": "demo2", "password": "old", "captcha_token": "x", "otp": "123"},
@@ -76,6 +84,10 @@ def test_update_email(monkeypatch):
             return True
 
     monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+    client.post(
+        "/api/register",
+        json={"username": "demo3", "password": "pass", "captcha_token": "x"},
+    )
     resp = client.post(
         "/api/login",
         json={"username": "demo3", "password": "pass", "captcha_token": "x", "otp": "000"},
