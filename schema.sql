@@ -40,3 +40,16 @@ CREATE TABLE positions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Record user trades and rationale
+CREATE TABLE journal_entries (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    symbol VARCHAR(10) NOT NULL,
+    action ENUM('buy','sell') NOT NULL,
+    quantity DECIMAL(10,2) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    rationale TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
