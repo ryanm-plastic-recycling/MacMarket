@@ -204,6 +204,8 @@ DISABLE_CAPTCHA=1 DISABLE_OTP=1 uvicorn app:app --reload --host 0.0.0.0 --port 9
 * Log in with an admin account (set `is_admin` in the database or via the admin panel).
 * The admin panel is available at `/admin.html` and lists all users.
 * Use the panel to toggle admin rights or update user passwords.
+* If you cannot log in, run `python change_password.py <id> <new_password>` to
+  update the stored hash directly.
 * Regular users can update their email via `PUT /api/users/<id>/email`.
 
 
