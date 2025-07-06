@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends
+from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from backend.app.database import connect_to_db, SessionLocal, engine
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from backend.app import models, crud, schemas
 from backend.app.security import verify_recaptcha
 from backend.app import risk
@@ -170,6 +172,11 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
         db_user = crud.authenticate_user(db, user.username, user.password)
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    except SQLAlchemyError:
+        # Any database failure when retrieving the user should result in a 503
+        raise HTTPException(
+            status_code=HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable"
+        )
     if (
         os.getenv("DISABLE_OTP", "").lower() not in {"1", "true", "yes"}
         and db_user.otp_enabled
