@@ -19,8 +19,15 @@ from pathlib import Path
 import yfinance as yf
 import requests
 import pandas as pd
+import asyncio
+import httpx
+from cachetools import TTLCache
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
+political_cache = TTLCache(maxsize=1, ttl=300)
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -167,7 +174,7 @@ def news():
 
 
 @app.get("/api/political")
-def political():
+async def political():
     """Fetch trading data from political/congressional sources."""
     data = {"quiver": [], "whales": [], "capitol": []}
     try:
