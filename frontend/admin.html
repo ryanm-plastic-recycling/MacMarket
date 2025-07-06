@@ -26,6 +26,7 @@
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
+    <div id="status"></div>
 </header>
 <main>
     <h2>User Management</h2>
@@ -63,6 +64,7 @@
             const username = row.querySelector('.username').value.trim();
             const email = row.querySelector('.email').value.trim();
             const otp = row.querySelector('.otp-flag').checked;
+            setStatus('Saving...', 'loading');
             if(pw){
                 await fetch(`/api/admin/users/${id}/password`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pw})});
             }
@@ -72,7 +74,7 @@
                 await fetch(`/api/admin/users/${id}/email`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
             }
             await fetch(`/api/admin/users/${id}/otp`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otp_enabled: otp})});
-            alert('Saved');
+            setStatus('Saved', 'ok');
         }
     });
     window.onload = loadUsers;

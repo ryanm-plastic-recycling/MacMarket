@@ -26,6 +26,7 @@
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
+    <div id="status"></div>
 </header>
 <main>
     <h2>Trade Journal</h2>
@@ -132,9 +133,11 @@ document.getElementById('journal-form').addEventListener('submit', async e => {
         price: parseFloat(document.getElementById('price').value),
         rationale: document.getElementById('rationale').value.trim()
     };
+    setStatus('Saving entry...', 'loading');
     await fetch(`/api/users/${userId}/journal`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
     document.getElementById('journal-form').reset();
     loadJournal();
+    setStatus('Saved', 'ok');
 });
 
 window.onload = () => {

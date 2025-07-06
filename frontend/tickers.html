@@ -26,6 +26,7 @@
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
+    <div id="status"></div>
 </header>
 <main>
     <h2>Manage Tickers</h2>
@@ -81,8 +82,9 @@
     });
     document.getElementById('save-tickers').addEventListener('click', async ()=>{
         const checked = Array.from(document.querySelectorAll('#tickers-body input[type=checkbox]')).filter(c=>c.checked).map(c=>c.value);
+        setStatus('Saving...', 'loading');
         await fetch(`/api/users/${userId}/tickers`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tickers: checked})});
-        alert('Saved!');
+        setStatus('Saved!', 'ok');
     });
     if(localStorage.getItem('isAdmin') === '1'){
         document.getElementById('admin-link').style.display='block';
