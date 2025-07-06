@@ -176,3 +176,36 @@ def test_login_db_failure(monkeypatch):
     assert resp.status_code == 503
     assert resp.json()["detail"] == "Database unavailable"
 
+
+def test_admin_manage_user_fields(monkeypatch):
+    monkeypatch.setattr("backend.app.security.verify_recaptcha", lambda token: True)
+
+    class DummyTOTP:
+        def verify(self, otp):
+            return True
+
+    monkeypatch.setattr("pyotp.TOTP", lambda secret: DummyTOTP())
+
+    client.post(
+        "/api/register",
+        json={"username": "admintest", "password": "pass", "captcha_token": "x"},
+    )
+    resp = client.post(
+        "/api/login",
+        json={"username": "admintest", "password": "pass", "captcha_token": "x", "otp": "000"},
+    )
+    uid = resp.json()["user_id"]
+    # admin modify fields
+    resp = client.put(f"/api/admin/users/{uid}/username", json={"username": "changed"})
+    assert resp.status_code == 200
+    resp = client.put(f"/api/admin/users/{uid}/email", json={"email": "u@e.com"})
+    assert resp.status_code == 200
+    resp = client.put(f"/api/admin/users/{uid}/otp", json={"otp_enabled": True})
+    assert resp.status_code == 200
+    users = client.get("/api/admin/users").json()["users"]
+    user = [u for u in users if u["id"] == uid][0]
+    assert user["username"] == "changed"
+    assert user["email"] == "u@e.com"
+    assert user["otp_enabled"] is True
+    assert user["last_logged_in"] is not None
+

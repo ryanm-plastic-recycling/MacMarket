@@ -184,6 +184,7 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
         totp = pyotp.TOTP(db_user.totp_secret)
         if not totp.verify(user.otp or ""):
             raise HTTPException(status_code=401, detail="Invalid OTP")
+    crud.update_last_login(db, db_user.id)
     return {"user_id": db_user.id, "username": db_user.username, "is_admin": db_user.is_admin}
 
 
@@ -283,7 +284,19 @@ def get_recommendations(user_id: int, db: Session = Depends(get_db)):
 def admin_users(db: Session = Depends(get_db)):
     """Return all users for admin management."""
     users = crud.get_users(db)
-    return {"users": [{"id": u.id, "username": u.username, "email": u.email, "is_admin": u.is_admin} for u in users]}
+    return {
+        "users": [
+            {
+                "id": u.id,
+                "username": u.username,
+                "email": u.email,
+                "is_admin": u.is_admin,
+                "otp_enabled": u.otp_enabled,
+                "last_logged_in": u.last_logged_in.isoformat() if u.last_logged_in else None,
+            }
+            for u in users
+        ]
+    }
 
 
 @app.put("/api/admin/users/{user_id}/password")
@@ -302,6 +315,39 @@ def admin_toggle(user_id: int, is_admin: bool, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "updated", "is_admin": user.is_admin}
+
+
+@app.put("/api/admin/users/{user_id}/email")
+def admin_update_email(user_id: int, data: schemas.EmailUpdate, db: Session = Depends(get_db)):
+    """Update a user's email from the admin panel."""
+    user = crud.set_user_email(db, user_id, data.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"email": user.email}
+
+
+@app.put("/api/admin/users/{user_id}/username")
+def admin_update_username(user_id: int, data: schemas.UsernameUpdate, db: Session = Depends(get_db)):
+    """Update a user's username from the admin panel."""
+    try:
+        user = crud.set_username(db, user_id, data.username)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="User already exists")
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"username": user.username}
+
+
+@app.put("/api/admin/users/{user_id}/otp")
+def admin_update_otp(user_id: int, data: schemas.OtpUpdate, db: Session = Depends(get_db)):
+    """Enable or disable OTP for a user via the admin panel."""
+    user = crud.set_otp_enabled(db, user_id, data.otp_enabled)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    resp = {"otp_enabled": user.otp_enabled}
+    if user.otp_enabled:
+        resp["totp_secret"] = user.totp_secret
+    return resp
 
 
 @app.post("/api/users/{user_id}/journal", response_model=schemas.JournalEntry)

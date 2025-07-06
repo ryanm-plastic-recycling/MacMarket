@@ -29,7 +29,7 @@
 </header>
 <main>
     <h2>User Management</h2>
-    <table id="users"><thead><tr><th>Username</th><th>Email</th><th>Admin</th><th>New Password</th><th>Actions</th></tr></thead><tbody></tbody></table>
+    <table id="users"><thead><tr><th>Username</th><th>Email</th><th>OTP</th><th>Admin</th><th>Last Login</th><th>New Password</th><th>Actions</th></tr></thead><tbody></tbody></table>
 </main>
 <script>
     if(localStorage.getItem('isAdmin') !== '1') {
@@ -43,9 +43,13 @@
         tbody.innerHTML='';
         data.users.forEach(u => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${u.username}</td><td>${u.email||''}</td>` +
-                `<td><input type="checkbox" class="admin-flag" ${u.is_admin?'checked':''} data-id="${u.id}"></td>` +
-                `<td><input type="password" class="pw" data-id="${u.id}"></td>` +
+            tr.innerHTML =
+                `<td><input type="text" class="username" value="${u.username}" data-id="${u.id}"></td>`+
+                `<td><input type="email" class="email" value="${u.email||''}" data-id="${u.id}"></td>`+
+                `<td><input type="checkbox" class="otp-flag" ${u.otp_enabled?'checked':''} data-id="${u.id}"></td>`+
+                `<td><input type="checkbox" class="admin-flag" ${u.is_admin?'checked':''} data-id="${u.id}"></td>`+
+                `<td>${u.last_logged_in||''}</td>`+
+                `<td><input type="password" class="pw" data-id="${u.id}"></td>`+
                 `<td><button class="save" data-id="${u.id}">Save</button></td>`;
             tbody.appendChild(tr);
         });
@@ -56,10 +60,18 @@
             const row = e.target.closest('tr');
             const pw = row.querySelector('.pw').value;
             const admin = row.querySelector('.admin-flag').checked;
+            const username = row.querySelector('.username').value.trim();
+            const email = row.querySelector('.email').value.trim();
+            const otp = row.querySelector('.otp-flag').checked;
             if(pw){
                 await fetch(`/api/admin/users/${id}/password`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({password: pw})});
             }
             await fetch(`/api/admin/users/${id}/admin?is_admin=${admin}`, {method:'PUT'});
+            await fetch(`/api/admin/users/${id}/username`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username})});
+            if(email){
+                await fetch(`/api/admin/users/${id}/email`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+            }
+            await fetch(`/api/admin/users/${id}/otp`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({otp_enabled: otp})});
             alert('Saved');
         }
     });

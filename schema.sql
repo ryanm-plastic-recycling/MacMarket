@@ -8,6 +8,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE,
     totp_secret VARCHAR(32) NOT NULL,
     otp_enabled BOOLEAN DEFAULT FALSE,
+    last_logged_in TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
