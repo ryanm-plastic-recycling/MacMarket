@@ -117,6 +117,15 @@ def price_history(symbol: str, period: str = "1mo", interval: str = "1d"):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@app.get("/api/price/{symbol}")
+def current_price(symbol: str):
+    """Return the latest price for a symbol."""
+    price = signals._current_price(symbol)
+    if price is None:
+        raise HTTPException(status_code=404, detail="Price unavailable")
+    return {"symbol": symbol, "price": price}
+
+
 @app.get("/api/news")
 def news():
     """Fetch finance and world news articles from multiple sources."""
@@ -277,6 +286,15 @@ def get_recommendations(user_id: int, db: Session = Depends(get_db)):
     symbols = [t.symbol for t in tickers] if tickers else ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
     recs = signals.generate_recommendations(symbols)
     return {"recommendations": recs}
+
+
+@app.get("/api/recommendation/{symbol}")
+def recommendation_for_symbol(symbol: str):
+    """Return a recommendation for a single symbol."""
+    recs = signals.generate_recommendations([symbol])
+    if not recs:
+        raise HTTPException(status_code=404, detail="No recommendation")
+    return {"recommendation": recs[0]}
 
 
 @app.get("/api/admin/users")

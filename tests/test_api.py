@@ -72,13 +72,37 @@ def test_recommendations_endpoint(monkeypatch):
     monkeypatch.setattr(
         "app.signals.generate_recommendations",
         lambda symbols: [
-            {"symbol": "AAPL", "action": "buy", "exit": 105, "probability": 0.6}
+            {
+                "symbol": "AAPL",
+                "action": "buy",
+                "exit": 105,
+                "probability": 0.6,
+                "reason": "test",
+            }
         ],
     )
     response = client.get("/api/users/1/recommendations")
     assert response.status_code == 200
     rec = response.json()["recommendations"][0]
     assert rec["symbol"] == "AAPL"
+    assert rec["reason"] == "test"
+
+
+def test_price_endpoint(monkeypatch):
+    monkeypatch.setattr("app.signals._current_price", lambda s: 123.45)
+    resp = client.get("/api/price/AAPL")
+    assert resp.status_code == 200
+    assert resp.json()["price"] == 123.45
+
+
+def test_single_recommendation(monkeypatch):
+    monkeypatch.setattr(
+        "app.signals.generate_recommendations",
+        lambda symbols: [{"symbol": symbols[0], "action": "buy", "exit": 10, "probability": 0.5, "reason": "r"}],
+    )
+    resp = client.get("/api/recommendation/XYZ")
+    assert resp.status_code == 200
+    assert resp.json()["recommendation"]["symbol"] == "XYZ"
 
 
 def test_logout_endpoint():

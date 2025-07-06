@@ -55,7 +55,17 @@
     <button id="get-recs">Get Recommendations</button>
     <table id="recs-table">
         <thead>
-            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th></tr>
+            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h3>Get Recommendation for Symbol</h3>
+    <label>Ticker <input id="single-symbol"></label>
+    <button id="get-single">Get</button>
+    <table id="single-rec">
+        <thead>
+            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
         </thead>
         <tbody></tbody>
     </table>
@@ -93,14 +103,31 @@ async function fetchRecs(){
         const tr = document.createElement('tr');
         const exit = r.exit ? r.exit.toFixed(2) : '';
         const prob = Math.round(r.probability * 100) + '%';
-        tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td>`;
+        tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
         body.appendChild(tr);
     });
+}
+
+async function fetchSingle(){
+    const sym = document.getElementById('single-symbol').value.trim();
+    if(!sym) return;
+    const res = await fetch(`/api/recommendation/${sym}`);
+    if(!res.ok) return;
+    const data = await res.json();
+    const body = document.querySelector('#single-rec tbody');
+    body.innerHTML='';
+    const r = data.recommendation;
+    const exit = r.exit ? r.exit.toFixed(2) : '';
+    const prob = Math.round(r.probability * 100) + '%';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
+    body.appendChild(tr);
 }
 
 document.getElementById('get-signal').addEventListener('click', fetchSignal);
 document.getElementById('run-macro').addEventListener('click', fetchMacro);
 document.getElementById('get-recs').addEventListener('click', fetchRecs);
+document.getElementById('get-single').addEventListener('click', fetchSingle);
 </script>
 </body>
 </html>
