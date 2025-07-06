@@ -157,3 +157,22 @@ def test_login_security_disabled(monkeypatch):
     )
     assert resp.status_code == 200
 
+
+def test_login_db_failure(monkeypatch):
+    """Ensure database errors during login return 503."""
+    from sqlalchemy.exc import SQLAlchemyError
+
+    monkeypatch.setattr("backend.app.security.verify_recaptcha", lambda token: True)
+
+    def failing_auth(db, username, password):
+        raise SQLAlchemyError("db down")
+
+    monkeypatch.setattr("app.crud.authenticate_user", failing_auth)
+
+    resp = client.post(
+        "/api/login",
+        json={"username": "x", "password": "y", "captcha_token": "t"},
+    )
+    assert resp.status_code == 503
+    assert resp.json()["detail"] == "Database unavailable"
+
