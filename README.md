@@ -189,6 +189,8 @@ Several additional endpoints are available:
 * `GET /api/users/<id>/journal` and `POST /api/users/<id>/journal` &mdash; manage personal trade journal entries.
 * `GET /api/users/<id>/positions` &mdash; list current positions for a user.
 * `GET /api/users/<id>/recommendations` &mdash; provide simple trade recommendations based on the user's tickers.
+* `GET /api/quiver/risk?symbols=AAPL,MSFT` &mdash; returns Quiver risk scores for the specified tickers (requires `QUIVER_API_KEY`).
+* `GET /api/quiver/whales?limit=5` &mdash; lists recent whale moves limited to the given number (requires `QUIVER_API_KEY`).
 
 The frontend now includes `signals.html` and `journal.html` pages to interact with these endpoints.
 
