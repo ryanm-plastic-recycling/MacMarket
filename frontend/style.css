@@ -145,6 +145,8 @@ main {
 }
 
 #news { padding: 20px; }
+#political { padding: 20px; }
+#news-filter-bar { margin-bottom: 10px; }
 
 label { display: block; margin: 10px 0 5px; }
 

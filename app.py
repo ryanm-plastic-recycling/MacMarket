@@ -125,7 +125,7 @@ def news():
     try:
         res = requests.get("https://hn.algolia.com/api/v1/search", params={"query": "market", "tags": "story"})
         market.extend([
-            {"title": h.get("title"), "url": h.get("url")}
+            {"title": h.get("title"), "url": h.get("url"), "date": h.get("created_at")}
             for h in res.json().get("hits", [])[:5]
         ])
     except Exception:
@@ -138,8 +138,9 @@ def news():
             for item in root.findall('.//item')[:5]:
                 title = item.findtext('title')
                 link = item.findtext('link')
+                date = item.findtext('pubDate')
                 if title and link:
-                    dest.append({"title": title, "url": link})
+                    dest.append({"title": title, "url": link, "date": date})
         except Exception:
             pass
     add_rss('https://feeds.foxnews.com/foxnews/business', market)
@@ -148,6 +149,36 @@ def news():
     add_rss('https://rss.nytimes.com/services/xml/rss/nyt/World.xml', world)
     add_rss('https://feeds.bbci.co.uk/news/world/rss.xml', world)
     return {"market": market, "world": world}
+
+
+@app.get("/api/political")
+def political():
+    """Fetch trading data from political/congressional sources."""
+    data = {"quiver": [], "whales": [], "congress": []}
+    try:
+        key = os.getenv("QUIVER_API_KEY")
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        r = requests.get("https://api.quiverquant.com/beta/live/congresstrading", headers=headers, timeout=10)
+        if r.ok:
+            data["quiver"] = r.json()[:5]
+    except Exception:
+        pass
+    try:
+        key = os.getenv("WHALES_API_KEY")
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        r = requests.get("https://api.unusualwhales.com/congress/trades", headers=headers, timeout=10)
+        if r.ok:
+            resp = r.json()
+            data["whales"] = resp.get("results", resp)[:5] if isinstance(resp, dict) else resp[:5]
+    except Exception:
+        pass
+    try:
+        r = requests.get("https://congresstrading.com/api/trades", timeout=10)
+        if r.ok:
+            data["congress"] = r.json()[:5]
+    except Exception:
+        pass
+    return data
 
 
 @app.post("/api/register")

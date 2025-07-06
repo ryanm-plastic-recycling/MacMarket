@@ -33,7 +33,20 @@
     <div id="ticker-track"></div>
 </div>
 <div id="tiles"></div>
+<section id="political">
+    <h2>Political Trading Activity</h2>
+    <div id="political-content"></div>
+</section>
 <section id="news">
+    <div id="news-filter-bar">
+        <label for="news-filter">News Age:</label>
+        <select id="news-filter">
+            <option value="all">All</option>
+            <option value="24h">24h</option>
+            <option value="week">1 Week</option>
+            <option value="month">1 Month</option>
+        </select>
+    </div>
     <div id="market-news" class="news-col"></div>
     <div id="world-news" class="news-col"></div>
 </section>
@@ -60,6 +73,8 @@ async function loadTicker() {
         }
     }
     tileSymbols = tickerSymbols.slice(0, 4);
+    if(!tileSymbols.includes('BTC-USD')) tileSymbols.push('BTC-USD');
+    if(!tileSymbols.includes('ETH-USD')) tileSymbols.push('ETH-USD');
     const res = await fetch('/api/ticker?symbols=' + tickerSymbols.join(','));
     const data = await res.json();
     const track = document.getElementById('ticker-track');
@@ -111,6 +126,14 @@ async function loadNews() {
     const worldDiv = document.getElementById('world-news');
     marketDiv.innerHTML = '<h2>Market News</h2>';
     worldDiv.innerHTML = '<h2>World News</h2>';
+    const cutoff = (() => {
+        const val = document.getElementById('news-filter').value;
+        const now = new Date();
+        if(val === '24h') return new Date(now.getTime() - 24*60*60*1000);
+        if(val === 'week') return new Date(now.getTime() - 7*24*60*60*1000);
+        if(val === 'month') return new Date(now.getTime() - 30*24*60*60*1000);
+        return null;
+    })();
     const addList = (div, articles) => {
         const ul = document.createElement('ul');
         articles.forEach(a => {
@@ -119,13 +142,50 @@ async function loadNews() {
             link.href = a.url;
             link.textContent = a.title;
             link.target = '_blank';
-            li.appendChild(link);
+            if(a.date){
+                const dt = new Date(a.date);
+                if(cutoff && dt < cutoff) return;
+                const span = document.createElement('span');
+                span.textContent = ' (' + dt.toLocaleDateString() + ')';
+                li.appendChild(link);
+                li.appendChild(span);
+            } else {
+                if(cutoff) return;
+                li.appendChild(link);
+            }
             ul.appendChild(li);
         });
         div.appendChild(ul);
     };
     addList(marketDiv, data.market || []);
     addList(worldDiv, data.world || []);
+}
+
+async function loadPolitical(){
+    const res = await fetch('/api/political');
+    if(!res.ok) return;
+    const data = await res.json();
+    const container = document.getElementById('political-content');
+    container.innerHTML = '';
+    const render = (title, arr) => {
+        const section = document.createElement('div');
+        section.innerHTML = `<h3>${title}</h3>`;
+        const ul = document.createElement('ul');
+        arr.forEach(i => {
+            const li = document.createElement('li');
+            if(i.ticker){
+                li.textContent = `${i.ticker} ${i.representative || ''}`;
+            } else {
+                li.textContent = JSON.stringify(i);
+            }
+            ul.appendChild(li);
+        });
+        section.appendChild(ul);
+        container.appendChild(section);
+    };
+    render('Quiver Quantitative', data.quiver || []);
+    render('Unusual Whales', data.whales || []);
+    render('Congresstrading.com', data.congress || []);
 }
 
 
@@ -138,6 +198,8 @@ async function init() {
     }
     await loadTicker();
     loadNews();
+    loadPolitical();
+    document.getElementById('news-filter').addEventListener('change', loadNews);
     document.getElementById('ticker-toggle').addEventListener('click', toggleTicker);
 }
 </script>
