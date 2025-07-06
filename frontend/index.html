@@ -168,7 +168,25 @@ async function loadPolitical(){
     const data = await res.json();
     const container = document.getElementById('political-content');
     container.innerHTML = '';
-    const render = (title, arr) => {
+
+    const renderQuiver = (arr) => {
+        const section = document.createElement('div');
+        section.innerHTML = '<h3>Quiver Quantitative</h3>';
+        const table = document.createElement('table');
+        table.innerHTML = `<thead><tr><th>Date</th><th>Ticker</th><th>Transaction</th><th>Range</th><th>Representative</th></tr></thead>`;
+        const tbody = document.createElement('tbody');
+        arr.forEach(i => {
+            const tr = document.createElement('tr');
+            const date = i.TransactionDate ? new Date(i.TransactionDate).toLocaleDateString() : '';
+            tr.innerHTML = `<td>${date}</td><td>${i.Ticker || i.ticker || ''}</td><td>${i.Transaction || ''}</td><td>${i.Range || ''}</td><td>${i.Representative || ''}</td>`;
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        section.appendChild(table);
+        container.appendChild(section);
+    };
+
+    const renderList = (title, arr) => {
         const section = document.createElement('div');
         section.innerHTML = `<h3>${title}</h3>`;
         const ul = document.createElement('ul');
@@ -184,9 +202,10 @@ async function loadPolitical(){
         section.appendChild(ul);
         container.appendChild(section);
     };
-    render('Quiver Quantitative', data.quiver || []);
-    render('Unusual Whales', data.whales || []);
-    render('Capitol Trades', data.capitol || []);
+
+    renderQuiver(data.quiver || []);
+    renderList('Unusual Whales', data.whales || []);
+    renderList('Capitol Trades', data.capitol || []);
 }
 
 
