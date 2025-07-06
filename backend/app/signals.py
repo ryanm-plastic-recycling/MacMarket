@@ -17,6 +17,54 @@ POSITIVE_WORDS = {"gain", "growth", "bull", "optimistic", "up"}
 NEGATIVE_WORDS = {"loss", "drop", "bear", "pessimistic", "down"}
 
 
+def get_risk_factors(symbols: list[str]) -> dict:
+    """Return a mapping of symbol to Quiver risk score."""
+    key = os.getenv("QUIVER_API_KEY")
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    try:
+        r = requests.get(
+            "https://api.quiverquant.com/beta/live/riskfactors",
+            headers=headers,
+            params={"tickers": ",".join(symbols)},
+            timeout=10,
+        )
+        if r.ok:
+            data = r.json()
+            if isinstance(data, list):
+                scores = {}
+                for item in data:
+                    sym = item.get("Ticker") or item.get("ticker")
+                    if sym:
+                        score = item.get("RiskScore") or item.get("Score")
+                        try:
+                            scores[sym] = float(score)
+                        except (TypeError, ValueError):
+                            pass
+                return scores
+    except Exception:
+        pass
+    return {}
+
+
+def get_whale_moves(limit: int = 5) -> list[dict]:
+    """Return recent whale moves from Quiver."""
+    key = os.getenv("QUIVER_API_KEY")
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    try:
+        r = requests.get(
+            "https://api.quiverquant.com/beta/live/whalemoves",
+            headers=headers,
+            timeout=10,
+        )
+        if r.ok:
+            data = r.json()
+            if isinstance(data, list):
+                return data[:limit]
+    except Exception:
+        pass
+    return []
+
+
 def news_sentiment_signal(symbol: str) -> dict:
     """Return a sentiment score based on recent headlines."""
     try:
@@ -90,13 +138,16 @@ def _current_price(symbol: str) -> float | None:
 
 
 def generate_recommendations(symbols: list[str]) -> list[dict]:
-    """Return simple trade recommendations based on sentiment and technicals."""
+    """Return simple trade recommendations based on sentiment, technicals, and risk."""
     recs = []
+    risk_scores = get_risk_factors(symbols)
     for sym in symbols:
         news = news_sentiment_signal(sym)
         tech = technical_indicator_signal(sym)
         price = _current_price(sym)
-        score = news.get("score", 0) + (1 if tech.get("signal") == "bullish" else -1)
+        base_score = news.get("score", 0) + (1 if tech.get("signal") == "bullish" else -1)
+        risk = risk_scores.get(sym, 0)
+        score = base_score - risk
         action = "buy" if score >= 0 else "sell"
         exit_price = None
         if price:
@@ -104,8 +155,8 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         probability = round(min(0.9, 0.5 + min(abs(score) / 10, 0.4)), 2)
         reason = (
             f"News score {news.get('score')} and {tech.get('signal')} MA signal "
-            f"suggest {action}. Exit is {exit_price:.2f} based on 5% target" if exit_price else
-            f"News score {news.get('score')} and {tech.get('signal')} MA signal suggest {action}."
+            f"with risk {risk} suggest {action}. Exit is {exit_price:.2f} based on 5% target" if exit_price else
+            f"News score {news.get('score')} and {tech.get('signal')} MA signal with risk {risk} suggest {action}."
         )
         recs.append({
             "symbol": sym,

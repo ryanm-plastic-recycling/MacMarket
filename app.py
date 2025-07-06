@@ -28,6 +28,7 @@ load_dotenv()
 
 app = FastAPI()
 political_cache = TTLCache(maxsize=1, ttl=300)
+quiver_cache = TTLCache(maxsize=10, ttl=300)
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -209,6 +210,29 @@ async def political():
     except Exception:
         pass
     return data
+
+
+@app.get("/api/quiver/risk")
+async def quiver_risk(symbols: str):
+    """Return Quiver risk factors for the given symbols."""
+    syms = [s.strip() for s in symbols.split(",") if s.strip()]
+    key = tuple(sorted(syms))
+    if key in quiver_cache:
+        return {"risk": quiver_cache[key]}
+    data = signals.get_risk_factors(syms)
+    quiver_cache[key] = data
+    return {"risk": data}
+
+
+@app.get("/api/quiver/whales")
+async def quiver_whales(limit: int = 5):
+    """Return recent whale moves from Quiver."""
+    key = f"whales-{limit}"
+    if key in quiver_cache:
+        return {"whales": quiver_cache[key]}
+    data = signals.get_whale_moves(limit)
+    quiver_cache[key] = data
+    return {"whales": data}
 
 
 @app.post("/api/register")

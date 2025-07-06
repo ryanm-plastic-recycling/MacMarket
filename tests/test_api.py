@@ -109,3 +109,17 @@ def test_logout_endpoint():
     response = client.post("/api/logout")
     assert response.status_code == 200
     assert response.json() == {"status": "logged out"}
+
+
+def test_quiver_risk(monkeypatch):
+    monkeypatch.setattr("app.signals.get_risk_factors", lambda syms: {"AAPL": 0.5})
+    resp = client.get("/api/quiver/risk?symbols=AAPL")
+    assert resp.status_code == 200
+    assert resp.json()["risk"]["AAPL"] == 0.5
+
+
+def test_quiver_whales(monkeypatch):
+    monkeypatch.setattr("app.signals.get_whale_moves", lambda limit: [{"ticker": "AAPL"}])
+    resp = client.get("/api/quiver/whales?limit=1")
+    assert resp.status_code == 200
+    assert resp.json()["whales"][0]["ticker"] == "AAPL"
