@@ -13,3 +13,4 @@ httpx
 python-dotenv
 cachetools
 openai
+vaderSentiment

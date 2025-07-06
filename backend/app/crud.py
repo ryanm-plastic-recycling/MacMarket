@@ -181,3 +181,28 @@ def create_journal_entry(
 
 def get_journal_entries(db: Session, user_id: int) -> List[models.JournalEntry]:
     return db.query(models.JournalEntry).filter(models.JournalEntry.user_id == user_id).all()
+
+
+def get_journal_entry(db: Session, user_id: int, entry_id: int) -> models.JournalEntry | None:
+    """Return a single journal entry for the user."""
+    return (
+        db.query(models.JournalEntry)
+        .filter(models.JournalEntry.user_id == user_id, models.JournalEntry.id == entry_id)
+        .first()
+    )
+
+
+def update_journal_entry(
+    db: Session, entry_obj: models.JournalEntry, update: schemas.JournalEntryUpdate
+) -> models.JournalEntry:
+    for field, value in update.dict(exclude_unset=True).items():
+        setattr(entry_obj, field, value)
+    db.add(entry_obj)
+    db.commit()
+    db.refresh(entry_obj)
+    return entry_obj
+
+
+def delete_journal_entry(db: Session, entry_obj: models.JournalEntry) -> None:
+    db.delete(entry_obj)
+    db.commit()
