@@ -26,6 +26,7 @@
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
+    <div id="status"></div>
 </header>
 <main>
     <h2>Signals</h2>
@@ -76,26 +77,31 @@ if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link
 async function fetchSignal(){
     const sym = document.getElementById('symbol').value.trim();
     if(!sym) return;
+    setStatus('Loading signal...', 'loading');
     const res = await fetch(`/api/signals/${sym}`);
-    if(!res.ok) return;
+    if(!res.ok){ setStatus('Failed to load signal', 'error'); return; }
     const data = await res.json();
     document.getElementById('news-output').textContent = `Score: ${data.news.score}`;
     document.getElementById('tech-output').textContent = data.technical.signal;
+    setStatus('Signal ready', 'ok');
 }
 
 async function fetchMacro(){
     const text = document.getElementById('macro-text').value;
+    setStatus('Analyzing...', 'loading');
     const res = await fetch('/api/macro-signal', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text})});
-    if(!res.ok) return;
+    if(!res.ok){ setStatus('Failed', 'error'); return; }
     const data = await res.json();
     document.getElementById('macro-output').textContent = data.outlook;
+    setStatus('Done', 'ok');
 }
 
 async function fetchRecs(){
     const userId = localStorage.getItem('userId');
     if(!userId) return;
+    setStatus('Loading recommendations...', 'loading');
     const res = await fetch(`/api/users/${userId}/recommendations`);
-    if(!res.ok) return;
+    if(!res.ok){ setStatus('Failed to load', 'error'); return; }
     const data = await res.json();
     const body = document.querySelector('#recs-table tbody');
     body.innerHTML='';
@@ -106,13 +112,15 @@ async function fetchRecs(){
         tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
         body.appendChild(tr);
     });
+    setStatus('Done', 'ok');
 }
 
 async function fetchSingle(){
     const sym = document.getElementById('single-symbol').value.trim();
     if(!sym) return;
+    setStatus('Loading...', 'loading');
     const res = await fetch(`/api/recommendation/${sym}`);
-    if(!res.ok) return;
+    if(!res.ok){ setStatus('Failed', 'error'); return; }
     const data = await res.json();
     const body = document.querySelector('#single-rec tbody');
     body.innerHTML='';
@@ -122,6 +130,7 @@ async function fetchSingle(){
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
     body.appendChild(tr);
+    setStatus('Done', 'ok');
 }
 
 document.getElementById('get-signal').addEventListener('click', fetchSignal);

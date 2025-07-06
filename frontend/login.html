@@ -27,6 +27,7 @@
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
+    <div id="status"></div>
 </header>
 <main>
     <h2>Login</h2>
@@ -55,6 +56,7 @@
         if(captchaToken){
             payload.captcha_token = captchaToken;
         }
+        setStatus('Logging in...', 'loading');
         const resp = await fetch('/api/login', {
             method:'POST',
             headers:{'Content-Type':'application/json'},
@@ -65,9 +67,10 @@
             localStorage.setItem('userId', data.user_id);
             localStorage.setItem('username', data.username);
             localStorage.setItem('isAdmin', data.is_admin ? '1' : '0');
+            setStatus('Logged in', 'ok');
             window.location.href = 'account.html';
         } else {
-            alert('Login failed');
+            setStatus('Login failed', 'error');
         }
     });
 </script>
