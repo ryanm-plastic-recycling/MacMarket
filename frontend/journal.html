@@ -32,7 +32,7 @@
     <h2>Trade Journal</h2>
     <table id="journal-table">
         <thead>
-            <tr><th>Date</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Current</th><th>P/L $</th><th>P/L %</th><th>Rationale</th></tr>
+            <tr><th>Date</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Current</th><th>P/L $</th><th>P/L %</th><th>Rationale</th><th>Actions</th></tr>
         </thead>
         <tbody></tbody>
     </table>
@@ -91,6 +91,30 @@ async function loadJournal(){
             `<td class="${cls}">${pl.toFixed(2)}</td>`+
             `<td class="${cls}">${pct.toFixed(2)}%</td>`+
             `<td>${e.rationale||''}</td>`;
+        const actions = document.createElement('td');
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.onclick = async () => {
+            const symbol = prompt('Symbol', e.symbol);
+            if(symbol === null) return;
+            const action = prompt('Action (buy/sell)', e.action);
+            if(action === null) return;
+            const quantity = parseFloat(prompt('Quantity', e.quantity));
+            const price = parseFloat(prompt('Price', e.price));
+            const rationale = prompt('Rationale', e.rationale || '');
+            const payload = {symbol, action, quantity, price, rationale};
+            await fetch(`/api/users/${userId}/journal/${e.id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+            loadJournal();
+        };
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'Delete';
+        delBtn.onclick = async () => {
+            await fetch(`/api/users/${userId}/journal/${e.id}`, {method:'DELETE'});
+            loadJournal();
+        };
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        tr.appendChild(actions);
         body.appendChild(tr);
     }
 }

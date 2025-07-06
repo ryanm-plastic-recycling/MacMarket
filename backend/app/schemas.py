@@ -81,6 +81,15 @@ class JournalEntryCreate(JournalEntryBase):
     pass
 
 
+class JournalEntryUpdate(BaseModel):
+    """Update fields for an existing journal entry."""
+    symbol: Optional[str] = None
+    action: Optional[models.ActionType] = None
+    quantity: Optional[float] = None
+    price: Optional[float] = None
+    rationale: Optional[str] = None
+
+
 class JournalEntry(JournalEntryBase):
     id: int
     user_id: int

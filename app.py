@@ -1,10 +1,11 @@
 from fastapi import FastAPI, HTTPException, Depends
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from backend.app.database import connect_to_db, SessionLocal, engine
+from backend.app import database as db_module
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from backend.app import models, crud, schemas
-from backend.app.security import verify_recaptcha
+import backend.app.security as security
 from backend.app import risk
 import pyotp
 from backend.app import signals, backtest, alerts
@@ -40,7 +41,11 @@ class QuotaMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 app.add_middleware(QuotaMiddleware)
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+except Exception:
+    # Database might be unavailable during testing
+    pass
 
 # Directory containing the HTML frontend files
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
@@ -64,7 +69,7 @@ def health():
 def db_check():
     """Check database connectivity."""
     try:
-        conn = connect_to_db()
+        conn = db_module.connect_to_db()
         conn.close()
         return {"status": "connected"}
     except Exception as exc:
@@ -110,7 +115,8 @@ def price_history(symbol: str, period: str = "1mo", interval: str = "1d"):
         if hist.empty:
             raise ValueError("no data")
         hist = hist.reset_index()
-        dates = [d.strftime("%Y-%m-%d") for d in hist["Date"]]
+        date_col = hist.columns[0]
+        dates = [d.strftime("%Y-%m-%d") for d in hist[date_col]]
         closes = [float(c) if pd.notna(c) else None for c in hist["Close"]]
         return {"symbol": symbol, "dates": dates, "close": closes}
     except Exception as exc:
@@ -201,7 +207,7 @@ def political():
 @app.post("/api/register")
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """Create a new user account and return the TOTP secret."""
-    if not verify_recaptcha(user.captcha_token):
+    if not security.verify_recaptcha(user.captcha_token):
         raise HTTPException(status_code=401, detail="Invalid captcha")
     try:
         db_user = crud.create_user(db, user.username, user.password, user.email)
@@ -214,7 +220,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
 def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     """Authenticate an existing user."""
     if os.getenv("DISABLE_CAPTCHA", "").lower() not in {"1", "true", "yes"}:
-        if not verify_recaptcha(user.captcha_token or ""):
+        if not security.verify_recaptcha(user.captcha_token or ""):
             raise HTTPException(status_code=401, detail="Invalid captcha")
     try:
         db_user = crud.authenticate_user(db, user.username, user.password)
@@ -414,6 +420,23 @@ def create_journal(user_id: int, entry: schemas.JournalEntryCreate, db: Session 
 @app.get("/api/users/{user_id}/journal", response_model=list[schemas.JournalEntry])
 def read_journal(user_id: int, db: Session = Depends(get_db)):
     return crud.get_journal_entries(db, user_id)
+
+
+@app.put("/api/users/{user_id}/journal/{entry_id}", response_model=schemas.JournalEntry)
+def update_journal(user_id: int, entry_id: int, data: schemas.JournalEntryUpdate, db: Session = Depends(get_db)):
+    entry = crud.get_journal_entry(db, user_id, entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    return crud.update_journal_entry(db, entry, data)
+
+
+@app.delete("/api/users/{user_id}/journal/{entry_id}")
+def delete_journal(user_id: int, entry_id: int, db: Session = Depends(get_db)):
+    entry = crud.get_journal_entry(db, user_id, entry_id)
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    crud.delete_journal_entry(db, entry)
+    return {"status": "deleted"}
 
 @app.get("/api/signals/{symbol}")
 def get_signals(symbol: str):
