@@ -10,4 +10,6 @@ requests
 pyotp
 pandas
 httpx
+python-dotenv
+cachetools
 openai

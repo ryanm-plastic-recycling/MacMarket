@@ -18,8 +18,15 @@ from pathlib import Path
 import yfinance as yf
 import requests
 import pandas as pd
+import asyncio
+import httpx
+from cachetools import TTLCache
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
+political_cache = TTLCache(maxsize=1, ttl=300)
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -161,32 +168,61 @@ def news():
 
 
 @app.get("/api/political")
-def political():
+async def political():
     """Fetch trading data from political/congressional sources."""
-    data = {"quiver": [], "whales": [], "congress": []}
-    try:
-        key = os.getenv("QUIVER_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get("https://api.quiverquant.com/beta/live/congresstrading", headers=headers, timeout=10)
-        if r.ok:
-            data["quiver"] = r.json()[:5]
-    except Exception:
-        pass
-    try:
-        key = os.getenv("WHALES_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get("https://api.unusualwhales.com/congress/trades", headers=headers, timeout=10)
-        if r.ok:
-            resp = r.json()
-            data["whales"] = resp.get("results", resp)[:5] if isinstance(resp, dict) else resp[:5]
-    except Exception:
-        pass
-    try:
-        r = requests.get("https://congresstrading.com/api/trades", timeout=10)
-        if r.ok:
-            data["congress"] = r.json()[:5]
-    except Exception:
-        pass
+
+    if "data" in political_cache:
+        return political_cache["data"]
+
+    async def quiver(client):
+        try:
+            key = os.getenv("QUIVER_API_KEY")
+            headers = {"Authorization": f"Bearer {key}"} if key else {}
+            r = await client.get(
+                "https://api.quiverquant.com/beta/live/congresstrading",
+                headers=headers,
+            )
+            if r.status_code == 200:
+                return r.json()[:5]
+        except Exception:
+            return []
+        return []
+
+    async def whales(client):
+        try:
+            key = os.getenv("WHALES_API_KEY")
+            headers = {"Authorization": f"Bearer {key}"} if key else {}
+            r = await client.get(
+                "https://api.unusualwhales.com/congress/trades",
+                headers=headers,
+            )
+            if r.status_code == 200:
+                resp = r.json()
+                return resp.get("results", resp)[:5] if isinstance(resp, dict) else resp[:5]
+        except Exception:
+            return []
+        return []
+
+    async def congress(client):
+        try:
+            r = await client.get("https://congresstrading.com/api/trades")
+            if r.status_code == 200:
+                return r.json()[:5]
+        except Exception:
+            return []
+        return []
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        quiver_data, whales_data, congress_data = await asyncio.gather(
+            quiver(client), whales(client), congress(client)
+        )
+
+    data = {
+        "quiver": quiver_data,
+        "whales": whales_data,
+        "congress": congress_data,
+    }
+    political_cache["data"] = data
     return data
 
 

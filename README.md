@@ -105,7 +105,10 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    ```
 2. Set up a MySQL database and load `schema.sql`.
 
-3. Insert at least one user with a username, hashed password, and TOTP secret. `otp_enabled` is set to `FALSE` by default so OTP is optional until enabled by the user:
+3. Copy `.env.example` to `.env` and update the values. Set `DATABASE_URL` to point
+   at your MySQL instance, e.g. `mysql+mysqlconnector://user:pass@localhost:3306/macmarket`.
+
+4. Insert at least one user with a username, hashed password, and TOTP secret. `otp_enabled` is set to `FALSE` by default so OTP is optional until enabled by the user:
    ```sql
    INSERT INTO users (username, password_hash, email, totp_secret, otp_enabled)
    VALUES
@@ -115,7 +118,7 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    ```bash
    python -c "import pyotp; print(pyotp.random_base32())"
    ```
-4. The `user_tickers` table is included in `schema.sql` and stores custom ticker lists. If your
+5. The `user_tickers` table is included in `schema.sql` and stores custom ticker lists. If your
    database predates this table, create it with:
    ```sql
    CREATE TABLE user_tickers (
@@ -130,29 +133,30 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    ```bash
    python -c "import pyotp; print(pyotp.random_base32())"
    ```
-5. The `user_tickers` table defined in `schema.sql` stores custom ticker lists,
+6. The `user_tickers` table defined in `schema.sql` stores custom ticker lists,
    so no additional setup is required.
    If your database was created before the `otp_enabled` column was added, run:
    ```sql
    ALTER TABLE users ADD COLUMN otp_enabled BOOLEAN DEFAULT FALSE;
    ```
-6. Configure the `DATABASE_URL` environment variable if different from the default
+7. Configure the `DATABASE_URL` environment variable if different from the default
    (`mysql+mysqlconnector://macmarket_user:MarketLLMftw2020Brentwood@localhost:3306/macmarket`)
-   defined in `backend/app/database.py`.
-7. Optionally set `API_DAILY_QUOTA` to limit requests per IP (default `1000`).
+   defined in `backend/app/database.py`. Environment variables are loaded from a
+   `.env` file automatically if present.
+8. Optionally set `API_DAILY_QUOTA` to limit requests per IP (default `1000`).
    Set `OPENAI_API_KEY` to enable macro signal generation.
-8. The login page uses Google reCAPTCHA (v2). The default site key is
+9. The login page uses Google reCAPTCHA (v2). The default site key is
    `6Lcu13grAAAAAMTzxfk-P3JUjd9Au8LEddHXRATW` and the default secret key is
    `6Lcu13grAAAAAHhpUM7ba7SLORGjd_XNYnta1WGJ`. You can override the secret by
    setting the `RECAPTCHA_SECRET` environment variable.
-9. Start the API on your preferred port (e.g. 9500):
+10. Start the API on your preferred port (e.g. 9500):
    ```bash
    uvicorn app:app --reload --host 0.0.0.0 --port 9500
    ```
-10. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
+11. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
    backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
    visit them directly via `/login.html`, `/account.html`, `/tickers.html`, and `/admin.html`.
-11. Additional pages `signals.html` and `journal.html` provide interfaces for the
+12. Additional pages `signals.html` and `journal.html` provide interfaces for the
     signals, journal, positions, and recommendations endpoints.
 
 ### Risk Management Module
