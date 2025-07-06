@@ -55,3 +55,19 @@ function initHeader() {
     info.textContent = user ? `Logged in as ${user}` : '';
   }
 }
+
+function setStatus(message, type = '') {
+  const div = document.getElementById('status');
+  if (!div) return;
+  if (message) {
+    div.textContent = message;
+    div.className = type;
+    div.style.display = 'block';
+  } else {
+    div.textContent = '';
+    div.className = '';
+    div.style.display = 'none';
+  }
+}
+
+window.setStatus = setStatus;
