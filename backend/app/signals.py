@@ -17,6 +17,13 @@ POSITIVE_WORDS = {"gain", "growth", "bull", "optimistic", "up"}
 NEGATIVE_WORDS = {"loss", "drop", "bear", "pessimistic", "down"}
 
 
+def format_price(value: float | None) -> float | None:
+    """Return value rounded to 5 decimals when under $1, otherwise 2 decimals."""
+    if value is None:
+        return None
+    return round(value, 5) if abs(value) < 1 else round(value, 2)
+
+
 def get_risk_factors(symbols: list[str]) -> dict:
     """Return a mapping of symbol to Quiver risk score."""
     key = os.getenv("QUIVER_API_KEY")
@@ -152,12 +159,19 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         exit_price = None
         if price:
             exit_price = price * (1.05 if action == "buy" else 0.95)
+            exit_price = format_price(exit_price)
         probability = round(min(0.9, 0.5 + min(abs(score) / 10, 0.4)), 2)
-        reason = (
-            f"News score {news.get('score')} and {tech.get('signal')} MA signal "
-            f"with risk {risk} suggest {action}. Exit is {exit_price:.2f} based on 5% target" if exit_price else
-            f"News score {news.get('score')} and {tech.get('signal')} MA signal with risk {risk} suggest {action}."
-        )
+        if exit_price:
+            exit_str = f"{exit_price:.5f}" if abs(exit_price) < 1 else f"{exit_price:.2f}"
+            reason = (
+                f"News score {news.get('score')} and {tech.get('signal')} MA signal with risk {risk} "
+                f"suggest {action}. Exit is {exit_str} based on 5% target"
+            )
+        else:
+            reason = (
+                f"News score {news.get('score')} and {tech.get('signal')} MA signal with risk {risk} "
+                f"suggest {action}."
+            )
         recs.append({
             "symbol": sym,
             "action": action,

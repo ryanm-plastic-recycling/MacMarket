@@ -9,6 +9,7 @@ import backend.app.security as security
 from backend.app import risk
 import pyotp
 from backend.app import signals, backtest, alerts
+from backend.app.signals import format_price
 from datetime import datetime
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -108,6 +109,7 @@ def ticker_data(symbols: str):
                     price = float(hist["Close"].iloc[-1])
                     prev = float(hist["Close"].iloc[-2]) if len(hist) > 1 else price
                     change = (price - prev) / prev * 100 if prev else 0
+            price = format_price(price) if price is not None else None
             data.append({"symbol": symbol, "price": price, "change_percent": change})
         except Exception:
             data.append({"symbol": symbol, "price": None, "change_percent": None})
@@ -137,7 +139,7 @@ def current_price(symbol: str):
     price = signals._current_price(symbol)
     if price is None:
         raise HTTPException(status_code=404, detail="Price unavailable")
-    return {"symbol": symbol, "price": price}
+    return {"symbol": symbol, "price": format_price(price)}
 
 
 @app.get("/api/news")
@@ -504,7 +506,7 @@ def theme_js():
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "admin.html"}
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "admin.html", "help.html"}
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():
