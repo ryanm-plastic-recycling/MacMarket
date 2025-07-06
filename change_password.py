@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, text
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+mysqlconnector://macmarket_user:MarketLLMftw2020$@localhost:3306/macmarket",
+    "mysql+mysqlconnector://macmarket_user:MarketLLMftw2020Brentwood@localhost:3306/macmarket",
 )
 
 engine = create_engine(DATABASE_URL, future=True)
