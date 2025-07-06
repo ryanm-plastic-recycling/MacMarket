@@ -97,11 +97,17 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         if price:
             exit_price = price * (1.05 if action == "buy" else 0.95)
         probability = round(min(0.9, 0.5 + min(abs(score) / 10, 0.4)), 2)
+        reason = (
+            f"News score {news.get('score')} and {tech.get('signal')} MA signal "
+            f"suggest {action}. Exit is {exit_price:.2f} based on 5% target" if exit_price else
+            f"News score {news.get('score')} and {tech.get('signal')} MA signal suggest {action}."
+        )
         recs.append({
             "symbol": sym,
             "action": action,
             "exit": exit_price,
             "probability": probability,
+            "reason": reason,
         })
     recs.sort(key=lambda x: x["probability"], reverse=True)
     return recs[:3]

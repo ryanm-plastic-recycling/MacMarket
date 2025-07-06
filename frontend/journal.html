@@ -31,17 +31,18 @@
     <h2>Trade Journal</h2>
     <table id="journal-table">
         <thead>
-            <tr><th>Date</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Rationale</th></tr>
+            <tr><th>Date</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Current</th><th>P/L $</th><th>P/L %</th><th>Rationale</th></tr>
         </thead>
         <tbody></tbody>
     </table>
     <h2>Current Positions</h2>
     <table id="positions-table">
         <thead>
-            <tr><th>Symbol</th><th>Qty</th><th>Price</th></tr>
+            <tr><th>Symbol</th><th>Qty</th><th>Price</th><th>Current</th><th>P/L $</th><th>P/L %</th></tr>
         </thead>
         <tbody></tbody>
     </table>
+    <div id="positions-total"></div>
     <form id="journal-form">
         <label>Symbol <input id="symbol"></label>
         <label>Action
@@ -67,13 +68,30 @@ async function loadJournal(){
     const data = await res.json();
     const body = document.querySelector('#journal-table tbody');
     body.innerHTML='';
-    data.forEach(e => {
+    for(const e of data){
         const tr = document.createElement('tr');
         const when = new Date(e.created_at).toLocaleString();
+        const priceRes = await fetch(`/api/price/${e.symbol}`);
+        const cur = priceRes.ok ? (await priceRes.json()).price : null;
+        let pl = 0, pct = 0;
+        if(cur !== null){
+            if(e.action === 'buy'){
+                pl = (cur - e.price) * e.quantity;
+                pct = ((cur - e.price) / e.price) * 100;
+            }else{
+                pl = (e.price - cur) * e.quantity;
+                pct = ((e.price - cur) / e.price) * 100;
+            }
+        }
+        const cls = pl >= 0 ? 'up' : 'down';
         tr.innerHTML = `<td>${when}</td><td>${e.symbol}</td><td>${e.action}</td>`+
-            `<td>${e.quantity}</td><td>${e.price}</td><td>${e.rationale||''}</td>`;
+            `<td>${e.quantity}</td><td>${e.price}</td>`+
+            `<td>${cur!==null?cur.toFixed(2):''}</td>`+
+            `<td class="${cls}">${pl.toFixed(2)}</td>`+
+            `<td class="${cls}">${pct.toFixed(2)}%</td>`+
+            `<td>${e.rationale||''}</td>`;
         body.appendChild(tr);
-    });
+    }
 }
 
 async function loadPositions(){
@@ -82,11 +100,27 @@ async function loadPositions(){
     const data = await res.json();
     const body = document.querySelector('#positions-table tbody');
     body.innerHTML='';
-    data.positions.forEach(p => {
+    let total = 0;
+    for(const p of data.positions){
+        const priceRes = await fetch(`/api/price/${p.symbol}`);
+        const cur = priceRes.ok ? (await priceRes.json()).price : null;
+        let pl = 0, pct = 0;
+        if(cur !== null){
+            pl = (cur - p.price) * p.quantity;
+            pct = ((cur - p.price) / p.price) * 100;
+            total += pl;
+        }
+        const cls = pl >= 0 ? 'up' : 'down';
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${p.symbol}</td><td>${p.quantity}</td><td>${p.price}</td>`;
+        tr.innerHTML = `<td>${p.symbol}</td><td>${p.quantity}</td><td>${p.price}</td>`+
+            `<td>${cur!==null?cur.toFixed(2):''}</td>`+
+            `<td class="${cls}">${pl.toFixed(2)}</td>`+
+            `<td class="${cls}">${pct.toFixed(2)}%</td>`;
         body.appendChild(tr);
-    });
+    }
+    const totalDiv = document.getElementById('positions-total');
+    totalDiv.textContent = `Total P/L: ${total.toFixed(2)}`;
+    totalDiv.className = total >= 0 ? 'up' : 'down';
 }
 
 document.getElementById('journal-form').addEventListener('submit', async e => {
