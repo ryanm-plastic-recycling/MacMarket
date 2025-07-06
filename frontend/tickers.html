@@ -15,6 +15,7 @@
     <a href="signals.html">Signals</a>
     <a href="journal.html">Journal</a>
     <a href="help.html#tickers">Help</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
     <a href="#" id="logout-link">Logout</a>
     <select id="theme-select">
         <option value="light">Light</option>
@@ -83,6 +84,9 @@
         await fetch(`/api/users/${userId}/tickers`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tickers: checked})});
         alert('Saved!');
     });
+    if(localStorage.getItem('isAdmin') === '1'){
+        document.getElementById('admin-link').style.display='block';
+    }
     window.onload=loadTickers;
 </script>
 </body>
