@@ -11,3 +11,4 @@ pyotp
 pandas
 httpx
 openai
+vaderSentiment

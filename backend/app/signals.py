@@ -6,6 +6,7 @@ import os
 import requests
 import pandas as pd
 import yfinance as yf
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 try:
     import openai  # optional
@@ -17,7 +18,7 @@ NEGATIVE_WORDS = {"loss", "drop", "bear", "pessimistic", "down"}
 
 
 def news_sentiment_signal(symbol: str) -> dict:
-    """Return a simple sentiment score based on recent headlines."""
+    """Return a sentiment score based on recent headlines."""
     try:
         res = requests.get(
             "https://hn.algolia.com/api/v1/search",
@@ -27,11 +28,15 @@ def news_sentiment_signal(symbol: str) -> dict:
         articles = [h.get("title", "") for h in res.json().get("hits", [])[:5]]
     except Exception:
         articles = []
-    score = 0
+    analyzer = SentimentIntensityAnalyzer()
+    score = 0.0
     for title in articles:
-        words = {w.strip('.,').lower() for w in title.split()}
-        score += len(words & POSITIVE_WORDS) - len(words & NEGATIVE_WORDS)
-    return {"type": "news_sentiment", "symbol": symbol, "score": score}
+        score += analyzer.polarity_scores(title)["compound"]
+    return {
+        "type": "news_sentiment",
+        "symbol": symbol,
+        "score": round(score, 2),
+    }
 
 
 def technical_indicator_signal(symbol: str) -> dict:

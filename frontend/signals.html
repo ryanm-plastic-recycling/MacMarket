@@ -79,8 +79,27 @@ async function fetchSignal(){
     const res = await fetch(`/api/signals/${sym}`);
     if(!res.ok) return;
     const data = await res.json();
-    document.getElementById('news-output').textContent = `Score: ${data.news.score}`;
-    document.getElementById('tech-output').textContent = data.technical.signal;
+    const newsEl = document.getElementById('news-output');
+    newsEl.className = '';
+    let score = data.news.score;
+    newsEl.textContent = `Score: ${score}`;
+    if(score > 0){
+        newsEl.classList.add('bullish');
+        newsEl.textContent += ' \u2197';
+    }else if(score < 0){
+        newsEl.classList.add('bearish');
+        newsEl.textContent += ' \u2198';
+    }
+    const techEl = document.getElementById('tech-output');
+    techEl.className = '';
+    techEl.textContent = data.technical.signal;
+    if(data.technical.signal === 'bullish'){
+        techEl.classList.add('bullish');
+        techEl.textContent += ' \u2197';
+    }else if(data.technical.signal === 'bearish'){
+        techEl.classList.add('bearish');
+        techEl.textContent += ' \u2198';
+    }
 }
 
 async function fetchMacro(){
