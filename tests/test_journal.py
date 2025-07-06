@@ -9,7 +9,10 @@ def test_journal_endpoints(monkeypatch):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from backend.app import models, crud
-    engine = create_engine("sqlite:///:memory:")
+    from sqlalchemy.pool import StaticPool
+    engine = create_engine(
+        "sqlite:///:memory:", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
     TestingSessionLocal = sessionmaker(bind=engine)
     models.Base.metadata.create_all(bind=engine)
 
@@ -36,9 +39,20 @@ def test_journal_endpoints(monkeypatch):
     }
     resp = client.post(f"/api/users/{user.id}/journal", json=entry)
     assert resp.status_code == 200
+    entry_id = resp.json()["id"]
     resp = client.get(f"/api/users/{user.id}/journal")
     assert resp.status_code == 200
     assert resp.json()[0]["symbol"] == "AAPL"
+
+    update = {"price": 12.0}
+    resp = client.put(
+        f"/api/users/{user.id}/journal/{entry_id}", json=update
+    )
+    assert resp.status_code == 200
+    assert resp.json()["price"] == 12.0
+
+    resp = client.delete(f"/api/users/{user.id}/journal/{entry_id}")
+    assert resp.status_code == 200
 
 
 def test_signal_endpoint(monkeypatch):
