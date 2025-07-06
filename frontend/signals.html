@@ -30,46 +30,55 @@
 </header>
 <main>
     <h2>Signals</h2>
-    <div>
+
+    <section class="signal-section">
+        <h3>Symbol Signal</h3>
         <label>Symbol <input id="symbol"></label>
         <button id="get-signal">Get Signal</button>
-    </div>
-    <div id="signal-container">
-        <div>
-            <h3>News Sentiment</h3>
-            <div id="news-output"></div>
-            <small>Higher score indicates more positive news coverage.</small>
+        <div id="signal-container">
+            <div>
+                <h4>News Sentiment</h4>
+                <div id="news-output"></div>
+                <small>Higher score indicates more positive news coverage.</small>
+            </div>
+            <div>
+                <h4>Technical Signal</h4>
+                <div id="tech-output"></div>
+                <small>Based on 20/50 day moving average crossover.</small>
+            </div>
         </div>
-        <div>
-            <h3>Technical Signal</h3>
-            <div id="tech-output"></div>
-            <small>Based on 20/50 day moving average crossover.</small>
-        </div>
-    </div>
-    <h3>Macro Outlook</h3>
-    <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
-    <br><button id="run-macro">Analyze</button>
-    <div id="macro-output"></div>
-    <small>LLM interpretation of the provided text.</small>
+    </section>
 
-    <h3>Recommendations</h3>
-    <button id="get-recs">Get Recommendations</button>
-    <table id="recs-table">
-        <thead>
-            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <section class="signal-section">
+        <h3>Macro Outlook</h3>
+        <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
+        <br><button id="run-macro">Analyze</button>
+        <div id="macro-output"></div>
+        <small>LLM interpretation of the provided text.</small>
+    </section>
 
-    <h3>Get Recommendation for Symbol</h3>
-    <label>Ticker <input id="single-symbol"></label>
-    <button id="get-single">Get</button>
-    <table id="single-rec">
-        <thead>
-            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <section class="signal-section">
+        <h3>Recommendations</h3>
+        <button id="get-recs">Get Recommendations</button>
+        <table id="recs-table">
+            <thead>
+                <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </section>
+
+    <section class="signal-section">
+        <h3>Get Recommendation for Symbol</h3>
+        <label>Ticker <input id="single-symbol"></label>
+        <button id="get-single">Get</button>
+        <table id="single-rec">
+            <thead>
+                <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </section>
 </main>
 <script>
 if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }

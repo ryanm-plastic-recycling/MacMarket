@@ -148,7 +148,38 @@ main {
 #political { padding: 20px; }
 #news-filter-bar { margin-bottom: 10px; }
 
-label { display: block; margin: 10px 0 5px; }
+label {
+  display: block;
+  margin: 10px 0 5px;
+}
+
+form {
+  margin: 20px 0;
+  max-width: 500px;
+}
+
+form input[type="text"],
+form input[type="password"],
+form input[type="number"],
+form input[type="email"],
+form textarea,
+form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  max-width: 250px;
+}
+
+form button {
+  padding: 8px 12px;
+  margin-top: 10px;
+}
+
+.signal-section {
+  margin-bottom: 30px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ccc;
+}
 
 table { border-collapse: collapse; }
 
@@ -168,8 +199,8 @@ th { border-bottom: 1px solid #ccc; }
 #status {
   display: none;
   position: fixed;
-  top: 5px;
   right: 10px;
+  bottom: 5px;
   padding: 4px 8px;
   border-radius: 4px;
   color: #fff;
