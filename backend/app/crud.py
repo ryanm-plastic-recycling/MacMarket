@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from . import models, schemas
+from datetime import datetime
 import hashlib
 
 # User helper functions
@@ -138,6 +139,16 @@ def set_otp_enabled(db: Session, user_id: int, enabled: bool):
     user = get_user(db, user_id)
     if user:
         user.otp_enabled = enabled
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
+
+def update_last_login(db: Session, user_id: int):
+    """Update the last_logged_in timestamp for the user."""
+    user = get_user(db, user_id)
+    if user:
+        user.last_logged_in = datetime.utcnow()
         db.add(user)
         db.commit()
         db.refresh(user)
