@@ -203,9 +203,58 @@ async function loadPolitical(){
         container.appendChild(section);
     };
 
+    const renderRisk = (risk) => {
+        const section = document.createElement('div');
+        section.innerHTML = '<h3>Quiver Risk Scores</h3>';
+        const table = document.createElement('table');
+        table.innerHTML = '<thead><tr><th>Ticker</th><th>Score</th></tr></thead>';
+        const tbody = document.createElement('tbody');
+        Object.entries(risk || {}).forEach(([sym, score]) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${sym}</td><td>${score}</td>`;
+            tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        section.appendChild(table);
+        container.appendChild(section);
+    };
+
+    const renderWhaleMoves = (arr) => {
+        const section = document.createElement('div');
+        section.innerHTML = '<h3>Quiver Whale Moves</h3>';
+        const ul = document.createElement('ul');
+        arr.forEach(i => {
+            const li = document.createElement('li');
+            if(i.ticker){
+                li.textContent = i.ticker;
+            } else {
+                li.textContent = JSON.stringify(i);
+            }
+            ul.appendChild(li);
+        });
+        section.appendChild(ul);
+        container.appendChild(section);
+    };
+
     renderQuiver(data.quiver || []);
     renderList('Unusual Whales', data.whales || []);
     renderList('Capitol Trades', data.capitol || []);
+
+    try {
+        const riskRes = await fetch('/api/quiver/risk?symbols=' + tickerSymbols.join(','));
+        if(riskRes.ok){
+            const rdata = await riskRes.json();
+            renderRisk(rdata.risk);
+        }
+    } catch(e) {}
+
+    try {
+        const whaleRes = await fetch('/api/quiver/whales?limit=5');
+        if(whaleRes.ok){
+            const wdata = await whaleRes.json();
+            renderWhaleMoves(wdata.whales || []);
+        }
+    } catch(e) {}
 }
 
 
