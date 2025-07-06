@@ -163,7 +163,7 @@ def news():
 @app.get("/api/political")
 def political():
     """Fetch trading data from political/congressional sources."""
-    data = {"quiver": [], "whales": [], "congress": []}
+    data = {"quiver": [], "whales": [], "capitol": []}
     try:
         key = os.getenv("QUIVER_API_KEY")
         headers = {"Authorization": f"Bearer {key}"} if key else {}
@@ -182,9 +182,17 @@ def political():
     except Exception:
         pass
     try:
-        r = requests.get("https://congresstrading.com/api/trades", timeout=10)
+        key = os.getenv("CAPITOL_API_KEY")
+        headers = {"Authorization": f"Bearer {key}"} if key else {}
+        r = requests.get(
+            "https://api.capitoltrades.com/trades",
+            headers=headers,
+            params={"limit": 5},
+            timeout=10,
+        )
         if r.ok:
-            data["congress"] = r.json()[:5]
+            resp = r.json()
+            data["capitol"] = resp.get("data", resp)[:5] if isinstance(resp, dict) else resp[:5]
     except Exception:
         pass
     return data

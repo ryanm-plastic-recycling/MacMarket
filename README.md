@@ -61,6 +61,7 @@ Planned support for:
 - Trade journal with rationale per trade
 - API quota management
 - Optional alerts via email/SMS
+- Political trading data aggregation (QuiverQuant, Unusual Whales, Capitol Trades)
 
 ## 🛠️ To Do
 - [ ] Decide on broker(s) to integrate
