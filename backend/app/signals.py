@@ -123,14 +123,21 @@ def get_lobby_disclosures(symbols: list[str]) -> dict:
 
 
 def news_sentiment_signal(symbol: str) -> dict:
-    """Return a sentiment score based on recent headlines."""
+    """Return a sentiment score based on recent financial news headlines."""
+    params = {"q": symbol, "pageSize": 5}
+    key = os.getenv("NEWSAPI_KEY")
+    if key:
+        params["apiKey"] = key
+    articles: list[str] = []
     try:
-        res = requests.get(
-            "https://hn.algolia.com/api/v1/search",
-            params={"query": symbol, "tags": "story"},
+        resp = requests.get(
+            "https://newsapi.org/v2/everything",
+            params=params,
             timeout=5,
         )
-        articles = [h.get("title", "") for h in res.json().get("hits", [])[:5]]
+        if resp.ok:
+            data = resp.json()
+            articles = [a.get("title", "") for a in data.get("articles", [])[:5]]
     except Exception:
         articles = []
     analyzer = SentimentIntensityAnalyzer()

@@ -56,9 +56,30 @@ def test_journal_endpoints(monkeypatch):
 
 
 def test_signal_endpoint(monkeypatch):
-    monkeypatch.setattr("backend.app.signals.news_sentiment_signal", lambda s: {"score": 1})
-    monkeypatch.setattr("backend.app.signals.technical_indicator_signal", lambda s: {"signal": "bullish"})
+    class DummyResp:
+        ok = True
+
+        def json(self):
+            return {"articles": [{"title": "good"}, {"title": "good"}]}
+
+    monkeypatch.setattr(
+        "backend.app.signals.requests.get",
+        lambda *a, **k: DummyResp(),
+    )
+
+    class DummyAnalyzer:
+        def polarity_scores(self, text):
+            return {"compound": 0.5}
+
+    monkeypatch.setattr(
+        "backend.app.signals.SentimentIntensityAnalyzer",
+        DummyAnalyzer,
+    )
+    monkeypatch.setattr(
+        "backend.app.signals.technical_indicator_signal",
+        lambda s: {"signal": "bullish"},
+    )
     resp = client.get("/api/signals/TEST")
     assert resp.status_code == 200
-    assert resp.json()["news"]["score"] == 1
+    assert resp.json()["news"]["score"] == 1.0
     assert resp.json()["technical"]["signal"] == "bullish"
