@@ -123,3 +123,17 @@ def test_quiver_whales(monkeypatch):
     resp = client.get("/api/quiver/whales?limit=1")
     assert resp.status_code == 200
     assert resp.json()["whales"][0]["ticker"] == "AAPL"
+
+
+def test_quiver_political(monkeypatch):
+    monkeypatch.setattr("app.signals.get_political_moves", lambda syms: {"AAPL": 2})
+    resp = client.get("/api/quiver/political?symbols=AAPL")
+    assert resp.status_code == 200
+    assert resp.json()["political"]["AAPL"] == 2
+
+
+def test_quiver_lobby(monkeypatch):
+    monkeypatch.setattr("app.signals.get_lobby_disclosures", lambda syms: {"AAPL": 3})
+    resp = client.get("/api/quiver/lobby?symbols=AAPL")
+    assert resp.status_code == 200
+    assert resp.json()["lobby"]["AAPL"] == 3
