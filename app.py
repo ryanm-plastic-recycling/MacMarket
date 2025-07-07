@@ -237,6 +237,30 @@ async def quiver_whales(limit: int = 5):
     return {"whales": data}
 
 
+@app.get("/api/quiver/political")
+async def quiver_political(symbols: str):
+    """Return counts of recent congressional trades for the given symbols."""
+    syms = [s.strip() for s in symbols.split(",") if s.strip()]
+    key = ("political",) + tuple(sorted(syms))
+    if key in quiver_cache:
+        return {"political": quiver_cache[key]}
+    data = signals.get_political_moves(syms)
+    quiver_cache[key] = data
+    return {"political": data}
+
+
+@app.get("/api/quiver/lobby")
+async def quiver_lobby(symbols: str):
+    """Return counts of recent lobbying disclosures for the given symbols."""
+    syms = [s.strip() for s in symbols.split(",") if s.strip()]
+    key = ("lobby",) + tuple(sorted(syms))
+    if key in quiver_cache:
+        return {"lobby": quiver_cache[key]}
+    data = signals.get_lobby_disclosures(syms)
+    quiver_cache[key] = data
+    return {"lobby": data}
+
+
 @app.post("/api/register")
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     """Create a new user account and return the TOTP secret."""

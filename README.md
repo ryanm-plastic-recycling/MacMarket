@@ -191,6 +191,8 @@ Several additional endpoints are available:
 * `GET /api/users/<id>/recommendations` &mdash; provide simple trade recommendations based on the user's tickers.
 * `GET /api/quiver/risk?symbols=AAPL,MSFT` &mdash; returns Quiver risk scores for the specified tickers (requires `QUIVER_API_KEY`).
 * `GET /api/quiver/whales?limit=5` &mdash; lists recent whale moves limited to the given number (requires `QUIVER_API_KEY`).
+* `GET /api/quiver/political?symbols=AAPL` &mdash; counts of recent congressional trades for the tickers (requires `QUIVER_API_KEY`).
+* `GET /api/quiver/lobby?symbols=AAPL` &mdash; counts of recent lobbying disclosures for the tickers (requires `QUIVER_API_KEY`).
 
 The frontend now includes `signals.html` and `journal.html` pages to interact with these endpoints.
 
