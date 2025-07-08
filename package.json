@@ -1,0 +1,13 @@
+{
+  "name": "macmarket-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for MacMarket alerts",
+  "main": "discord_bot.js",
+  "scripts": {
+    "start": "node discord_bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.13.0",
+    "node-fetch": "^3.3.2"
+  }
+}
