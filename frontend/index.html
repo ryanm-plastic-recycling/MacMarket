@@ -34,6 +34,10 @@
     <div id="ticker-track"></div>
 </div>
 <div id="tiles"></div>
+<section id="alerts">
+    <h2>Latest Alerts</h2>
+    <ul id="alert-list"></ul>
+</section>
 <section id="political">
     <h2>Political Trading Activity</h2>
     <div id="political-content"></div>
@@ -257,6 +261,26 @@ async function loadPolitical(){
     } catch(e) {}
 }
 
+async function loadAlerts(){
+    try {
+        const res = await fetch('/api/signals/alert');
+        if(!res.ok) return;
+        const data = await res.json();
+        if(!data || !data.ticker) return;
+        const list = document.getElementById('alert-list');
+        if(!list) return;
+        list.innerHTML = '';
+        const li = document.createElement('li');
+        const priceStr = data.price < 1 ? data.price.toFixed(5) : data.price.toFixed(2);
+        const link = document.createElement('a');
+        link.href = 'index.html';
+        link.target = '_blank';
+        link.textContent = `🚨 New Signal: $${data.ticker} \u2013 insider buy detected at ${priceStr}`;
+        li.appendChild(link);
+        list.appendChild(li);
+    } catch(e) {}
+}
+
 
 async function init() {
     updateTime();
@@ -268,6 +292,8 @@ async function init() {
     await loadTicker();
     loadNews();
     loadPolitical();
+    loadAlerts();
+    setInterval(loadAlerts, 30000);
     document.getElementById('news-filter').addEventListener('change', loadNews);
     document.getElementById('ticker-toggle').addEventListener('click', toggleTicker);
 }

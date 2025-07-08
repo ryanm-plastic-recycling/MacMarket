@@ -15,6 +15,9 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 import os
 
+# simple in-memory alert store
+LATEST_ALERT = {"id": 0, "ticker": "AAPL", "price": 0.0}
+
 from fastapi.responses import HTMLResponse, Response
 from pathlib import Path
 import yfinance as yf
@@ -508,6 +511,24 @@ def macro_signal(data: dict):
 @app.get("/api/backtest/{symbol}")
 def run_backtest(symbol: str):
     return backtest.sma_crossover_backtest(symbol)
+
+
+@app.get("/api/signals/alert")
+def latest_alert():
+    """Return the latest trading alert."""
+    return LATEST_ALERT
+
+
+@app.post("/api/signals/alert")
+def update_alert(alert: dict):
+    """Update the latest trading alert."""
+    global LATEST_ALERT
+    LATEST_ALERT = {
+        "id": int(alert.get("id", LATEST_ALERT["id"] + 1)),
+        "ticker": alert.get("ticker", LATEST_ALERT.get("ticker")),
+        "price": float(alert.get("price", LATEST_ALERT.get("price", 0.0))),
+    }
+    return {"status": "ok"}
 
 # Serve static assets for the simple frontend
 @app.get("/style.css")
