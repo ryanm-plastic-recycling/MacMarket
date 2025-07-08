@@ -229,3 +229,21 @@ pytest
 ```
 
 The API exposes simple endpoints, including `/health` and `/db-check`.
+
+## Disclaimers & Risk
+
+### Paper Trading Only
+
+- This project provides a **paper-trading** environment for strategy testing and education.
+- Nothing in this repository constitutes financial advice or a solicitation to trade real funds.
+
+### Backtest Assumptions
+
+- Backtests cover a limited historical period and may not reflect future market conditions.
+- Example parameters include simplified slippage and fee models; adjust these to match your broker.
+
+### API Limits & Data Accuracy
+
+- Data providers impose request quotas that can throttle or limit real-time updates.
+- Quotes and historical data may be delayed or contain inaccuracies.
+
