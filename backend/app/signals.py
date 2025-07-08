@@ -201,6 +201,46 @@ def _current_price(symbol: str) -> float | None:
         return None
 
 
+def _exit_levels(symbol: str, action: str, price: float) -> tuple[dict | None, str]:
+    """Return low/medium/high risk exit levels and an explanation."""
+    try:
+        data = yf.download(symbol, period="2mo", interval="1d")
+        if data.empty:
+            return None, "No historical data for exits"
+        high = data["High"]
+        low = data["Low"]
+        close = data["Close"]
+        tr = pd.concat([
+            high - low,
+            (high - close.shift()).abs(),
+            (low - close.shift()).abs(),
+        ], axis=1).max(axis=1)
+        atr = tr.rolling(14).mean().iloc[-1]
+        support = low.rolling(20).min().iloc[-1]
+        resistance = high.rolling(20).max().iloc[-1]
+
+        if action == "buy":
+            exits = {
+                "low": format_price(price + atr),
+                "medium": format_price(price + 2 * atr),
+                "high": format_price(max(resistance, price + 3 * atr)),
+            }
+        else:
+            exits = {
+                "low": format_price(price - atr),
+                "medium": format_price(price - 2 * atr),
+                "high": format_price(min(support, price - 3 * atr)),
+            }
+
+        reason = (
+            f"ATR {atr:.2f}, support {support:.2f}, resistance {resistance:.2f}."
+            " Exits adjust for risk tolerance."
+        )
+        return exits, reason
+    except Exception:
+        return None, "Exit calculation failed"
+
+
 def generate_recommendations(symbols: list[str]) -> list[dict]:
     """Return simple trade recommendations based on sentiment, technicals, and risk."""
     recs = []
@@ -217,10 +257,10 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         lob = lobby.get(sym, 0)
         score = base_score - risk + 0.2 * pol + 0.1 * lob
         action = "buy" if score >= 0 else "sell"
-        exit_price = None
+        exits = None
+        exit_reason = ""
         if price:
-            exit_price = price * (1.05 if action == "buy" else 0.95)
-            exit_price = format_price(exit_price)
+            exits, exit_reason = _exit_levels(sym, action, price)
         probability = round(min(0.9, 0.5 + min(abs(score) / 10, 0.4)), 2)
         parts = [
             f"News score {news.get('score')} and {tech.get('signal')} MA signal",
@@ -231,13 +271,12 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         if lob:
             parts.append(f"{lob} lobby disclosures")
         reason = " ".join(parts) + f" suggest {action}."
-        if exit_price:
-            exit_str = f"{exit_price:.5f}" if abs(exit_price) < 1 else f"{exit_price:.2f}"
-            reason += f" Exit is {exit_str} based on 5% target"
+        if exit_reason:
+            reason += f" {exit_reason}"
         recs.append({
             "symbol": sym,
             "action": action,
-            "exit": exit_price,
+            "exit": exits,
             "probability": probability,
             "reason": reason,
         })
