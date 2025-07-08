@@ -1,0 +1,39 @@
+.top-congress-buys-widget {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  max-width: 300px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 10px;
+  background: var(--sidebar-bg, #fff);
+  color: var(--text-color, #333);
+}
+
+.top-congress-buys-widget h3 {
+  margin: 8px 0;
+  font-size: 1.1em;
+  text-align: center;
+}
+
+.buy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+}
+
+.buy-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  margin-bottom: 4px;
+  background: var(--ticker-bg, #f0f0f0);
+  border-radius: 3px;
+}
+
+.buy-card .buy-ticker {
+  font-weight: bold;
+}
+
+.buy-card .buy-usd {
+  font-weight: bold;
+}
