@@ -498,6 +498,23 @@ def delete_journal(user_id: int, entry_id: int, db: Session = Depends(get_db)):
     crud.delete_journal_entry(db, entry)
     return {"status": "deleted"}
 
+@app.get(
+    "/api/signals/rankings",
+    responses={200: {"content": {"application/json": {}, "text/csv": {}}}},
+)
+def signal_rankings(format: str = "json"):
+    """Return rankings of active signal scores."""
+    symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
+    recs = signals.generate_recommendations(symbols)
+    ranks = [{"symbol": r["symbol"], "score": r["probability"]} for r in recs]
+    ranks.sort(key=lambda x: x["score"], reverse=True)
+    if format.lower() == "csv":
+        lines = ["symbol,score"] + [f"{r['symbol']},{r['score']}" for r in ranks]
+        return Response("\n".join(lines), media_type="text/csv")
+
+    return {"rankings": ranks}
+
+
 @app.get("/api/signals/{symbol}")
 def get_signals(symbol: str):
     news = signals.news_sentiment_signal(symbol)
