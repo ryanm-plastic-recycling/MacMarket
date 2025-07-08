@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Backtests - MacMarket</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="theme.js"></script>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+    <a href="signals.html">Signals</a>
+    <a href="journal.html">Journal</a>
+    <a href="backtests.html">Backtests</a>
+    <a href="help.html#backtests">Help</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
+    <a href="#" id="logout-link">Logout</a>
+    <select id="theme-select">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+    </select>
+</div>
+<header>
+    <h1>MacMarket</h1>
+    <div id="user-info"></div>
+    <div id="time"></div>
+    <div id="status"></div>
+</header>
+<main>
+    <h2>Run Backtest</h2>
+    <label>Symbol <input id="bt-symbol"></label>
+    <label>Start <input type="date" id="bt-start" value="2023-01-01"></label>
+    <label>End <input type="date" id="bt-end"></label>
+    <button id="bt-run">Run</button>
+    <pre id="bt-output"></pre>
+    <h2>Saved Backtests</h2>
+    <table id="bt-table">
+        <thead><tr><th>Date</th><th>Symbol</th><th>Total Return</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr></thead>
+        <tbody></tbody>
+    </table>
+</main>
+<script>
+if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
+const userId = localStorage.getItem('userId');
+
+async function loadBacktests(){
+    const res = await fetch('/api/backtests' + (userId ? '?user_id='+userId : ''));
+    if(!res.ok) return;
+    const data = await res.json();
+    const body = document.querySelector('#bt-table tbody');
+    body.innerHTML='';
+    data.forEach(r => {
+        const tr = document.createElement('tr');
+        const m = r.metrics;
+        tr.innerHTML = `<td>${r.created_at || ''}</td><td>${r.symbol}</td>`+
+            `<td>${(m.total_return*100).toFixed(2)}%</td>`+
+            `<td>${(m.cagr*100).toFixed(2)}%</td>`+
+            `<td>${(m.max_drawdown*100).toFixed(2)}%</td>`+
+            `<td>${m.sharpe}</td>`;
+        body.appendChild(tr);
+    });
+}
+
+async function runBacktest(){
+    const symbol = document.getElementById('bt-symbol').value.trim();
+    const start = document.getElementById('bt-start').value;
+    const end = document.getElementById('bt-end').value;
+    if(!symbol) return;
+    setStatus('Running backtest...', 'loading');
+    const res = await fetch(`/api/backtest/${symbol}?start=${start}&end=${end}&user_id=${userId||''}`, {method:'POST'});
+    if(res.ok){
+        const data = await res.json();
+        document.getElementById('bt-output').textContent = JSON.stringify(data.metrics, null, 2);
+        loadBacktests();
+        setStatus('Saved', 'ok');
+    } else {
+        setStatus('Failed', 'error');
+    }
+}
+
+window.onload = () => {
+    loadBacktests();
+    document.getElementById('bt-run').addEventListener('click', runBacktest);
+};
+</script>
+</body>
+</html>

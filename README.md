@@ -214,6 +214,8 @@ Several additional endpoints are available:
 * `GET /api/signals/<symbol>` &mdash; returns news sentiment and technical signals for a ticker.
 * `POST /api/macro-signal` with a JSON body `{"text": "..."}` to interpret macroeconomic commentary via an LLM.
 * `GET /api/backtest/<symbol>` &mdash; runs a simple SMA crossover backtest.
+* `POST /api/backtest/<symbol>` &mdash; run a backtest and store the results.
+* `GET /api/backtests` &mdash; list saved backtest runs (filterable by `user_id`).
 * `GET /api/users/<id>/journal` and `POST /api/users/<id>/journal` &mdash; manage personal trade journal entries.
 * `GET /api/users/<id>/positions` &mdash; list current positions for a user.
 * `GET /api/users/<id>/recommendations` &mdash; provide simple trade recommendations based on the user's tickers.

@@ -114,3 +114,15 @@ class Recommendation(BaseModel):
     action: str
     exit: Optional[float] = None
     probability: float
+
+class BacktestRun(BaseModel):
+    id: int | None = None
+    user_id: int | None = None
+    symbol: str
+    start_date: str
+    end_date: str
+    metrics: dict
+    created_at: datetime | None = None
+
+    class Config:
+        from_attributes = True

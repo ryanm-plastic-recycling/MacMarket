@@ -11,6 +11,7 @@ import pyotp
 from backend.app import signals, backtest, alerts
 from backend.app.signals import format_price
 from datetime import datetime
+import json
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 import os
@@ -526,8 +527,33 @@ def macro_signal(data: dict):
     return signals.macro_llm_signal(data.get("text", ""))
 
 @app.get("/api/backtest/{symbol}")
-def run_backtest(symbol: str):
-    return backtest.sma_crossover_backtest(symbol)
+def run_backtest(symbol: str, start: str = "2023-01-01", end: str | None = None):
+    """Run a backtest for the given symbol and return results."""
+    return backtest.sma_crossover_backtest(symbol, start=start, end=end)
+
+
+@app.post("/api/backtest/{symbol}", response_model=schemas.BacktestRun)
+def save_backtest(
+    symbol: str,
+    start: str = "2023-01-01",
+    end: str | None = None,
+    user_id: int | None = None,
+    db: Session = Depends(get_db),
+):
+    """Run a backtest and save the result for later comparison."""
+    res = backtest.sma_crossover_backtest(symbol, start=start, end=end)
+    run = crud.create_backtest_run(db, symbol, start, end or datetime.utcnow().strftime("%Y-%m-%d"), res["metrics"], user_id)
+    run.metrics = res["metrics"]  # convert JSON string back
+    return run
+
+
+@app.get("/api/backtests", response_model=list[schemas.BacktestRun])
+def list_backtests(user_id: int | None = None, db: Session = Depends(get_db)):
+    """Return saved backtest runs."""
+    runs = crud.get_backtest_runs(db, user_id)
+    for r in runs:
+        r.metrics = json.loads(r.metrics)
+    return runs
 
 
 @app.get("/api/signals/alert")
@@ -568,7 +594,7 @@ def theme_js():
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "admin.html", "help.html"}
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html"}
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():
