@@ -1,10 +1,87 @@
 import argparse
 import os
-import requests
-import pandas as pd
+from typing import List
+
 import numpy as np
+import pandas as pd
+import requests
 import matplotlib.pyplot as plt
 import yfinance as yf
+
+
+def _parse_action(val: str) -> int:
+    """Return 1 for buy, -1 for sell, 0 otherwise."""
+    if not isinstance(val, str):
+        return 0
+    v = val.lower()
+    if "buy" in v or "long" in v:
+        return 1
+    if "sell" in v or "short" in v or "sale" in v:
+        return -1
+    return 0
+
+
+def load_quiver_trades(
+    symbol: str, start: str, end: str, source: str, limit: int = 100
+) -> pd.DataFrame:
+    """Fetch trades from the QuiverQuant API."""
+    key = os.getenv("QUIVER_API_KEY")
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    if source == "whales":
+        url = "https://api.quiverquant.com/beta/live/whalemoves"
+        params = {}
+    else:
+        url = "https://api.quiverquant.com/beta/live/congresstrading"
+        params = {"tickers": symbol}
+    resp = requests.get(url, headers=headers, params=params, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    if isinstance(data, dict):
+        data = data.get("data", [])
+    df = pd.DataFrame(data)
+    if df.empty:
+        return pd.DataFrame(columns=["date", "signal"])
+
+    sym_col = None
+    for c in ["Ticker", "ticker", "Symbol", "symbol"]:
+        if c in df.columns:
+            sym_col = c
+            break
+    if sym_col:
+        df = df[df[sym_col].str.upper() == symbol.upper()]
+
+    date_col = None
+    for c in [
+        "Date",
+        "TradeDate",
+        "TransactionDate",
+        "date",
+        "TransDate",
+    ]:
+        if c in df.columns:
+            date_col = c
+            break
+    if not date_col:
+        raise ValueError("No date column found in Quiver data")
+    df["date"] = pd.to_datetime(df[date_col])
+
+    action_col = None
+    for c in ["Position", "Action", "Transaction", "Type"]:
+        if c in df.columns:
+            action_col = c
+            break
+    if action_col:
+        df["signal"] = df[action_col].apply(_parse_action)
+    else:
+        df["signal"] = 0
+
+    df = df.sort_values("date")
+    df = df[
+        (df["date"] >= pd.to_datetime(start)) & (df["date"] <= pd.to_datetime(end))
+    ]
+    if limit:
+        df = df.head(limit)
+    return df[["date", "signal"]]
 
 
 def download_prices(symbol: str, start: str, end: str) -> pd.DataFrame:
@@ -79,10 +156,24 @@ def main() -> None:
     parser.add_argument('--start', required=True)
     parser.add_argument('--end', required=True)
     parser.add_argument('--strategy', choices=['signal', 'buy_hold'], default='signal', help='Backtest strategy type')
+    parser.add_argument(
+        '--quiver',
+        choices=['whales', 'political', 'both'],
+        help='Use QuiverQuant trades as signals',
+    )
+    parser.add_argument('--limit', type=int, default=100, help='Limit number of Quiver trades')
     args = parser.parse_args()
 
     prices = download_prices(args.symbol, args.start, args.end)
-    signals = load_signals(args.symbol, args.start, args.end)
+    if args.quiver:
+        if args.quiver == 'both':
+            q1 = load_quiver_trades(args.symbol, args.start, args.end, 'whales', args.limit)
+            q2 = load_quiver_trades(args.symbol, args.start, args.end, 'political', args.limit)
+            signals = pd.concat([q1, q2]).sort_values('date')
+        else:
+            signals = load_quiver_trades(args.symbol, args.start, args.end, args.quiver, args.limit)
+    else:
+        signals = load_signals(args.symbol, args.start, args.end)
     df = simulate_strategy(prices, signals, strategy=args.strategy)
     metrics = performance_metrics(df)
 
