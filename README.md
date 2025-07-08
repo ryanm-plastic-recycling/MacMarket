@@ -74,6 +74,28 @@ Planned support for:
 ## 🚧 Development Status
 Exploratory phase — backend logic and LLM signal testing in progress. Confirming architecture before moving to live trading or frontend development.
 
+## 🔄 Backtesting Signals
+We provide a standalone backtester to validate signal performance offline.
+
+**Prerequisites**
+```bash
+pip install -r requirements.txt
+```
+
+**Run the backtest**
+```bash
+python scripts/backtest_signals.py \
+  --symbol AAPL \
+  --start 2023-01-01 \
+  --end   2025-07-01
+```
+
+**Outputs**
+- `backtest_results_AAPL.csv`: daily portfolio value and signal log
+- `backtest_equity_AAPL.png`: cumulative equity curve
+- Console summary of total return, CAGR, max drawdown, Sharpe ratio
+
+Use this tool to validate any symbol’s LLM/API-generated signals before deploying live.
 ## 🧠 Ideas in the Pipeline
 - LangChain or semantic memory for trade history
 - Real-time news clustering and tagging
