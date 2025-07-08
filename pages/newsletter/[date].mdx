@@ -1,0 +1,29 @@
+---
+title: Weekly Signal Newsletter
+date: 2023-09-22
+---
+
+import { useEffect, useState } from 'react'
+import { fetchWeeklySignals } from '../../lib/newsletter'
+
+export default function NewsletterPage() {
+  const [data, setData] = useState({ signals: [], summary: '' })
+
+  useEffect(() => {
+    fetchWeeklySignals().then(setData)
+  }, [])
+
+  return (
+    <>
+      <h1>This Week’s Top Signals</h1>
+      <ol>
+        {data.signals.slice(0, 5).map((sig, idx) => (
+          <li key={idx}>
+            <strong>{sig.symbol}</strong> — {sig.rationale}
+          </li>
+        ))}
+      </ol>
+      <p>{data.summary}</p>
+    </>
+  )
+}
