@@ -137,3 +137,34 @@ def test_quiver_lobby(monkeypatch):
     resp = client.get("/api/quiver/lobby?symbols=AAPL")
     assert resp.status_code == 200
     assert resp.json()["lobby"]["AAPL"] == 3
+
+
+def test_signal_rankings_json(monkeypatch):
+    monkeypatch.setattr(
+        "app.signals.generate_recommendations",
+        lambda syms: [
+            {"symbol": "A", "probability": 0.8, "action": "buy", "exit": 10, "reason": "r"},
+            {"symbol": "B", "probability": 0.5, "action": "buy", "exit": 10, "reason": "r"},
+        ],
+    )
+    resp = client.get("/api/signals/rankings")
+    assert resp.status_code == 200
+    data = resp.json()["rankings"]
+    assert data[0]["symbol"] == "A"
+    assert data[1]["symbol"] == "B"
+
+
+def test_signal_rankings_csv(monkeypatch):
+    monkeypatch.setattr(
+        "app.signals.generate_recommendations",
+        lambda syms: [
+            {"symbol": "A", "probability": 0.7, "action": "buy", "exit": 0, "reason": "r"},
+            {"symbol": "B", "probability": 0.4, "action": "sell", "exit": 0, "reason": "r"},
+        ],
+    )
+    resp = client.get("/api/signals/rankings?format=csv")
+    assert resp.status_code == 200
+    lines = resp.text.strip().splitlines()
+    assert lines[0] == "symbol,score"
+    assert "A,0.7" in lines[1]
+
