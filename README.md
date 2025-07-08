@@ -88,6 +88,12 @@ python scripts/backtest_signals.py \
   --symbol AAPL \
   --start 2023-01-01 \
   --end   2025-07-01
+# Follow whale or political trades from QuiverQuant instead of local signals
+python scripts/backtest_signals.py \
+  --symbol AAPL \
+  --start 2023-01-01 \
+  --end 2025-07-01 \
+  --quiver whales
 ```
 
 **Outputs**
