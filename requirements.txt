@@ -14,3 +14,6 @@ python-dotenv
 cachetools
 openai
 vaderSentiment
+
+matplotlib
+tweepy
