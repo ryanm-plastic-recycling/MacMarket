@@ -75,7 +75,7 @@ def test_recommendations_endpoint(monkeypatch):
             {
                 "symbol": "AAPL",
                 "action": "buy",
-                "exit": 105,
+                "exit": {"low": 100, "medium": 105, "high": 110},
                 "probability": 0.6,
                 "reason": "test",
             }
@@ -98,7 +98,15 @@ def test_price_endpoint(monkeypatch):
 def test_single_recommendation(monkeypatch):
     monkeypatch.setattr(
         "app.signals.generate_recommendations",
-        lambda symbols: [{"symbol": symbols[0], "action": "buy", "exit": 10, "probability": 0.5, "reason": "r"}],
+        lambda symbols: [
+            {
+                "symbol": symbols[0],
+                "action": "buy",
+                "exit": {"low": 9, "medium": 10, "high": 11},
+                "probability": 0.5,
+                "reason": "r",
+            }
+        ],
     )
     resp = client.get("/api/recommendation/XYZ")
     assert resp.status_code == 200
@@ -143,8 +151,8 @@ def test_signal_rankings_json(monkeypatch):
     monkeypatch.setattr(
         "app.signals.generate_recommendations",
         lambda syms: [
-            {"symbol": "A", "probability": 0.8, "action": "buy", "exit": 10, "reason": "r"},
-            {"symbol": "B", "probability": 0.5, "action": "buy", "exit": 10, "reason": "r"},
+            {"symbol": "A", "probability": 0.8, "action": "buy", "exit": {"low": 9, "medium": 10, "high": 12}, "reason": "r"},
+            {"symbol": "B", "probability": 0.5, "action": "buy", "exit": {"low": 9, "medium": 10, "high": 12}, "reason": "r"},
         ],
     )
     resp = client.get("/api/signals/rankings")
@@ -158,8 +166,8 @@ def test_signal_rankings_csv(monkeypatch):
     monkeypatch.setattr(
         "app.signals.generate_recommendations",
         lambda syms: [
-            {"symbol": "A", "probability": 0.7, "action": "buy", "exit": 0, "reason": "r"},
-            {"symbol": "B", "probability": 0.4, "action": "sell", "exit": 0, "reason": "r"},
+            {"symbol": "A", "probability": 0.7, "action": "buy", "exit": {"low": 0, "medium": 0, "high": 0}, "reason": "r"},
+            {"symbol": "B", "probability": 0.4, "action": "sell", "exit": {"low": 0, "medium": 0, "high": 0}, "reason": "r"},
         ],
     )
     resp = client.get("/api/signals/rankings?format=csv")
