@@ -3,6 +3,7 @@ from typing import List, Optional
 from . import models, schemas
 from datetime import datetime
 import hashlib
+import json
 
 # User helper functions
 
@@ -206,3 +207,32 @@ def update_journal_entry(
 def delete_journal_entry(db: Session, entry_obj: models.JournalEntry) -> None:
     db.delete(entry_obj)
     db.commit()
+
+# Backtest helpers
+
+def create_backtest_run(
+    db: Session,
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    metrics: dict,
+    user_id: int | None = None,
+) -> models.BacktestRun:
+    run = models.BacktestRun(
+        user_id=user_id,
+        symbol=symbol,
+        start_date=start_date,
+        end_date=end_date,
+        metrics=json.dumps(metrics),
+    )
+    db.add(run)
+    db.commit()
+    db.refresh(run)
+    return run
+
+
+def get_backtest_runs(db: Session, user_id: int | None = None) -> list[models.BacktestRun]:
+    q = db.query(models.BacktestRun)
+    if user_id is not None:
+        q = q.filter(models.BacktestRun.user_id == user_id)
+    return q.order_by(models.BacktestRun.created_at.desc()).all()

@@ -98,3 +98,22 @@ class JournalEntry(Base):
     )
 
     user = relationship("User")
+
+class BacktestRun(Base):
+    """Saved backtest run for later review."""
+
+    __tablename__ = "backtest_runs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    symbol = Column(String(10), nullable=False)
+    start_date = Column(String(10), nullable=False)
+    end_date = Column(String(10), nullable=False)
+    metrics = Column(String(1024), nullable=False)
+    created_at = Column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text('CURRENT_TIMESTAMP'),
+    )
+
+    user = relationship("User")
