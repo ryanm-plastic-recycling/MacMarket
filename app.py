@@ -515,21 +515,6 @@ def signal_rankings(format: str = "json"):
     return {"rankings": ranks}
 
 
-@app.get("/api/signals/{symbol}")
-def get_signals(symbol: str):
-    news = signals.news_sentiment_signal(symbol)
-    tech = signals.technical_indicator_signal(symbol)
-    return {"news": news, "technical": tech}
-
-@app.post("/api/macro-signal")
-def macro_signal(data: dict):
-    return signals.macro_llm_signal(data.get("text", ""))
-
-@app.get("/api/backtest/{symbol}")
-def run_backtest(symbol: str):
-    return backtest.sma_crossover_backtest(symbol)
-
-
 @app.get("/api/signals/alert")
 def latest_alert():
     """Return the latest trading alert."""
@@ -546,6 +531,21 @@ def update_alert(alert: dict):
         "price": float(alert.get("price", LATEST_ALERT.get("price", 0.0))),
     }
     return {"status": "ok"}
+
+
+@app.get("/api/signals/{symbol}")
+def get_signals(symbol: str):
+    news = signals.news_sentiment_signal(symbol)
+    tech = signals.technical_indicator_signal(symbol)
+    return {"news": news, "technical": tech}
+
+@app.post("/api/macro-signal")
+def macro_signal(data: dict):
+    return signals.macro_llm_signal(data.get("text", ""))
+
+@app.get("/api/backtest/{symbol}")
+def run_backtest(symbol: str):
+    return backtest.sma_crossover_backtest(symbol)
 
 # Serve static assets for the simple frontend
 @app.get("/style.css")
