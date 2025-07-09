@@ -132,7 +132,13 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    ```bash
    pip install -r requirements.txt
    ```
-2. Set up a MySQL database and load `schema.sql`.
+2. Set up a MySQL database and load `schema.sql`. Make sure the MySQL user
+   specified in `DATABASE_URL` has permission to read and **update** the tables.
+   The login endpoint updates the `last_logged_in` column, so a read-only
+   account will cause a `503` error. A simple privilege setup is:
+   ```sql
+   GRANT SELECT, INSERT, UPDATE, DELETE ON macmarket.* TO 'macmarket_user'@'localhost';
+   ```
 
 3. Copy `.env.example` to `.env` and update the values. Set `DATABASE_URL` to point
    at your MySQL instance, e.g. `mysql+mysqlconnector://user:pass@localhost:3306/macmarket`.
