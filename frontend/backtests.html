@@ -70,12 +70,18 @@ async function runBacktest(){
     const end = document.getElementById('bt-end').value;
     if(!symbol) return;
     setStatus('Running backtest...', 'loading');
-    const res = await fetch(`/api/backtest/${symbol}?start=${start}&end=${end}&user_id=${userId||''}`, {method:'POST'});
+    const panoRes = await fetch('/api/panorama');
+    const panorama = panoRes.ok ? await panoRes.json() : {};
+    const params = { symbol, start, end };
+    const res = await fetch('/api/backtest', {
+        method:'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ panorama, params })
+    });
     if(res.ok){
         const data = await res.json();
-        document.getElementById('bt-output').textContent = JSON.stringify(data.metrics, null, 2);
-        loadBacktests();
-        setStatus('Saved', 'ok');
+        document.getElementById('bt-output').textContent = JSON.stringify(data, null, 2);
+        setStatus('Done', 'ok');
     } else {
         setStatus('Failed', 'error');
     }

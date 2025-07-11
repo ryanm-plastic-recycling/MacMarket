@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <title>MacMarket</title>
     <link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script type="text/babel" src="Dashboard.jsx"></script>
     <script src="theme.js"></script>
 </head>
 <body onload="init();">
@@ -54,6 +59,7 @@
     </div>
     <div id="market-news" class="news-col"></div>
     <div id="world-news" class="news-col"></div>
+<div id="dashboard-root"></div>
 </section>
 </main>
     <script>
@@ -298,5 +304,10 @@ async function init() {
     document.getElementById('ticker-toggle').addEventListener('click', toggleTicker);
 }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script type="text/babel" src="Dashboard.jsx"></script>
 </body>
 </html>
