@@ -66,3 +66,12 @@ CREATE TABLE backtest_runs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
+
+-- Store reusable backtest scenarios
+CREATE TABLE IF NOT EXISTS scenarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    strategy_key VARCHAR(50) NOT NULL,
+    params JSON NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
