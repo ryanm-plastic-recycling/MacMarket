@@ -175,14 +175,14 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    ALTER TABLE users ADD COLUMN otp_enabled BOOLEAN DEFAULT FALSE;
    ```
 7. Configure the `DATABASE_URL` environment variable if different from the default
-   (`mysql+mysqlconnector://macmarket_user:MarketLLMftw2020Brentwood@localhost:3306/macmarket`)
+   (`mysql+mysqlconnector://user:password@localhost:3306/macmarket`)
    defined in `backend/app/database.py`. Environment variables are loaded from a
    `.env` file automatically if present.
 8. Optionally set `API_DAILY_QUOTA` to limit requests per IP (default `1000`).
    Set `OPENAI_API_KEY` to enable macro signal generation.
 9. The login page uses Google reCAPTCHA (v2). The default site key is
-   `6Lcu13grAAAAAMTzxfk-P3JUjd9Au8LEddHXRATW` and the default secret key is
-   `6Lcu13grAAAAAHhpUM7ba7SLORGjd_XNYnta1WGJ`. You can override the secret by
+   `key_here` and the default secret key is
+   `secret_here`. You can override the secret by
    setting the `RECAPTCHA_SECRET` environment variable.
 10. Start the API on your preferred port (e.g. 9500):
    ```bash
