@@ -13,3 +13,6 @@ ENV/
 
 # Node.js
 node_modules/
+
+# local environment variables
+.env
