@@ -137,7 +137,7 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    The login endpoint updates the `last_logged_in` column, so a read-only
    account will cause a `503` error. A simple privilege setup is:
    ```sql
-   GRANT SELECT, INSERT, UPDATE, DELETE ON macmarket.* TO 'macmarket_user'@'localhost';
+   GRANT SELECT, INSERT, UPDATE, DELETE ON macmarket.* TO 'your_user'@'localhost';
    ```
 
 3. Copy `.env.example` to `.env` and update the values. Set `DATABASE_URL` to point
