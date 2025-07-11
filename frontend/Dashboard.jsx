@@ -4,11 +4,16 @@ function Dashboard() {
   const [data, setData] = useState(null);
   const ppiChart = useRef(null);
   const cryptoChart = useRef(null);
+  const [chat, setChat] = useState([]);
+
 
   useEffect(() => {
     fetch('/api/panorama')
       .then(r => r.json())
-      .then(setData)
+      .then(d => {
+        setData(d);
+        setChat(d.discord || []);
+      })
       .catch(err => console.error(err));
   }, []);
 
@@ -72,6 +77,18 @@ function Dashboard() {
       React.createElement('div', { className: 'panel' },
         React.createElement('h3', null, 'PPI Trend'),
         React.createElement('canvas', { ref: ppiChart })
+      ),
+      React.createElement('div', { className: 'panel' },
+        React.createElement('h3', null, 'Community Chat'),
+        React.createElement('ul', null,
+          chat.map(m => {
+            const v = data.validated && data.validated[m.id];
+            if (v && v.trustScore && v.trustScore <= 2) return null;
+            return React.createElement('li', { key: m.id }, `${m.author}: ${m.content}`,
+              v && v.trustScore ? ` (${v.trustScore}/5)` : ''
+            );
+          })
+        )
       )
     )
   );
