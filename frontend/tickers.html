@@ -5,6 +5,8 @@
     <title>Tickers - MacMarket</title>
     <link rel="stylesheet" href="style.css">
     <script src="theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="ticker.js"></script>
 </head>
 <body>
 <div id="sidebar">
@@ -29,11 +31,13 @@
     <div id="status"></div>
 </header>
 <main>
+    <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
     <h2>Manage Tickers</h2>
     <table id="ticker-table"><tbody id="tickers-body"></tbody></table>
     <input id="new-ticker" placeholder="Add ticker">
     <button id="add-ticker">Add</button>
     <div>
+        <button id="sort-tickers">Sort A-Z</button>
         <button id="save-tickers">Save</button>
     </div>
 </main>
@@ -53,6 +57,7 @@
         body.innerHTML='';
         function addRow(sym, checked){
             const tr=document.createElement('tr');
+            tr.draggable=true;
             const cb=document.createElement('input');
             cb.type='checkbox';
             cb.value=sym;
@@ -66,25 +71,37 @@
         }
         defaults.forEach(sym=> addRow(sym, current.includes(sym)) );
         current.filter(s=>!defaults.includes(s)).forEach(sym=> addRow(sym, true));
+        new Sortable(body, {animation:150});
     }
     document.getElementById('add-ticker').addEventListener('click', ()=>{
         const val=document.getElementById('new-ticker').value.trim();
         if(val){
             const body=document.getElementById('tickers-body');
             const tr=document.createElement('tr');
+            tr.draggable=true;
             const cb=document.createElement('input');
             cb.type='checkbox'; cb.value=val; cb.checked=true;
             tr.innerHTML=`<td></td><td>${val}</td>`;
             tr.firstChild.appendChild(cb);
             body.appendChild(tr);
-            document.getElementById('new-ticker').value='';
         }
+        document.getElementById('new-ticker').value='';
     });
     document.getElementById('save-tickers').addEventListener('click', async ()=>{
         const checked = Array.from(document.querySelectorAll('#tickers-body input[type=checkbox]')).filter(c=>c.checked).map(c=>c.value);
         setStatus('Saving...', 'loading');
         await fetch(`/api/users/${userId}/tickers`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tickers: checked})});
         setStatus('Saved!', 'ok');
+    });
+    document.getElementById('sort-tickers').addEventListener('click', ()=>{
+        const body=document.getElementById('tickers-body');
+        const rows=Array.from(body.querySelectorAll('tr'));
+        rows.sort((a,b)=>{
+            const sa=a.children[1].textContent.toUpperCase();
+            const sb=b.children[1].textContent.toUpperCase();
+            return sa.localeCompare(sb);
+        });
+        rows.forEach(r=>body.appendChild(r));
     });
     if(localStorage.getItem('isAdmin') === '1'){
         document.getElementById('admin-link').style.display='block';

@@ -5,6 +5,7 @@
     <title>Login - MacMarket</title>
     <link rel="stylesheet" href="style.css">
     <script src="theme.js"></script>
+    <script src="ticker.js"></script>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
@@ -30,6 +31,7 @@
     <div id="status"></div>
 </header>
 <main>
+    <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
     <h2>Login</h2>
     <form id="login-form">
         <label>Username<input type="text" id="username"></label>

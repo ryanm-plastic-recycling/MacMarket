@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initAuth();
   initHeader();
+  if (window.initTickerBar) {
+    initTickerBar();
+  }
 });
 
 function initAuth() {
