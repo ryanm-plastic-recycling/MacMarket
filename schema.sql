@@ -75,3 +75,10 @@ CREATE TABLE IF NOT EXISTS scenarios (
     params JSON NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Global ticker list used by the React frontend
+CREATE TABLE IF NOT EXISTS tickers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    symbol VARCHAR(10) NOT NULL,
+    position INT DEFAULT 0
+);
