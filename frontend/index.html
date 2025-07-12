@@ -52,10 +52,9 @@
     <div id="news-filter-bar">
         <label for="news-filter">News Age:</label>
         <select id="news-filter">
-            <option value="all">All</option>
-            <option value="24h">24h</option>
-            <option value="week">1 Week</option>
-            <option value="month">1 Month</option>
+            <option value="week" selected>Last 7 Days</option>
+            <option value="month">Last 30 Days</option>
+            <option value="all">All Time</option>
         </select>
     </div>
     <div id="market-news" class="news-col"></div>
@@ -132,7 +131,8 @@ function toggleTicker(){
     document.getElementById('ticker-toggle').textContent = tickerPaused ? 'Play' : 'Pause';
 }
 async function loadNews() {
-    const res = await fetch('/api/news');
+    const age = document.getElementById('news-filter').value;
+    const res = await fetch(`/api/news?age=${age}`);
     const data = await res.json();
     const marketDiv = document.getElementById('market-news');
     const worldDiv = document.getElementById('world-news');
@@ -141,7 +141,6 @@ async function loadNews() {
     const cutoff = (() => {
         const val = document.getElementById('news-filter').value;
         const now = new Date();
-        if(val === '24h') return new Date(now.getTime() - 24*60*60*1000);
         if(val === 'week') return new Date(now.getTime() - 7*24*60*60*1000);
         if(val === 'month') return new Date(now.getTime() - 30*24*60*60*1000);
         return null;
