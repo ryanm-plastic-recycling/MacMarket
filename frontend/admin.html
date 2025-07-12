@@ -129,13 +129,19 @@
             }
             const btn = document.createElement('button');
             btn.textContent = 'Test';
-            const pre = document.createElement('pre');
+            const pre = document.createElement('div');
+            pre.className = 'api-result';
             btn.addEventListener('click', async () => {
                 setStatus('Testing...', 'loading');
                 try {
                     const res = await fetch(select.value);
                     const text = await res.text();
-                    pre.textContent = text;
+                    try {
+                        const data = JSON.parse(text);
+                        pre.innerHTML = prettyPrint(data);
+                    } catch {
+                        pre.textContent = text;
+                    }
                     setStatus(res.ok ? 'OK' : 'Error', res.ok ? 'ok' : 'error');
                 } catch(err){
                     pre.textContent = err.message;
@@ -146,6 +152,34 @@
             div.appendChild(pre);
             container.appendChild(div);
         });
+    }
+
+    function escapeHtml(str){
+        return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    }
+
+    function prettyPrint(data){
+        if(Array.isArray(data)){
+            if(data.length===0) return '<em>No data</em>';
+            if(typeof data[0]==='object' && data[0]!==null){
+                const cols = Object.keys(data[0]);
+                let html = '<table class="api-table"><thead><tr>' + cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+                data.forEach(row=>{
+                    html += '<tr>' + cols.map(c=>`<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('') + '</tr>';
+                });
+                html += '</tbody></table>';
+                return html;
+            }
+            return '<ul>' + data.map(v=>`<li>${escapeHtml(String(v))}</li>`).join('') + '</ul>';
+        } else if(typeof data==='object' && data!==null){
+            let html = '<table class="api-table"><tbody>';
+            Object.entries(data).forEach(([k,v])=>{
+                html += `<tr><th>${escapeHtml(k)}</th><td>${typeof v==='object'?prettyPrint(v):escapeHtml(String(v))}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+        return escapeHtml(String(data));
     }
 </script>
 </body>

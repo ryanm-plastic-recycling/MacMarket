@@ -239,10 +239,25 @@ th { border-bottom: 1px solid #ccc; }
   margin: 20px 0;
 }
 
-.api-test pre {
+.api-test .api-result {
   background: var(--ticker-bg);
   color: var(--ticker-text);
   padding: 10px;
   overflow: auto;
   max-height: 200px;
+}
+
+.api-test table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.api-test th,
+.api-test td {
+  border: 1px solid #ccc;
+  padding: 4px 6px;
+  text-align: left;
+}
+.api-test th {
+  background: #f0f0f0;
 }
