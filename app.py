@@ -192,32 +192,33 @@ def news(age: str = "week"):
     add_rss('https://feeds.bbci.co.uk/news/world/rss.xml', world)
 
     if age in {"week", "month"}:
-        from datetime import datetime, timedelta
-        now = datetime.utcnow()
-        if age == "week":
-            cutoff = now - timedelta(days=7)
-        else:
-            cutoff = now - timedelta(days=30)
+        days = 7 if age == "week" else 30
 
-        def filter_articles(arr):
+        def filter_articles(articles, days=7):
+            from datetime import datetime, timedelta, timezone
+            import dateutil.parser
+
+            # Create a UTC-aware cutoff timestamp
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
             filtered = []
-            for a in arr:
-                date = a.get("date")
-                if not date:
-                    continue
-                try:
-                    dt = datetime.strptime(date[:25], "%a, %d %b %Y %H:%M:%S")
-                except Exception:
-                    try:
-                        dt = datetime.fromisoformat(date)
-                    except Exception:
-                        continue
+
+            for item in articles:
+                # Parse the article date and normalize to UTC
+                dt = dateutil.parser.parse(item['date'])
+                if dt.tzinfo is None:
+                    # Assume UTC if no timezone provided
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    dt = dt.astimezone(timezone.utc)
+
+                # Compare two UTC-aware datetimes
                 if dt >= cutoff:
-                    filtered.append(a)
+                    filtered.append(item)
+
             return filtered
 
-        market[:] = filter_articles(market)
-        world[:] = filter_articles(world)
+        market[:] = filter_articles(market, days=days)
+        world[:] = filter_articles(world, days=days)
 
     return {"market": market, "world": world}
 
