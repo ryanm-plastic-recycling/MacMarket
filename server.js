@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import 'dotenv/config';
 import { fetchMarket } from './services/marketData.js';
 import { fetchPolitical } from './services/politicalData.js';
@@ -10,6 +12,8 @@ import { runBacktest } from './backtest/strategyEngine.js';
 import { fetchDiscord } from './services/discordData.js';
 import { validateMessages } from './services/validateDiscussion.js';
 import { query as dbQuery } from './db/index.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,7 +76,10 @@ app.post('/api/scenarios', express.json(), async (req, res) => {
   }
 });
 
-app.use(express.static('frontend'));
+app.use(express.static(path.join(__dirname, 'frontend', 'build')));
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'));
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

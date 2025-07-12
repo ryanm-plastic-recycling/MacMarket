@@ -72,6 +72,28 @@ def get_whale_moves(limit: int = 5) -> list[dict]:
     return []
 
 
+async def fetch_unusual_whales(limit: int = 5) -> list[dict]:
+    """Fetch latest unusual whale alerts."""
+    import httpx
+
+    key = os.getenv("WHALES_API_KEY")
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(
+                "https://api.unusualwhales.com/alerts", headers=headers
+            )
+            if r.status_code == 200:
+                data = r.json()
+                if isinstance(data, dict):
+                    data = data.get("results", data)
+                if isinstance(data, list):
+                    return data[:limit]
+    except Exception:
+        pass
+    return []
+
+
 def get_political_moves(symbols: list[str]) -> dict:
     """Return counts of recent congressional trades for each symbol."""
     key = os.getenv("QUIVER_API_KEY")
