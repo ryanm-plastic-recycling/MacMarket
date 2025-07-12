@@ -602,6 +602,35 @@ def theme_js():
         return Response(js_file.read_text(), media_type="application/javascript")
     raise HTTPException(status_code=404, detail="Not Found")
 
+# Additional static assets for the simple frontend
+@app.get("/ticker.js")
+def ticker_js():
+    js_file = FRONTEND_DIR / "ticker.js"
+    if js_file.exists():
+        return Response(js_file.read_text(), media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Not Found")
+
+@app.get("/Dashboard.jsx")
+def dashboard_jsx():
+    jsx_file = FRONTEND_DIR / "Dashboard.jsx"
+    if jsx_file.exists():
+        return Response(jsx_file.read_text(), media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Not Found")
+
+@app.get("/TopCongressBuysWidget.jsx")
+def congress_widget_jsx():
+    jsx_file = FRONTEND_DIR / "TopCongressBuysWidget.jsx"
+    if jsx_file.exists():
+        return Response(jsx_file.read_text(), media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Not Found")
+
+@app.get("/TopCongressBuysWidget.css")
+def congress_widget_css():
+    css_file = FRONTEND_DIR / "TopCongressBuysWidget.css"
+    if css_file.exists():
+        return Response(css_file.read_text(), media_type="text/css")
+    raise HTTPException(status_code=404, detail="Not Found")
+
 
 # Serve simple static HTML pages for the frontend
 @app.get("/{page_name}", response_class=HTMLResponse)
