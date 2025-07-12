@@ -62,6 +62,13 @@ Planned support for:
 - API quota management
 - Optional alerts via email/SMS
 - Political trading data aggregation (QuiverQuant, Unusual Whales, Capitol Trades)
+- Web-based backtesting page with saved runs
+- Draggable ticker bar and ticker management page
+- Panorama API endpoint aggregates prices, alerts and news
+- News feed defaults to the last week and is timezone-aware
+- Signals include exit price/date suggestions
+- Admin panel features an API tester for validating data sources
+- Optional Discord bot integration for realtime alerts
 
 ## 🛠️ To Do
 - [ ] Decide on broker(s) to integrate
@@ -180,6 +187,7 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    `.env` file automatically if present.
 8. Optionally set `API_DAILY_QUOTA` to limit requests per IP (default `1000`).
    Set `OPENAI_API_KEY` to enable macro signal generation.
+   Set `DISCORD_BOT_TOKEN` and `DISCORD_CHANNEL_IDS` to enable Discord alerts.
 9. The login page uses Google reCAPTCHA (v2). The default site key is
    `key_here` and the default secret key is
    `secret_here`. You can override the secret by
@@ -189,10 +197,10 @@ Email alerts use `SMTP_HOST`, `SMTP_USER`, and `SMTP_PASS`. SMS alerts require `
    uvicorn app:app --reload --host 0.0.0.0 --port 9500
    ```
 11. Navigate to `http://localhost:9500/index.html` for the main dashboard. The
-   backend also serves `login.html`, `account.html`, `tickers.html`, and `admin.html` so you can
-   visit them directly via `/login.html`, `/account.html`, `/tickers.html`, and `/admin.html`.
-12. Additional pages `signals.html` and `journal.html` provide interfaces for the
-    signals, journal, positions, and recommendations endpoints.
+   backend also serves `login.html`, `account.html`, `tickers.html`, `backtests.html`, and `admin.html` so you can
+   visit them directly via `/login.html`, `/account.html`, `/tickers.html`, `/backtests.html`, and `/admin.html`.
+12. The site includes pages `signals.html` and `journal.html` plus `backtests.html` for running web-based backtests.
+    The admin panel now features an API tester to verify integrations.
 
 ### Risk Management Module
 
@@ -222,6 +230,8 @@ Several additional endpoints are available:
 * `GET /api/backtest/<symbol>` &mdash; runs a simple SMA crossover backtest.
 * `POST /api/backtest/<symbol>` &mdash; run a backtest and store the results.
 * `GET /api/backtests` &mdash; list saved backtest runs (filterable by `user_id`).
+* `GET /api/panorama` &mdash; aggregated market snapshot used by the dashboard.
+* `GET /api/signals/rankings` &mdash; current signal rankings (JSON or CSV).
 * `GET /api/users/<id>/journal` and `POST /api/users/<id>/journal` &mdash; manage personal trade journal entries.
 * `GET /api/users/<id>/positions` &mdash; list current positions for a user.
 * `GET /api/users/<id>/recommendations` &mdash; provide simple trade recommendations based on the user's tickers.
@@ -230,7 +240,7 @@ Several additional endpoints are available:
 * `GET /api/quiver/political?symbols=AAPL` &mdash; counts of recent congressional trades for the tickers (requires `QUIVER_API_KEY`).
 * `GET /api/quiver/lobby?symbols=AAPL` &mdash; counts of recent lobbying disclosures for the tickers (requires `QUIVER_API_KEY`).
 
-The frontend now includes `signals.html` and `journal.html` pages to interact with these endpoints.
+The frontend now includes `signals.html`, `journal.html`, and `backtests.html` pages to interact with these endpoints and view saved results.
 
 ### Optional Security Flags
 You can disable certain login checks for local testing by setting environment
