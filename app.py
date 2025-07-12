@@ -9,7 +9,7 @@ import backend.app.security as security
 from backend.app import risk
 import pyotp
 from backend.app import signals, backtest, alerts
-from backend.app.signals import format_price
+from backend.app.signals import format_price, fetch_unusual_whales
 from datetime import datetime
 import json
 from fastapi import Request
@@ -555,9 +555,10 @@ def list_backtests(user_id: int | None = None, db: Session = Depends(get_db)):
     return runs
 
 @app.get("/api/signals/alert")
-def latest_alert():
-    """Return the latest trading alert."""
-    return LATEST_ALERT
+async def latest_alert():
+    """Return recent whale alerts."""
+    alerts = await fetch_unusual_whales()
+    return alerts
 
 
 @app.post("/api/signals/alert")
