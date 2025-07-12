@@ -234,3 +234,15 @@ th { border-bottom: 1px solid #ccc; }
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.api-test {
+  margin: 20px 0;
+}
+
+.api-test pre {
+  background: var(--ticker-bg);
+  color: var(--ticker-text);
+  padding: 10px;
+  overflow: auto;
+  max-height: 200px;
+}

@@ -34,6 +34,9 @@
     <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
     <h2>User Management</h2>
     <table id="users"><thead><tr><th>Username</th><th>Email</th><th>OTP</th><th>Admin</th><th>Last Login</th><th>New Password</th><th>Actions</th></tr></thead><tbody></tbody></table>
+
+    <h2>API Tester</h2>
+    <div id="api-tester"></div>
 </main>
 <script>
     if(localStorage.getItem('isAdmin') !== '1') {
@@ -80,7 +83,70 @@
             setStatus('Saved', 'ok');
         }
     });
-    window.onload = loadUsers;
+    window.onload = () => {
+        loadUsers();
+        initApiTester();
+    };
+
+    function initApiTester(){
+        const apis = {
+            'NewsAPI': { endpoints: { 'Top Headlines': '/api/news' } },
+            'Quiver': {
+                endpoints: {
+                    'Risk Scores': '/api/quiver/risk?symbols=AAPL',
+                    'Whale Moves': '/api/quiver/whales?limit=5',
+                    'Political Trades': '/api/quiver/political?symbols=AAPL',
+                    'Lobbying Disclosures': '/api/quiver/lobby?symbols=AAPL'
+                }
+            },
+            'Unusual Whales': { endpoints: { 'Alerts': '/api/signals/alert' } },
+            'Coingecko': { endpoints: { 'Top Coins': '/api/crypto' } },
+            'FRED': { endpoints: { 'PPI Series': '/api/macro' } }
+        };
+
+        const container = document.getElementById('api-tester');
+        Object.entries(apis).forEach(([name, info]) => {
+            const div = document.createElement('div');
+            div.className = 'api-test';
+            const title = document.createElement('h3');
+            title.textContent = name;
+            div.appendChild(title);
+            const entries = Object.entries(info.endpoints);
+            let select;
+            if(entries.length > 1){
+                select = document.createElement('select');
+                entries.forEach(([label, path]) => {
+                    const opt = document.createElement('option');
+                    opt.value = path;
+                    opt.textContent = label;
+                    select.appendChild(opt);
+                });
+                div.appendChild(select);
+            } else {
+                select = document.createElement('input');
+                select.type = 'hidden';
+                select.value = entries[0][1];
+            }
+            const btn = document.createElement('button');
+            btn.textContent = 'Test';
+            const pre = document.createElement('pre');
+            btn.addEventListener('click', async () => {
+                setStatus('Testing...', 'loading');
+                try {
+                    const res = await fetch(select.value);
+                    const text = await res.text();
+                    pre.textContent = text;
+                    setStatus(res.ok ? 'OK' : 'Error', res.ok ? 'ok' : 'error');
+                } catch(err){
+                    pre.textContent = err.message;
+                    setStatus('Error', 'error');
+                }
+            });
+            div.appendChild(btn);
+            div.appendChild(pre);
+            container.appendChild(div);
+        });
+    }
 </script>
 </body>
 </html>
