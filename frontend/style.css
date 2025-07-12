@@ -212,3 +212,25 @@ th { border-bottom: 1px solid #ccc; }
 #status.ok { background: #2f8f2f; }
 #status.error { background: #b22222; }
 
+
+#loading-spinner {
+  display: none;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2000;
+}
+
+#loading-spinner .spin {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 4px solid rgba(0,0,0,0.2);
+  border-top-color: #db9200;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

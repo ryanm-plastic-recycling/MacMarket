@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initAuth();
   initHeader();
+  initLoading();
   if (window.initTickerBar) {
     initTickerBar();
   }
@@ -74,3 +75,25 @@ function setStatus(message, type = '') {
 }
 
 window.setStatus = setStatus;
+
+function initLoading() {
+  const spinner = document.createElement('div');
+  spinner.id = 'loading-spinner';
+  spinner.innerHTML = '<div class="spin"></div>';
+  document.body.appendChild(spinner);
+  let count = 0;
+  const origFetch = window.fetch;
+  window.fetch = async (...args) => {
+    count++;
+    spinner.style.display = 'block';
+    try {
+      return await origFetch(...args);
+    } finally {
+      count--;
+      if (count <= 0) {
+        spinner.style.display = 'none';
+        count = 0;
+      }
+    }
+  };
+}
