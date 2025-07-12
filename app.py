@@ -19,7 +19,8 @@ import os
 # simple in-memory alert store
 LATEST_ALERT = {"id": 0, "ticker": "AAPL", "price": 0.0}
 
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import yfinance as yf
 import requests
@@ -34,6 +35,16 @@ load_dotenv()
 app = FastAPI()
 political_cache = TTLCache(maxsize=1, ttl=300)
 quiver_cache = TTLCache(maxsize=10, ttl=300)
+
+# Serve React build if present
+FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
+REACT_BUILD_DIR = FRONTEND_DIR / "build"
+if REACT_BUILD_DIR.is_dir():
+    app.mount(
+        "/",
+        StaticFiles(directory=REACT_BUILD_DIR, html=True),
+        name="static",
+    )
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -61,8 +72,8 @@ except Exception:
     pass
 
 # Directory containing the HTML frontend files
-FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
-
+# (retained for legacy direct HTML endpoints)
+# FRONTEND_DIR already defined above
 
 def get_db():
     db = SessionLocal()
@@ -92,6 +103,8 @@ def db_check():
 @app.get("/", response_class=HTMLResponse)
 def index():
     """Serve the main frontend page."""
+    if REACT_BUILD_DIR.is_dir():
+        return FileResponse(REACT_BUILD_DIR / "index.html")
     html_path = FRONTEND_DIR / "index.html"
     return html_path.read_text()
 
@@ -292,6 +305,25 @@ async def quiver_lobby(symbols: str):
     data = signals.get_lobby_disclosures(syms)
     quiver_cache[key] = data
     return {"lobby": data}
+
+
+@app.get("/api/panorama")
+async def panorama(symbols: str = "AAPL,MSFT,GOOGL,AMZN,TSLA,SPY,QQQ,GLD,BTC-USD,ETH-USD", limit: int = 5):
+    """Return aggregated market data used by the dashboard."""
+    market = ticker_data(symbols)["data"]
+    alerts = await fetch_unusual_whales(limit=limit)
+    political_data = await political()
+    risk = (await quiver_risk(symbols))["risk"]
+    whales = (await quiver_whales(limit=limit))["whales"]
+    news_data = news()
+    return {
+        "market": market,
+        "alerts": alerts,
+        "political": political_data,
+        "risk": risk,
+        "whales": whales,
+        "news": news_data,
+    }
 
 
 @app.post("/api/register")
@@ -671,4 +703,14 @@ def serve_page(page_name: str):
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():
             return html_file.read_text()
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
+# Fallback for SPA routes when React build is present
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    if REACT_BUILD_DIR.is_dir():
+        index_file = REACT_BUILD_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
     raise HTTPException(status_code=404, detail="Not Found")
