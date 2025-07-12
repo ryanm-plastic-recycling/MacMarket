@@ -259,5 +259,6 @@ th { border-bottom: 1px solid #ccc; }
   text-align: left;
 }
 .api-test th {
-  background: #f0f0f0;
+  background: var(--ticker-bg);
+  color: var(--ticker-text);
 }
