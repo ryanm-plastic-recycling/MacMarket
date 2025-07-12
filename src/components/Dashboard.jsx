@@ -5,19 +5,21 @@ export default function Dashboard() {
   const [political, setPolitical] = useState([]);
   const [riskScores, setRiskScores] = useState([]);
   const [whaleMoves, setWhaleMoves] = useState([]);
+  const [newsItems, setNewsItems] = useState([]);
+  const [tickerData, setTickerData] = useState([]);
 
   useEffect(() => {
-    fetch('/api/signals/alert')
-      .then(res => res.json()).then(setAlerts).catch(() => setAlerts([]));
-
-    fetch('/api/quiver/political')
-      .then(res => res.json()).then(d => setPolitical(d.political || d)).catch(() => setPolitical([]));
-
-    fetch('/api/quiver/risk?symbols=AAPL,MSFT,GOOGL,AMZN,TSLA,SPY,QQQ,GLD,BTC-USD,ETH-USD,RVN-USD,XMR-USD')
-      .then(res => res.json()).then(d => setRiskScores(d.risk || d)).catch(() => setRiskScores([]));
-
-    fetch('/api/quiver/whales?limit=5')
-      .then(res => res.json()).then(d => setWhaleMoves(d.whales || d)).catch(() => setWhaleMoves([]));
+    fetch('/api/panorama?symbols=AAPL,MSFT,GOOGL,AMZN,TSLA,SPY,QQQ,GLD,BTC-USD,ETH-USD')
+      .then(res => res.json())
+      .then(({ market, alerts, political, risk, whales, news }) => {
+        setTickerData(market || []);
+        setAlerts(alerts || []);
+        setPolitical(political || []);
+        setRiskScores(risk || []);
+        setWhaleMoves(whales || []);
+        setNewsItems(news || []);
+      })
+      .catch(err => console.error('load panorama failed', err));
   }, []);
 
   return (
@@ -38,6 +40,16 @@ export default function Dashboard() {
       <h2>Quiver Whale Moves</h2>
       {whaleMoves.length ? whaleMoves.map(w => <div key={w.transaction_id}>{`${w.symbol}: ${w.amount}`}</div>)
                          : <p>No whale moves right now.</p>}
+
+      <h2>Ticker Data</h2>
+      {tickerData.length ? tickerData.map(t => (
+        <div key={t.symbol}>{`${t.symbol}: ${t.value}`}</div>
+      )) : <p>No market data.</p>}
+
+      <h2>News Feed</h2>
+      {newsItems.length ? newsItems.map(n => (
+        <div key={n.metrics.url}>{n.metrics.title}</div>
+      )) : <p>No news right now.</p>}
     </div>
   );
 }
