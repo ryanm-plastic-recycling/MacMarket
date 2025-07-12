@@ -75,7 +75,10 @@ def test_recommendations_endpoint(monkeypatch):
             {
                 "symbol": "AAPL",
                 "action": "buy",
-                "exit": {"low": 100, "medium": 105, "high": 110},
+                "entry_date": "2024-01-01",
+                "entry_price": 100,
+                "exit_date": "2024-01-10",
+                "exit_price": 105,
                 "probability": 0.6,
                 "reason": "test",
             }
@@ -102,7 +105,10 @@ def test_single_recommendation(monkeypatch):
             {
                 "symbol": symbols[0],
                 "action": "buy",
-                "exit": {"low": 9, "medium": 10, "high": 11},
+                "entry_date": "2024-01-01",
+                "entry_price": 10,
+                "exit_date": "2024-01-02",
+                "exit_price": 11,
                 "probability": 0.5,
                 "reason": "r",
             }
@@ -151,8 +157,26 @@ def test_signal_rankings_json(monkeypatch):
     monkeypatch.setattr(
         "app.signals.generate_recommendations",
         lambda syms: [
-            {"symbol": "A", "probability": 0.8, "action": "buy", "exit": {"low": 9, "medium": 10, "high": 12}, "reason": "r"},
-            {"symbol": "B", "probability": 0.5, "action": "buy", "exit": {"low": 9, "medium": 10, "high": 12}, "reason": "r"},
+            {
+                "symbol": "A",
+                "probability": 0.8,
+                "action": "buy",
+                "entry_date": "2024-01-01",
+                "entry_price": 1,
+                "exit_date": "2024-01-10",
+                "exit_price": 1.1,
+                "reason": "r",
+            },
+            {
+                "symbol": "B",
+                "probability": 0.5,
+                "action": "buy",
+                "entry_date": "2024-01-01",
+                "entry_price": 1,
+                "exit_date": "2024-01-10",
+                "exit_price": 1.1,
+                "reason": "r",
+            },
         ],
     )
     resp = client.get("/api/signals/rankings")
@@ -166,8 +190,26 @@ def test_signal_rankings_csv(monkeypatch):
     monkeypatch.setattr(
         "app.signals.generate_recommendations",
         lambda syms: [
-            {"symbol": "A", "probability": 0.7, "action": "buy", "exit": {"low": 0, "medium": 0, "high": 0}, "reason": "r"},
-            {"symbol": "B", "probability": 0.4, "action": "sell", "exit": {"low": 0, "medium": 0, "high": 0}, "reason": "r"},
+            {
+                "symbol": "A",
+                "probability": 0.7,
+                "action": "buy",
+                "entry_date": "2024-01-01",
+                "entry_price": 1,
+                "exit_date": "2024-01-10",
+                "exit_price": 1.1,
+                "reason": "r",
+            },
+            {
+                "symbol": "B",
+                "probability": 0.4,
+                "action": "sell",
+                "entry_date": "2024-01-01",
+                "entry_price": 1,
+                "exit_date": "2024-01-10",
+                "exit_price": 1.1,
+                "reason": "r",
+            },
         ],
     )
     resp = client.get("/api/signals/rankings?format=csv")
