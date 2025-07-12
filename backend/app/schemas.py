@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from enum import Enum
@@ -96,6 +98,12 @@ class JournalEntry(JournalEntryBase):
 
     class Config:
         from_attributes = True
+
+
+class JournalEntryWithRec(JournalEntry):
+    """A journal entry with an optional recommendation."""
+
+    recommendation: Optional[Recommendation] = None
 
 class Position(BaseModel):
     id: int | None = None
