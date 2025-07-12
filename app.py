@@ -635,6 +635,52 @@ def update_alert(alert: dict):
     return {"status": "ok"}
 
 
+@app.get("/api/crypto")
+def crypto(limit: int = 5):
+    """Return top crypto market data from Coingecko."""
+    endpoint = os.getenv("COINGECKO_ENDPOINT", "https://api.coingecko.com/api/v3")
+    url = f"{endpoint}/coins/markets"
+    try:
+        r = requests.get(
+            url,
+            params={
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": limit,
+                "page": 1,
+                "sparkline": "false",
+            },
+            timeout=10,
+        )
+        if r.ok:
+            return {"data": r.json()}
+    except Exception as exc:  # pragma: no cover - network
+        raise HTTPException(status_code=500, detail=str(exc))
+    raise HTTPException(status_code=502, detail="API error")
+
+
+@app.get("/api/macro")
+def macro():
+    """Return recent PPI data from FRED."""
+    key = os.getenv("FRED_API_KEY")
+    url = "https://api.stlouisfed.org/fred/series/observations"
+    params = {
+        "series_id": "PPIACO",
+        "api_key": key,
+        "file_type": "json",
+        "sort_order": "desc",
+        "limit": 12,
+    }
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        if r.ok:
+            data = r.json().get("observations", [])
+            return {"data": data}
+    except Exception as exc:  # pragma: no cover - network
+        raise HTTPException(status_code=500, detail=str(exc))
+    raise HTTPException(status_code=502, detail="API error")
+
+
 @app.get("/api/signals/{symbol}")
 def get_signals(symbol: str):
     news = signals.news_sentiment_signal(symbol)
