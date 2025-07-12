@@ -147,7 +147,7 @@ def current_price(symbol: str):
 
 
 @app.get("/api/news")
-def news():
+def news(age: str = "week"):
     """Fetch finance and world news articles from multiple sources."""
     market = []
     world = []
@@ -177,6 +177,35 @@ def news():
     add_rss('https://feeds.foxbusiness.com/foxbusiness/markets', market)
     add_rss('https://rss.nytimes.com/services/xml/rss/nyt/World.xml', world)
     add_rss('https://feeds.bbci.co.uk/news/world/rss.xml', world)
+
+    if age in {"week", "month"}:
+        from datetime import datetime, timedelta
+        now = datetime.utcnow()
+        if age == "week":
+            cutoff = now - timedelta(days=7)
+        else:
+            cutoff = now - timedelta(days=30)
+
+        def filter_articles(arr):
+            filtered = []
+            for a in arr:
+                date = a.get("date")
+                if not date:
+                    continue
+                try:
+                    dt = datetime.strptime(date[:25], "%a, %d %b %Y %H:%M:%S")
+                except Exception:
+                    try:
+                        dt = datetime.fromisoformat(date)
+                    except Exception:
+                        continue
+                if dt >= cutoff:
+                    filtered.append(a)
+            return filtered
+
+        market[:] = filter_articles(market)
+        world[:] = filter_articles(world)
+
     return {"market": market, "world": world}
 
 
