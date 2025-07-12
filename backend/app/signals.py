@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import logging
+import datetime
 import requests
 import pandas as pd
 import yfinance as yf
@@ -15,6 +17,11 @@ except Exception:  # pragma: no cover - optional dep
 
 POSITIVE_WORDS = {"gain", "growth", "bull", "optimistic", "up"}
 NEGATIVE_WORDS = {"loss", "drop", "bear", "pessimistic", "down"}
+
+# Exit strategy configuration
+EXIT_PROFIT_TARGET_PCT = 0.05  # 5% profit target
+EXIT_STOP_LOSS_PCT = 0.02     # 2% stop-loss
+EXIT_MAX_HOLD_DAYS = 30       # time-based exit after 30 trading days
 
 
 def format_price(value: float | None) -> float | None:
@@ -223,6 +230,42 @@ def _current_price(symbol: str) -> float | None:
         return None
 
 
+def _calculate_exit(
+    symbol: str, entry_price: float, entry_date: datetime.date
+) -> tuple[datetime.date, float]:
+    """Return exit date and price based on fixed target, stop and time limit."""
+    forward = None
+    exit_date = None
+    exit_price = None
+    try:
+        forward = yf.download(
+            symbol,
+            start=entry_date,
+            period=f"{EXIT_MAX_HOLD_DAYS}d",
+            interval="1d",
+        )
+        profit_target = entry_price * (1 + EXIT_PROFIT_TARGET_PCT)
+        stop_loss = entry_price * (1 - EXIT_STOP_LOSS_PCT)
+        for date, row in forward.iterrows():
+            price = row["Close"]
+            if price >= profit_target:
+                exit_date, exit_price = date.date(), profit_target
+                break
+            if price <= stop_loss:
+                exit_date, exit_price = date.date(), stop_loss
+                break
+        if exit_date is None and forward is not None and not forward.empty:
+            last_date = forward.index[-1].date()
+            exit_date = last_date
+            exit_price = forward.iloc[-1]["Close"]
+    except Exception as exc:
+        logging.exception("Exit calculation failed for %s", symbol)
+    if exit_date is None:
+        exit_date = entry_date + datetime.timedelta(days=EXIT_MAX_HOLD_DAYS)
+        exit_price = entry_price
+    return exit_date, float(exit_price)
+
+
 def _exit_levels(symbol: str, action: str, price: float) -> tuple[dict | None, str]:
     """Return low/medium/high risk exit levels and an explanation."""
     try:
@@ -279,10 +322,12 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         lob = lobby.get(sym, 0)
         score = base_score - risk + 0.2 * pol + 0.1 * lob
         action = "buy" if score >= 0 else "sell"
-        exits = None
-        exit_reason = ""
-        if price:
-            exits, exit_reason = _exit_levels(sym, action, price)
+        entry_date = datetime.date.today()
+        entry_price = price
+        exit_date = None
+        exit_price = None
+        if entry_price is not None:
+            exit_date, exit_price = _calculate_exit(sym, entry_price, entry_date)
         probability = round(min(0.9, 0.5 + min(abs(score) / 10, 0.4)), 2)
         parts = [
             f"News score {news.get('score')} and {tech.get('signal')} MA signal",
@@ -293,12 +338,13 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         if lob:
             parts.append(f"{lob} lobby disclosures")
         reason = " ".join(parts) + f" suggest {action}."
-        if exit_reason:
-            reason += f" {exit_reason}"
         recs.append({
             "symbol": sym,
             "action": action,
-            "exit": exits,
+            "entry_date": entry_date.isoformat(),
+            "entry_price": format_price(entry_price),
+            "exit_date": exit_date.isoformat() if exit_date else None,
+            "exit_price": format_price(exit_price),
             "probability": probability,
             "reason": reason,
         })
