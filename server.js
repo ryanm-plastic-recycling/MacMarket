@@ -48,6 +48,42 @@ app.post('/api/backtest', express.json(), async (req, res) => {
   }
 });
 
+// List tickers
+app.get('/api/tickers', async (req, res) => {
+  try {
+    const [rows] = await dbQuery('SELECT id, symbol FROM tickers ORDER BY position');
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update ticker order
+app.put('/api/tickers/order', express.json(), async (req, res) => {
+  try {
+    const ids = req.body;
+    for (let i = 0; i < ids.length; i++) {
+      await dbQuery('UPDATE tickers SET position = ? WHERE id = ?', [i, ids[i]]);
+    }
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a ticker
+app.delete('/api/tickers/:id', async (req, res) => {
+  try {
+    await dbQuery('DELETE FROM tickers WHERE id = ?', [req.params.id]);
+    res.sendStatus(204);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // List saved scenarios
 app.get('/api/scenarios', async (req, res) => {
   try {
