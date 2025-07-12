@@ -35,7 +35,7 @@
     <h2>Trade Journal</h2>
     <table id="journal-table">
         <thead>
-            <tr><th>Date</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Current</th><th>P/L $</th><th>P/L %</th><th>Rationale</th><th>Actions</th></tr>
+            <tr><th>Date</th><th>Symbol</th><th>Action</th><th>Qty</th><th>Price</th><th>Current</th><th>P/L $</th><th>P/L %</th><th>Rec</th><th>Rationale</th><th>Actions</th></tr>
         </thead>
         <tbody></tbody>
     </table>
@@ -67,7 +67,7 @@ if(!userId){ window.location.href = 'login.html'; }
 if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
 
 async function loadJournal(){
-    const res = await fetch(`/api/users/${userId}/journal`);
+    const res = await fetch(`/api/users/${userId}/journal?include_recs=1`);
     if(!res.ok) return;
     const data = await res.json();
     const body = document.querySelector('#journal-table tbody');
@@ -88,11 +88,18 @@ async function loadJournal(){
             }
         }
         const cls = pl >= 0 ? 'up' : 'down';
+        let rec = '';
+        if(e.recommendation){
+            const r = e.recommendation;
+            const prob = Math.round(r.probability * 100) + '%';
+            rec = `${r.action} (${prob})`;
+        }
         tr.innerHTML = `<td>${when}</td><td>${e.symbol}</td><td>${e.action}</td>`+
             `<td>${e.quantity}</td><td>${e.price}</td>`+
             `<td>${cur!==null?cur.toFixed(2):''}</td>`+
             `<td class="${cls}">${pl.toFixed(2)}</td>`+
             `<td class="${cls}">${pct.toFixed(2)}%</td>`+
+            `<td>${rec}</td>`+
             `<td>${e.rationale||''}</td>`;
         const actions = document.createElement('td');
         const editBtn = document.createElement('button');

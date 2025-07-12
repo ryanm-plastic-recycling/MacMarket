@@ -540,9 +540,25 @@ def admin_update_otp(user_id: int, data: schemas.OtpUpdate, db: Session = Depend
 def create_journal(user_id: int, entry: schemas.JournalEntryCreate, db: Session = Depends(get_db)):
     return crud.create_journal_entry(db, user_id, entry.symbol, entry.action, entry.quantity, entry.price, entry.rationale)
 
-@app.get("/api/users/{user_id}/journal", response_model=list[schemas.JournalEntry])
-def read_journal(user_id: int, db: Session = Depends(get_db)):
-    return crud.get_journal_entries(db, user_id)
+@app.get(
+    "/api/users/{user_id}/journal",
+    response_model=list[schemas.JournalEntryWithRec],
+)
+def read_journal(
+    user_id: int,
+    include_recs: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Return journal entries with optional recommendations."""
+    entries = crud.get_journal_entries(db, user_id)
+    if include_recs:
+        for e in entries:
+            recs = signals.generate_recommendations([e.symbol])
+            e.recommendation = recs[0] if recs else None
+    else:
+        for e in entries:
+            e.recommendation = None
+    return entries
 
 
 @app.put("/api/users/{user_id}/journal/{entry_id}", response_model=schemas.JournalEntry)
