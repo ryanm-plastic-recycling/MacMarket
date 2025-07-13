@@ -32,8 +32,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Caching configuration
+NEWS_CACHE_TTL = int(os.getenv("NEWS_CACHE_TTL", "300"))
+POLITICAL_CACHE_TTL = int(os.getenv("POLITICAL_CACHE_TTL", "300"))
+
 app = FastAPI()
-political_cache = TTLCache(maxsize=1, ttl=300)
+
+# Initialize caches only if TTL > 0 so caching can be disabled via env vars
+political_cache = TTLCache(maxsize=1, ttl=POLITICAL_CACHE_TTL) if POLITICAL_CACHE_TTL > 0 else None
+news_cache = TTLCache(maxsize=2, ttl=NEWS_CACHE_TTL) if NEWS_CACHE_TTL > 0 else None
 quiver_cache = TTLCache(maxsize=10, ttl=300)
 
 # Serve React build if present
@@ -160,36 +167,55 @@ def current_price(symbol: str):
 
 
 @app.get("/api/news")
-def news(age: str = "week"):
+async def news(age: str = "week"):
     """Fetch finance and world news articles from multiple sources."""
-    market = []
-    world = []
-    try:
-        res = requests.get("https://hn.algolia.com/api/v1/search", params={"query": "market", "tags": "story"})
-        market.extend([
-            {"title": h.get("title"), "url": h.get("url"), "date": h.get("created_at")}
-            for h in res.json().get("hits", [])[:5]
-        ])
-    except Exception:
-        pass
-    def add_rss(url, dest):
+    if news_cache is not None and age in news_cache:
+        return news_cache[age]
+
+    market: list[dict] = []
+    world: list[dict] = []
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        hn_task = client.get(
+            "https://hn.algolia.com/api/v1/search",
+            params={"query": "market", "tags": "story"},
+        )
+        rss_urls = [
+            ("https://feeds.foxnews.com/foxnews/business", market),
+            ("https://www.bloomberg.com/feed/podcast/etf-report.xml", market),
+            ("https://feeds.foxbusiness.com/foxbusiness/markets", market),
+            ("https://rss.nytimes.com/services/xml/rss/nyt/World.xml", world),
+            ("https://feeds.bbci.co.uk/news/world/rss.xml", world),
+        ]
+        rss_tasks = [client.get(url) for url, _ in rss_urls]
+        responses = await asyncio.gather(hn_task, *rss_tasks, return_exceptions=True)
+
+    hn_resp = responses[0]
+    if isinstance(hn_resp, httpx.Response) and hn_resp.status_code == 200:
         try:
-            r = requests.get(url)
-            from xml.etree import ElementTree
-            root = ElementTree.fromstring(r.content)
-            for item in root.findall('.//item')[:5]:
-                title = item.findtext('title')
-                link = item.findtext('link')
-                date = item.findtext('pubDate')
-                if title and link:
-                    dest.append({"title": title, "url": link, "date": date})
+            market.extend(
+                [
+                    {"title": h.get("title"), "url": h.get("url"), "date": h.get("created_at")}
+                    for h in hn_resp.json().get("hits", [])[:5]
+                ]
+            )
         except Exception:
             pass
-    add_rss('https://feeds.foxnews.com/foxnews/business', market)
-    add_rss('https://www.bloomberg.com/feed/podcast/etf-report.xml', market)
-    add_rss('https://feeds.foxbusiness.com/foxbusiness/markets', market)
-    add_rss('https://rss.nytimes.com/services/xml/rss/nyt/World.xml', world)
-    add_rss('https://feeds.bbci.co.uk/news/world/rss.xml', world)
+
+    for resp, (_url, dest) in zip(responses[1:], rss_urls):
+        if isinstance(resp, httpx.Response) and resp.status_code == 200:
+            try:
+                from xml.etree import ElementTree
+
+                root = ElementTree.fromstring(resp.content)
+                for item in root.findall('.//item')[:5]:
+                    title = item.findtext('title')
+                    link = item.findtext('link')
+                    date = item.findtext('pubDate')
+                    if title and link:
+                        dest.append({"title": title, "url": link, "date": date})
+            except Exception:
+                pass
 
     if age in {"week", "month"}:
         days = 7 if age == "week" else 30
@@ -220,44 +246,59 @@ def news(age: str = "week"):
         market[:] = filter_articles(market, days=days)
         world[:] = filter_articles(world, days=days)
 
-    return {"market": market, "world": world}
+    result = {"market": market, "world": world}
+    if news_cache is not None:
+        news_cache[age] = result
+    return result
 
 
 @app.get("/api/political")
 async def political():
     """Fetch trading data from political/congressional sources."""
+    if political_cache is not None and "data" in political_cache:
+        return political_cache["data"]
+
     data = {"quiver": [], "whales": [], "capitol": []}
-    try:
-        key = os.getenv("QUIVER_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get("https://api.quiverquant.com/beta/live/congresstrading", headers=headers, timeout=10)
-        if r.ok:
-            data["quiver"] = r.json()[:5]
-    except Exception:
-        pass
-    try:
-        key = os.getenv("WHALES_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get("https://api.unusualwhales.com/congress/trades", headers=headers, timeout=10)
-        if r.ok:
-            resp = r.json()
+
+    quiver_headers = {"Authorization": f"Bearer {os.getenv('QUIVER_API_KEY')}"} if os.getenv("QUIVER_API_KEY") else {}
+    whales_headers = {"Authorization": f"Bearer {os.getenv('WHALES_API_KEY')}"} if os.getenv("WHALES_API_KEY") else {}
+    capitol_headers = {"Authorization": f"Bearer {os.getenv('CAPITOL_API_KEY')}"} if os.getenv("CAPITOL_API_KEY") else {}
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        tasks = [
+            client.get("https://api.quiverquant.com/beta/live/congresstrading", headers=quiver_headers),
+            client.get("https://api.unusualwhales.com/congress/trades", headers=whales_headers),
+            client.get(
+                "https://api.capitoltrades.com/trades",
+                headers=capitol_headers,
+                params={"limit": 5},
+            ),
+        ]
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+    quiver_resp, whales_resp, capitol_resp = responses
+
+    if isinstance(quiver_resp, httpx.Response) and quiver_resp.status_code == 200:
+        try:
+            data["quiver"] = quiver_resp.json()[:5]
+        except Exception:
+            pass
+    if isinstance(whales_resp, httpx.Response) and whales_resp.status_code == 200:
+        try:
+            resp = whales_resp.json()
             data["whales"] = resp.get("results", resp)[:5] if isinstance(resp, dict) else resp[:5]
-    except Exception:
-        pass
-    try:
-        key = os.getenv("CAPITOL_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get(
-            "https://api.capitoltrades.com/trades",
-            headers=headers,
-            params={"limit": 5},
-            timeout=10,
-        )
-        if r.ok:
-            resp = r.json()
+        except Exception:
+            pass
+    if isinstance(capitol_resp, httpx.Response) and capitol_resp.status_code == 200:
+        try:
+            resp = capitol_resp.json()
             data["capitol"] = resp.get("data", resp)[:5] if isinstance(resp, dict) else resp[:5]
-    except Exception:
-        pass
+        except Exception:
+            pass
+
+    if political_cache is not None:
+        political_cache["data"] = data
+
     return data
 
 
@@ -312,11 +353,18 @@ async def quiver_lobby(symbols: str):
 async def panorama(symbols: str = "AAPL,MSFT,GOOGL,AMZN,TSLA,SPY,QQQ,GLD,BTC-USD,ETH-USD", limit: int = 5):
     """Return aggregated market data used by the dashboard."""
     market = ticker_data(symbols)["data"]
-    alerts = await fetch_unusual_whales(limit=limit)
-    political_data = await political()
-    risk = (await quiver_risk(symbols))["risk"]
-    whales = (await quiver_whales(limit=limit))["whales"]
-    news_data = news()
+
+    alerts_task = fetch_unusual_whales(limit=limit)
+    political_task = political()
+    risk_task = quiver_risk(symbols)
+    whales_task = quiver_whales(limit=limit)
+    news_task = news()
+
+    alerts, political_data, risk_resp, whales_resp, news_data = await asyncio.gather(
+        alerts_task, political_task, risk_task, whales_task, news_task
+    )
+    risk = risk_resp["risk"]
+    whales = whales_resp["whales"]
     return {
         "market": market,
         "alerts": alerts,

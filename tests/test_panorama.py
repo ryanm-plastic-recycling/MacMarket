@@ -20,7 +20,11 @@ def test_panorama(monkeypatch):
     monkeypatch.setattr('app.political', dummy_political)
     monkeypatch.setattr('app.quiver_risk', dummy_quiver_risk)
     monkeypatch.setattr('app.quiver_whales', dummy_quiver_whales)
-    monkeypatch.setattr('app.news', lambda age='week': {"market": [], "world": []})
+
+    async def dummy_news(age='week'):
+        return {"market": [], "world": []}
+
+    monkeypatch.setattr('app.news', dummy_news)
 
     resp = client.get('/api/panorama')
     assert resp.status_code == 200
