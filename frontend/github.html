@@ -42,5 +42,7 @@ fetch('/readme')
   .then(r => r.text())
   .then(text => { document.getElementById('readme').textContent = text; });
 </script>
+<script src="help.js"></script>
+<script>initHelp("github");</script>
 </body>
 </html>
