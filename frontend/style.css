@@ -236,7 +236,7 @@ th { border-bottom: 1px solid #ccc; }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to { transform: rotateY(360deg); }
 }
 
 .api-test {
