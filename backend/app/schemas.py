@@ -26,6 +26,7 @@ class AlertPreference(AlertPreferenceBase):
     user_id: int
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 class User(BaseModel):
@@ -35,6 +36,7 @@ class User(BaseModel):
     email: Optional[EmailStr] = None
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
 
@@ -97,7 +99,15 @@ class JournalEntry(JournalEntryBase):
     user_id: int
 
     class Config:
+        orm_mode = True
         from_attributes = True
+
+
+class Recommendation(BaseModel):
+    symbol: str
+    action: str
+    exit: Optional[float] = None
+    probability: float
 
 
 class JournalEntryWithRec(JournalEntry):
@@ -114,14 +124,9 @@ class Position(BaseModel):
     created_at: Optional[datetime] | None = None
 
     class Config:
+        orm_mode = True
         from_attributes = True
 
-
-class Recommendation(BaseModel):
-    symbol: str
-    action: str
-    exit: Optional[float] = None
-    probability: float
 
 class BacktestRun(BaseModel):
     id: int | None = None
@@ -133,4 +138,5 @@ class BacktestRun(BaseModel):
     created_at: datetime | None = None
 
     class Config:
+        orm_mode = True
         from_attributes = True

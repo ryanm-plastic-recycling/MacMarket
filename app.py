@@ -765,6 +765,7 @@ def get_readme():
     raise HTTPException(status_code=404, detail="Not Found")
 
 
+
 # Serve simple static HTML pages for the frontend
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
