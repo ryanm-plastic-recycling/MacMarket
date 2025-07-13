@@ -756,12 +756,20 @@ def congress_widget_css():
         return Response(css_file.read_text(), media_type="text/css")
     raise HTTPException(status_code=404, detail="Not Found")
 
+# Serve the project README for display on the GitHub page
+@app.get("/readme")
+def get_readme():
+    readme_file = Path(__file__).resolve().parent / "README.md"
+    if readme_file.exists():
+        return Response(readme_file.read_text(), media_type="text/plain")
+    raise HTTPException(status_code=404, detail="Not Found")
+
 
 # Serve simple static HTML pages for the frontend
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html"}
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html", "github.html"}
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():
