@@ -42,8 +42,8 @@ header {
 #header-logo {
   position: absolute;
   left: 10px;
-  height: 40px;
-  width: 40px; /* ensure base64 logos display at a consistent size */
+  height: 80px;
+  width: 80px; /* ensure base64 logos display at a consistent size */
 }
 
 header h1 {
@@ -230,8 +230,8 @@ th { border-bottom: 1px solid #ccc; }
 }
 
 #loading-spinner .spin {
-  width: 40px;
-  height: 40px;
+  width: 120px;
+  height: 1200px;
   animation: spin 0.8s linear infinite;
 }
 
