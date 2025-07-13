@@ -266,3 +266,44 @@ th { border-bottom: 1px solid #ccc; }
   background: var(--ticker-bg);
   color: var(--ticker-text);
 }
+
+.help-button {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  border: none;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+#help-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  z-index: 2000;
+}
+
+.help-content {
+  background: var(--bg-color);
+  color: var(--text-color);
+  max-width: 800px;
+  max-height: 80%;
+  overflow: auto;
+  margin: 5% auto;
+  padding: 20px;
+  border-radius: 8px;
+  position: relative;
+}
+
+#help-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
