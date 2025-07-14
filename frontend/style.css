@@ -39,6 +39,13 @@ header {
   position: relative;
 }
 
+#header-logo {
+  position: absolute;
+  left: 10px;
+  height: 80px;
+  width: 80px; /* ensure base64 logos display at a consistent size */
+}
+
 header h1 {
   margin: 0;
   font-size: 1.5em;
@@ -66,7 +73,7 @@ header h1 {
   background: var(--sidebar-hover);
 }
 
-#theme-select {
+#theme-toggle {
   width: 90%;
   margin: 10px;
 }
@@ -85,7 +92,7 @@ main {
 
 #user-info {
   position: absolute;
-  left: 10px;
+  left: 60px; /* offset from logo */
   top: 10px;
   font-size: 0.9em;
 }
@@ -212,3 +219,91 @@ th { border-bottom: 1px solid #ccc; }
 #status.ok { background: #2f8f2f; }
 #status.error { background: #b22222; }
 
+
+#loading-spinner {
+  display: none;
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2000;
+}
+
+#loading-spinner .spin {
+  width: 120px;
+  height: 120px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotateY(360deg); }
+}
+
+.api-test {
+  margin: 20px 0;
+}
+
+.api-test .api-result {
+  background: var(--ticker-bg);
+  color: var(--ticker-text);
+  padding: 10px;
+  overflow: auto;
+  max-height: 200px;
+}
+
+.api-test table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.api-test th,
+.api-test td {
+  border: 1px solid #ccc;
+  padding: 4px 6px;
+  text-align: left;
+}
+.api-test th {
+  background: var(--ticker-bg);
+  color: var(--ticker-text);
+}
+
+.help-button {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  border: none;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+#help-overlay {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: none;
+  z-index: 2000;
+}
+
+.help-content {
+  background: var(--bg-color);
+  color: var(--text-color);
+  max-width: 800px;
+  max-height: 80%;
+  overflow: auto;
+  margin: 5% auto;
+  padding: 20px;
+  border-radius: 8px;
+  position: relative;
+}
+
+#help-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}

@@ -19,7 +19,8 @@ import os
 # simple in-memory alert store
 LATEST_ALERT = {"id": 0, "ticker": "AAPL", "price": 0.0}
 
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, Response, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import yfinance as yf
 import requests
@@ -31,9 +32,26 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Caching configuration
+NEWS_CACHE_TTL = int(os.getenv("NEWS_CACHE_TTL", "300"))
+POLITICAL_CACHE_TTL = int(os.getenv("POLITICAL_CACHE_TTL", "300"))
+
 app = FastAPI()
-political_cache = TTLCache(maxsize=1, ttl=300)
+
+# Initialize caches only if TTL > 0 so caching can be disabled via env vars
+political_cache = TTLCache(maxsize=1, ttl=POLITICAL_CACHE_TTL) if POLITICAL_CACHE_TTL > 0 else None
+news_cache = TTLCache(maxsize=2, ttl=NEWS_CACHE_TTL) if NEWS_CACHE_TTL > 0 else None
 quiver_cache = TTLCache(maxsize=10, ttl=300)
+
+# Serve React build if present
+FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
+REACT_BUILD_DIR = FRONTEND_DIR / "build"
+if REACT_BUILD_DIR.is_dir():
+    app.mount(
+        "/",
+        StaticFiles(directory=REACT_BUILD_DIR, html=True),
+        name="static",
+    )
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -61,8 +79,8 @@ except Exception:
     pass
 
 # Directory containing the HTML frontend files
-FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
-
+# (retained for legacy direct HTML endpoints)
+# FRONTEND_DIR already defined above
 
 def get_db():
     db = SessionLocal()
@@ -92,6 +110,8 @@ def db_check():
 @app.get("/", response_class=HTMLResponse)
 def index():
     """Serve the main frontend page."""
+    if REACT_BUILD_DIR.is_dir():
+        return FileResponse(REACT_BUILD_DIR / "index.html")
     html_path = FRONTEND_DIR / "index.html"
     return html_path.read_text()
 
@@ -147,74 +167,138 @@ def current_price(symbol: str):
 
 
 @app.get("/api/news")
-def news():
+async def news(age: str = "week"):
     """Fetch finance and world news articles from multiple sources."""
-    market = []
-    world = []
-    try:
-        res = requests.get("https://hn.algolia.com/api/v1/search", params={"query": "market", "tags": "story"})
-        market.extend([
-            {"title": h.get("title"), "url": h.get("url"), "date": h.get("created_at")}
-            for h in res.json().get("hits", [])[:5]
-        ])
-    except Exception:
-        pass
-    def add_rss(url, dest):
+    if news_cache is not None and age in news_cache:
+        return news_cache[age]
+
+    market: list[dict] = []
+    world: list[dict] = []
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        hn_task = client.get(
+            "https://hn.algolia.com/api/v1/search",
+            params={"query": "market", "tags": "story"},
+        )
+        rss_urls = [
+            ("https://feeds.foxnews.com/foxnews/business", market),
+            ("https://www.bloomberg.com/feed/podcast/etf-report.xml", market),
+            ("https://feeds.foxbusiness.com/foxbusiness/markets", market),
+            ("https://rss.nytimes.com/services/xml/rss/nyt/World.xml", world),
+            ("https://feeds.bbci.co.uk/news/world/rss.xml", world),
+        ]
+        rss_tasks = [client.get(url) for url, _ in rss_urls]
+        responses = await asyncio.gather(hn_task, *rss_tasks, return_exceptions=True)
+
+    hn_resp = responses[0]
+    if isinstance(hn_resp, httpx.Response) and hn_resp.status_code == 200:
         try:
-            r = requests.get(url)
-            from xml.etree import ElementTree
-            root = ElementTree.fromstring(r.content)
-            for item in root.findall('.//item')[:5]:
-                title = item.findtext('title')
-                link = item.findtext('link')
-                date = item.findtext('pubDate')
-                if title and link:
-                    dest.append({"title": title, "url": link, "date": date})
+            market.extend(
+                [
+                    {"title": h.get("title"), "url": h.get("url"), "date": h.get("created_at")}
+                    for h in hn_resp.json().get("hits", [])[:5]
+                ]
+            )
         except Exception:
             pass
-    add_rss('https://feeds.foxnews.com/foxnews/business', market)
-    add_rss('https://www.bloomberg.com/feed/podcast/etf-report.xml', market)
-    add_rss('https://feeds.foxbusiness.com/foxbusiness/markets', market)
-    add_rss('https://rss.nytimes.com/services/xml/rss/nyt/World.xml', world)
-    add_rss('https://feeds.bbci.co.uk/news/world/rss.xml', world)
-    return {"market": market, "world": world}
+
+    for resp, (_url, dest) in zip(responses[1:], rss_urls):
+        if isinstance(resp, httpx.Response) and resp.status_code == 200:
+            try:
+                from xml.etree import ElementTree
+
+                root = ElementTree.fromstring(resp.content)
+                for item in root.findall('.//item')[:5]:
+                    title = item.findtext('title')
+                    link = item.findtext('link')
+                    date = item.findtext('pubDate')
+                    if title and link:
+                        dest.append({"title": title, "url": link, "date": date})
+            except Exception:
+                pass
+
+    if age in {"week", "month"}:
+        days = 7 if age == "week" else 30
+
+        def filter_articles(articles, days=7):
+            from datetime import datetime, timedelta, timezone
+            import dateutil.parser
+
+            # Create a UTC-aware cutoff timestamp
+            cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+            filtered = []
+
+            for item in articles:
+                # Parse the article date and normalize to UTC
+                dt = dateutil.parser.parse(item['date'])
+                if dt.tzinfo is None:
+                    # Assume UTC if no timezone provided
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    dt = dt.astimezone(timezone.utc)
+
+                # Compare two UTC-aware datetimes
+                if dt >= cutoff:
+                    filtered.append(item)
+
+            return filtered
+
+        market[:] = filter_articles(market, days=days)
+        world[:] = filter_articles(world, days=days)
+
+    result = {"market": market, "world": world}
+    if news_cache is not None:
+        news_cache[age] = result
+    return result
 
 
 @app.get("/api/political")
 async def political():
     """Fetch trading data from political/congressional sources."""
+    if political_cache is not None and "data" in political_cache:
+        return political_cache["data"]
+
     data = {"quiver": [], "whales": [], "capitol": []}
-    try:
-        key = os.getenv("QUIVER_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get("https://api.quiverquant.com/beta/live/congresstrading", headers=headers, timeout=10)
-        if r.ok:
-            data["quiver"] = r.json()[:5]
-    except Exception:
-        pass
-    try:
-        key = os.getenv("WHALES_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get("https://api.unusualwhales.com/congress/trades", headers=headers, timeout=10)
-        if r.ok:
-            resp = r.json()
+
+    quiver_headers = {"Authorization": f"Bearer {os.getenv('QUIVER_API_KEY')}"} if os.getenv("QUIVER_API_KEY") else {}
+    whales_headers = {"Authorization": f"Bearer {os.getenv('WHALES_API_KEY')}"} if os.getenv("WHALES_API_KEY") else {}
+    capitol_headers = {"Authorization": f"Bearer {os.getenv('CAPITOL_API_KEY')}"} if os.getenv("CAPITOL_API_KEY") else {}
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        tasks = [
+            client.get("https://api.quiverquant.com/beta/live/congresstrading", headers=quiver_headers),
+            client.get("https://api.unusualwhales.com/congress/trades", headers=whales_headers),
+            client.get(
+                "https://api.capitoltrades.com/trades",
+                headers=capitol_headers,
+                params={"limit": 5},
+            ),
+        ]
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+    quiver_resp, whales_resp, capitol_resp = responses
+
+    if isinstance(quiver_resp, httpx.Response) and quiver_resp.status_code == 200:
+        try:
+            data["quiver"] = quiver_resp.json()[:5]
+        except Exception:
+            pass
+    if isinstance(whales_resp, httpx.Response) and whales_resp.status_code == 200:
+        try:
+            resp = whales_resp.json()
             data["whales"] = resp.get("results", resp)[:5] if isinstance(resp, dict) else resp[:5]
-    except Exception:
-        pass
-    try:
-        key = os.getenv("CAPITOL_API_KEY")
-        headers = {"Authorization": f"Bearer {key}"} if key else {}
-        r = requests.get(
-            "https://api.capitoltrades.com/trades",
-            headers=headers,
-            params={"limit": 5},
-            timeout=10,
-        )
-        if r.ok:
-            resp = r.json()
+        except Exception:
+            pass
+    if isinstance(capitol_resp, httpx.Response) and capitol_resp.status_code == 200:
+        try:
+            resp = capitol_resp.json()
             data["capitol"] = resp.get("data", resp)[:5] if isinstance(resp, dict) else resp[:5]
-    except Exception:
-        pass
+        except Exception:
+            pass
+
+    if political_cache is not None:
+        political_cache["data"] = data
+
     return data
 
 
@@ -263,6 +347,32 @@ async def quiver_lobby(symbols: str):
     data = signals.get_lobby_disclosures(syms)
     quiver_cache[key] = data
     return {"lobby": data}
+
+
+@app.get("/api/panorama")
+async def panorama(symbols: str = "AAPL,MSFT,GOOGL,AMZN,TSLA,SPY,QQQ,GLD,BTC-USD,ETH-USD", limit: int = 5):
+    """Return aggregated market data used by the dashboard."""
+    market = ticker_data(symbols)["data"]
+
+    alerts_task = fetch_unusual_whales(limit=limit)
+    political_task = political()
+    risk_task = quiver_risk(symbols)
+    whales_task = quiver_whales(limit=limit)
+    news_task = news()
+
+    alerts, political_data, risk_resp, whales_resp, news_data = await asyncio.gather(
+        alerts_task, political_task, risk_task, whales_task, news_task
+    )
+    risk = risk_resp["risk"]
+    whales = whales_resp["whales"]
+    return {
+        "market": market,
+        "alerts": alerts,
+        "political": political_data,
+        "risk": risk,
+        "whales": whales,
+        "news": news_data,
+    }
 
 
 @app.post("/api/register")
@@ -478,9 +588,25 @@ def admin_update_otp(user_id: int, data: schemas.OtpUpdate, db: Session = Depend
 def create_journal(user_id: int, entry: schemas.JournalEntryCreate, db: Session = Depends(get_db)):
     return crud.create_journal_entry(db, user_id, entry.symbol, entry.action, entry.quantity, entry.price, entry.rationale)
 
-@app.get("/api/users/{user_id}/journal", response_model=list[schemas.JournalEntry])
-def read_journal(user_id: int, db: Session = Depends(get_db)):
-    return crud.get_journal_entries(db, user_id)
+@app.get(
+    "/api/users/{user_id}/journal",
+    response_model=list[schemas.JournalEntryWithRec],
+)
+def read_journal(
+    user_id: int,
+    include_recs: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Return journal entries with optional recommendations."""
+    entries = crud.get_journal_entries(db, user_id)
+    if include_recs:
+        for e in entries:
+            recs = signals.generate_recommendations([e.symbol])
+            e.recommendation = recs[0] if recs else None
+    else:
+        for e in entries:
+            e.recommendation = None
+    return entries
 
 
 @app.put("/api/users/{user_id}/journal/{entry_id}", response_model=schemas.JournalEntry)
@@ -573,6 +699,52 @@ def update_alert(alert: dict):
     return {"status": "ok"}
 
 
+@app.get("/api/crypto")
+def crypto(limit: int = 5):
+    """Return top crypto market data from Coingecko."""
+    endpoint = os.getenv("COINGECKO_ENDPOINT", "https://api.coingecko.com/api/v3")
+    url = f"{endpoint}/coins/markets"
+    try:
+        r = requests.get(
+            url,
+            params={
+                "vs_currency": "usd",
+                "order": "market_cap_desc",
+                "per_page": limit,
+                "page": 1,
+                "sparkline": "false",
+            },
+            timeout=10,
+        )
+        if r.ok:
+            return {"data": r.json()}
+    except Exception as exc:  # pragma: no cover - network
+        raise HTTPException(status_code=500, detail=str(exc))
+    raise HTTPException(status_code=502, detail="API error")
+
+
+@app.get("/api/macro")
+def macro():
+    """Return recent PPI data from FRED."""
+    key = os.getenv("FRED_API_KEY")
+    url = "https://api.stlouisfed.org/fred/series/observations"
+    params = {
+        "series_id": "PPIACO",
+        "api_key": key,
+        "file_type": "json",
+        "sort_order": "desc",
+        "limit": 12,
+    }
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        if r.ok:
+            data = r.json().get("observations", [])
+            return {"data": data}
+    except Exception as exc:  # pragma: no cover - network
+        raise HTTPException(status_code=500, detail=str(exc))
+    raise HTTPException(status_code=502, detail="API error")
+
+
 @app.get("/api/signals/{symbol}")
 def get_signals(symbol: str):
     news = signals.news_sentiment_signal(symbol)
@@ -632,14 +804,33 @@ def congress_widget_css():
         return Response(css_file.read_text(), media_type="text/css")
     raise HTTPException(status_code=404, detail="Not Found")
 
+# Serve the project README for display on the GitHub page
+@app.get("/readme")
+def get_readme():
+    readme_file = Path(__file__).resolve().parent / "README.md"
+    if readme_file.exists():
+        return Response(readme_file.read_text(), media_type="text/plain")
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
 
 # Serve simple static HTML pages for the frontend
 @app.get("/{page_name}", response_class=HTMLResponse)
 def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html"}
+    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html", "github.html"}
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():
             return html_file.read_text()
+    raise HTTPException(status_code=404, detail="Not Found")
+
+
+# Fallback for SPA routes when React build is present
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    if REACT_BUILD_DIR.is_dir():
+        index_file = REACT_BUILD_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
     raise HTTPException(status_code=404, detail="Not Found")

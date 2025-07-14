@@ -16,15 +16,14 @@
     <a href="signals.html">Signals</a>
     <a href="journal.html">Journal</a>
     <a href="backtests.html">Backtests</a>
+    <a href="github.html">GitHub</a>
     <a href="help.html#signals">Help</a>
     <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
     <a href="#" id="logout-link">Logout</a>
-    <select id="theme-select">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-    </select>
+    <button id="theme-toggle">Toggle Theme</button>
 </div>
 <header>
+    <img id="header-logo" src="" alt="Logo">
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
@@ -168,5 +167,7 @@ document.getElementById('run-macro').addEventListener('click', fetchMacro);
 document.getElementById('get-recs').addEventListener('click', fetchRecs);
 document.getElementById('get-single').addEventListener('click', fetchSingle);
 </script>
+<script src="help.js"></script>
+<script>initHelp("signals");</script>
 </body>
 </html>

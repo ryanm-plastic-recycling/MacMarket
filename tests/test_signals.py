@@ -8,11 +8,8 @@ def test_generate_recommendations_quiver(monkeypatch):
     monkeypatch.setattr(signals, "_current_price", lambda s: 100.0)
     monkeypatch.setattr(
         signals,
-        "_exit_levels",
-        lambda sym, act, price: (
-            {"low": price + 1, "medium": price + 2, "high": price + 3},
-            "x",
-        ),
+        "_calculate_exit",
+        lambda sym, price, date: (date, price + 5),
     )
     monkeypatch.setattr(signals, "get_political_moves", lambda syms: {"AAPL": 1})
     monkeypatch.setattr(signals, "get_lobby_disclosures", lambda syms: {"AAPL": 2})

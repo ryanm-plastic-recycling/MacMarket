@@ -16,15 +16,14 @@
     <a href="signals.html">Signals</a>
     <a href="journal.html">Journal</a>
     <a href="backtests.html">Backtests</a>
+    <a href="github.html">GitHub</a>
     <a href="admin.html">Admin</a>
     <a href="help.html#admin">Help</a>
     <a href="#" id="logout-link">Logout</a>
-    <select id="theme-select">
-        <option value="light">Light</option>
-        <option value="dark">Dark</option>
-    </select>
+    <button id="theme-toggle">Toggle Theme</button>
 </div>
 <header>
+    <img id="header-logo" src="" alt="Logo">
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
@@ -34,6 +33,9 @@
     <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
     <h2>User Management</h2>
     <table id="users"><thead><tr><th>Username</th><th>Email</th><th>OTP</th><th>Admin</th><th>Last Login</th><th>New Password</th><th>Actions</th></tr></thead><tbody></tbody></table>
+
+    <h2>API Tester</h2>
+    <div id="api-tester"></div>
 </main>
 <script>
     if(localStorage.getItem('isAdmin') !== '1') {
@@ -80,7 +82,106 @@
             setStatus('Saved', 'ok');
         }
     });
-    window.onload = loadUsers;
+    window.onload = () => {
+        loadUsers();
+        initApiTester();
+    };
+
+    function initApiTester(){
+        const apis = {
+            'NewsAPI': { endpoints: { 'Top Headlines': '/api/news' } },
+            'Quiver': {
+                endpoints: {
+                    'Risk Scores': '/api/quiver/risk?symbols=AAPL',
+                    'Whale Moves': '/api/quiver/whales?limit=5',
+                    'Political Trades': '/api/quiver/political?symbols=AAPL',
+                    'Lobbying Disclosures': '/api/quiver/lobby?symbols=AAPL'
+                }
+            },
+            'Unusual Whales': { endpoints: { 'Alerts': '/api/signals/alert' } },
+            'Coingecko': { endpoints: { 'Top Coins': '/api/crypto' } },
+            'FRED': { endpoints: { 'PPI Series': '/api/macro' } }
+        };
+
+        const container = document.getElementById('api-tester');
+        Object.entries(apis).forEach(([name, info]) => {
+            const div = document.createElement('div');
+            div.className = 'api-test';
+            const title = document.createElement('h3');
+            title.textContent = name;
+            div.appendChild(title);
+            const entries = Object.entries(info.endpoints);
+            let select;
+            if(entries.length > 1){
+                select = document.createElement('select');
+                entries.forEach(([label, path]) => {
+                    const opt = document.createElement('option');
+                    opt.value = path;
+                    opt.textContent = label;
+                    select.appendChild(opt);
+                });
+                div.appendChild(select);
+            } else {
+                select = document.createElement('input');
+                select.type = 'hidden';
+                select.value = entries[0][1];
+            }
+            const btn = document.createElement('button');
+            btn.textContent = 'Test';
+            const pre = document.createElement('div');
+            pre.className = 'api-result';
+            btn.addEventListener('click', async () => {
+                setStatus('Testing...', 'loading');
+                try {
+                    const res = await fetch(select.value);
+                    const text = await res.text();
+                    try {
+                        const data = JSON.parse(text);
+                        pre.innerHTML = prettyPrint(data);
+                    } catch {
+                        pre.textContent = text;
+                    }
+                    setStatus(res.ok ? 'OK' : 'Error', res.ok ? 'ok' : 'error');
+                } catch(err){
+                    pre.textContent = err.message;
+                    setStatus('Error', 'error');
+                }
+            });
+            div.appendChild(btn);
+            div.appendChild(pre);
+            container.appendChild(div);
+        });
+    }
+
+    function escapeHtml(str){
+        return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+    }
+
+    function prettyPrint(data){
+        if(Array.isArray(data)){
+            if(data.length===0) return '<em>No data</em>';
+            if(typeof data[0]==='object' && data[0]!==null){
+                const cols = Object.keys(data[0]);
+                let html = '<table class="api-table"><thead><tr>' + cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+                data.forEach(row=>{
+                    html += '<tr>' + cols.map(c=>`<td>${escapeHtml(String(row[c] ?? ''))}</td>`).join('') + '</tr>';
+                });
+                html += '</tbody></table>';
+                return html;
+            }
+            return '<ul>' + data.map(v=>`<li>${escapeHtml(String(v))}</li>`).join('') + '</ul>';
+        } else if(typeof data==='object' && data!==null){
+            let html = '<table class="api-table"><tbody>';
+            Object.entries(data).forEach(([k,v])=>{
+                html += `<tr><th>${escapeHtml(k)}</th><td>${typeof v==='object'?prettyPrint(v):escapeHtml(String(v))}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            return html;
+        }
+        return escapeHtml(String(data));
+    }
 </script>
+<script src="help.js"></script>
+<script>initHelp("admin");</script>
 </body>
 </html>

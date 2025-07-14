@@ -3,14 +3,13 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
-import { fetchMarket } from './services/marketData.js';
+import { fetchTickerData } from './services/marketData.js';
+import { fetchAlerts } from './services/alertData.js';
 import { fetchPolitical } from './services/politicalData.js';
+import { fetchRiskScores } from './services/riskData.js';
+import { fetchWhaleMoves } from './services/whalesData.js';
 import { fetchNews } from './services/newsData.js';
-import { fetchCrypto } from './services/cryptoData.js';
-import { fetchMacro } from './services/macroData.js';
 import { runBacktest } from './backtest/strategyEngine.js';
-import { fetchDiscord } from './services/discordData.js';
-import { validateMessages } from './services/validateDiscussion.js';
 import { query as dbQuery } from './db/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -22,18 +21,17 @@ app.use(cors());
 
 app.get('/api/panorama', async (req, res) => {
   try {
-    const [market, political, news, crypto, macro, discord] = await Promise.all([
-      fetchMarket(),
+    const [market, alerts, political, risk, whales, news] = await Promise.all([
+      fetchTickerData(req.query.symbols),
+      fetchAlerts(),
       fetchPolitical(),
-      fetchNews(),
-      fetchCrypto(),
-      fetchMacro(),
-      fetchDiscord((process.env.DISCORD_CHANNEL_IDS || '').split(','))
+      fetchRiskScores(req.query.symbols),
+      fetchWhaleMoves({ limit: 5 }),
+      fetchNews()
     ]);
-    const validated = await validateMessages(discord);
-    res.json({ market, political, news, crypto, macro, discord, validated });
+    res.json({ market, alerts, political, risk, whales, news });
   } catch (err) {
-    console.error(err);
+    console.error('panorama error', err);
     res.status(500).json({ error: err.message });
   }
 });

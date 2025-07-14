@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GitHub & Documentation - MacMarket</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="theme.js"></script>
+    <script src="ticker.js"></script>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+    <a href="signals.html">Signals</a>
+    <a href="journal.html">Journal</a>
+    <a href="backtests.html">Backtests</a>
+    <a href="github.html">GitHub</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
+    <a href="#" id="logout-link">Logout</a>
+    <button id="theme-toggle">Toggle Theme</button>
+</div>
+<header>
+    <h1>MacMarket</h1>
+    <div id="user-info"></div>
+    <div id="time"></div>
+    <div id="status"></div>
+</header>
+<main>
+    <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
+    <h2>Project Repository</h2>
+    <p>View the code on <a id="gh-link" href="https://github.com/ryanm-plastic-recycling/MacMarket" target="_blank" rel="noopener">GitHub</a>.</p>
+    <h2>README</h2>
+    <pre id="readme"></pre>
+</main>
+<script>
+fetch('/readme')
+  .then(r => r.text())
+  .then(text => { document.getElementById('readme').textContent = text; });
+</script>
+<script src="help.js"></script>
+<script>initHelp("github");</script>
+</body>
+</html>
