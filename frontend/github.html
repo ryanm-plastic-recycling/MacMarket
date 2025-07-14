@@ -35,7 +35,7 @@
     <pre id="readme"></pre>
 </main>
 <script>
-fetch('/readme')
+fetch('https://raw.githubusercontent.com/ryanm-plastic-recycling/MacMarket/main/README.md')
   .then(r => r.text())
   .then(text => { document.getElementById('readme').textContent = text; });
 </script>
