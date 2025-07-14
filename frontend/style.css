@@ -73,7 +73,7 @@ header h1 {
   background: var(--sidebar-hover);
 }
 
-#theme-select {
+#theme-toggle {
   width: 90%;
   margin: 10px;
 }
