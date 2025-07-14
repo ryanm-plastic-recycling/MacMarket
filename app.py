@@ -804,6 +804,14 @@ def congress_widget_css():
         return Response(css_file.read_text(), media_type="text/css")
     raise HTTPException(status_code=404, detail="Not Found")
 
+# Serve contextual help JS used by the simple HTML pages
+@app.get("/help.js")
+def help_js():
+    js_file = FRONTEND_DIR / "help.js"
+    if js_file.exists():
+        return Response(js_file.read_text(), media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Not Found")
+
 # Serve the project README for display on the GitHub page
 @app.get("/readme")
 def get_readme():
