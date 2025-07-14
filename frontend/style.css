@@ -307,3 +307,8 @@ th { border-bottom: 1px solid #ccc; }
   right: 10px;
   top: 10px;
 }
+
+#readme {
+  font-size: 1.1em;
+  white-space: pre-wrap;
+}
