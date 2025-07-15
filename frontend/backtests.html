@@ -37,6 +37,10 @@
     <label>End <input type="date" id="bt-end"></label>
     <button id="bt-run">Run</button>
     <pre id="bt-output"></pre>
+    <h2>Strategy Tester</h2>
+    <select id="st-strategy"></select>
+    <button id="st-run">Run Strategy</button>
+    <pre id="st-output"></pre>
     <h2>Saved Backtests</h2>
     <table id="bt-table">
         <thead><tr><th>Date</th><th>Symbol</th><th>Total Return</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr></thead>
@@ -71,26 +75,56 @@ async function runBacktest(){
     const end = document.getElementById('bt-end').value;
     if(!symbol) return;
     setStatus('Running backtest...', 'loading');
-    const panoRes = await fetch('/api/panorama');
-    const panorama = panoRes.ok ? await panoRes.json() : {};
-    const params = { symbol, start, end };
-    const res = await fetch('/api/backtest', {
-        method:'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ panorama, params })
-    });
+    const qs = new URLSearchParams({ start, end }).toString();
+    const url = `/api/backtest/${symbol}?${qs}`;
+    const res = await fetch(url, { method:'POST' });
     if(res.ok){
         const data = await res.json();
         document.getElementById('bt-output').textContent = JSON.stringify(data, null, 2);
         setStatus('Done', 'ok');
+        loadBacktests();
     } else {
         setStatus('Failed', 'error');
     }
 }
 
+async function loadStrategies(){
+    const res = await fetch('/strategy-test/list');
+    if(!res.ok) return;
+    const data = await res.json();
+    const sel = document.getElementById('st-strategy');
+    sel.innerHTML = '';
+    data.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s.replace(/_/g,' ');
+        sel.appendChild(opt);
+    });
+}
+
+async function runStrategy(){
+    const strategy = document.getElementById('st-strategy').value;
+    if(!strategy || !userId) return;
+    setStatus('Running strategy...', 'loading');
+    const res = await fetch('/strategy-test/run', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ strategy, user_id: userId })
+    });
+    if(res.ok){
+        const data = await res.json();
+        document.getElementById('st-output').textContent = JSON.stringify(data, null, 2);
+        setStatus('Done','ok');
+    }else{
+        setStatus('Failed','error');
+    }
+}
+
 window.onload = () => {
     loadBacktests();
+    loadStrategies();
     document.getElementById('bt-run').addEventListener('click', runBacktest);
+    document.getElementById('st-run').addEventListener('click', runStrategy);
 };
 </script>
 <script src="help.js"></script>
