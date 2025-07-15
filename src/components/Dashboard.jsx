@@ -2,24 +2,29 @@ import React, { useState, useEffect } from 'react';
 
 export default function Dashboard() {
   const [alerts, setAlerts] = useState([]);
-  const [political, setPolitical] = useState([]);
-  const [riskScores, setRiskScores] = useState([]);
+  const [political, setPolitical] = useState({ quiver: [], whales: [], capitol: [] });
+  const [riskScores, setRiskScores] = useState({});
   const [whaleMoves, setWhaleMoves] = useState([]);
-  const [newsItems, setNewsItems] = useState([]);
+  const [newsItems, setNewsItems] = useState({ market: [], world: [] });
   const [tickerData, setTickerData] = useState([]);
 
   useEffect(() => {
+    let mounted = true;
     fetch('/api/panorama?symbols=AAPL,MSFT,GOOGL,AMZN,TSLA,SPY,QQQ,GLD,BTC-USD,ETH-USD')
       .then(res => res.json())
       .then(({ market, alerts, political, risk, whales, news }) => {
+        if (!mounted) return;
         setTickerData(market || []);
         setAlerts(alerts || []);
-        setPolitical(political || []);
-        setRiskScores(risk || []);
+        setPolitical(political || { quiver: [], whales: [], capitol: [] });
+        setRiskScores(risk || {});
         setWhaleMoves(whales || []);
-        setNewsItems(news || []);
+        setNewsItems(news || { market: [], world: [] });
       })
       .catch(err => console.error('load panorama failed', err));
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -29,13 +34,17 @@ export default function Dashboard() {
                      : <p>No whale alerts currently.</p>}
 
       <h2>Capitol Trades</h2>
-      {political.map(tx => (
-        <div key={tx.Date + tx.Ticker}>{`${tx.Date} – ${tx.Ticker} ${tx.Transaction}`}</div>
+      {[...(political.quiver || []), ...(political.whales || []), ...(political.capitol || [])].map(tx => (
+        <div key={(tx.Date || tx.TransactionDate || tx.id) + (tx.Ticker || tx.ticker || tx.symbol)}>
+          {`${tx.Date || tx.TransactionDate || ''} ${tx.Ticker || tx.ticker || tx.symbol || ''} ${tx.Transaction || tx.transaction || ''}`}
+        </div>
       ))}
 
       <h2>Quiver Risk Scores</h2>
-      {riskScores.length ? riskScores.map(r => <div key={r.ticker}>{`${r.ticker}: ${r.score}`}</div>)
-                         : <p>No risk scores available.</p>}
+      {Object.keys(riskScores).length ?
+        Object.entries(riskScores).map(([ticker, score]) => (
+          <div key={ticker}>{`${ticker}: ${score}`}</div>
+        )) : <p>No risk scores available.</p>}
 
       <h2>Quiver Whale Moves</h2>
       {whaleMoves.length ? whaleMoves.map(w => <div key={w.transaction_id}>{`${w.symbol}: ${w.amount}`}</div>)
@@ -47,9 +56,10 @@ export default function Dashboard() {
       )) : <p>No market data.</p>}
 
       <h2>News Feed</h2>
-      {newsItems.length ? newsItems.map(n => (
-        <div key={n.metrics.url}>{n.metrics.title}</div>
-      )) : <p>No news right now.</p>}
+      {[...(newsItems.market || []), ...(newsItems.world || [])].length ?
+        [...(newsItems.market || []), ...(newsItems.world || [])].map(n => (
+          <div key={n.url}>{n.title}</div>
+        )) : <p>No news right now.</p>}
     </div>
   );
 }

@@ -8,13 +8,18 @@ function Dashboard() {
 
 
   useEffect(() => {
+    let mounted = true;
     fetch('/api/panorama')
       .then(r => r.json())
       .then(d => {
+        if (!mounted) return;
         setData(d);
         setChat(d.discord || []);
       })
       .catch(err => console.error(err));
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -54,20 +59,40 @@ function Dashboard() {
 
   if (!data) return React.createElement('div', null, 'Loading...');
 
+  const politicalItems = [
+    ...(data.political?.quiver || []),
+    ...(data.political?.whales || []),
+    ...(data.political?.capitol || [])
+  ];
+  const newsItems = [
+    ...(data.news?.market || []),
+    ...(data.news?.world || [])
+  ];
+  const riskEntries = Object.entries(data.risk || {});
+
   return (
     React.createElement('div', { className: 'dashboard' },
       React.createElement('div', { className: 'panel' },
         React.createElement('h3', null, 'Political Signals'),
         React.createElement('ul', null,
-          data.political.map((p, i) => React.createElement('li', { key: i }, `${p.symbol} ${p.metrics.Representative || ''}`))
+          politicalItems.map((p, i) =>
+            React.createElement('li', { key: i },
+              `${p.Ticker || p.ticker || p.symbol || ''} ${p.Representative || (p.metrics && p.metrics.Representative) || ''}`
+            )
+          )
         )
       ),
       React.createElement('div', { className: 'panel' },
         React.createElement('h3', null, 'News Feed'),
         React.createElement('ul', null,
-          data.news.map((n, i) => React.createElement('li', { key: i },
-            React.createElement('a', { href: n.metrics.url, target: '_blank' }, n.metrics.title)
-          ))
+          newsItems.map((n, i) =>
+            React.createElement('li', { key: i },
+              React.createElement('a', {
+                href: n.url || (n.metrics && n.metrics.url),
+                target: '_blank'
+              }, n.title || (n.metrics && n.metrics.title))
+            )
+          )
         )
       ),
       React.createElement('div', { className: 'panel' },
