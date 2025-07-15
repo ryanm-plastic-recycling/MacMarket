@@ -238,15 +238,32 @@ Several additional endpoints are available:
 * `GET /api/quiver/risk?symbols=AAPL,MSFT` &mdash; returns Quiver risk scores for the specified tickers (requires `QUIVER_API_KEY`).
 * `GET /api/quiver/whales?limit=5` &mdash; lists recent whale moves limited to the given number (requires `QUIVER_API_KEY`).
 * `GET /api/quiver/political?symbols=AAPL` &mdash; counts of recent congressional trades for the tickers (requires `QUIVER_API_KEY`).
-* `POST /strategy-test/congress-long-short` &mdash; run the Congress Long-Short strategy backtest.
+* `GET /strategy-test/list` &mdash; list available strategy keys.
+* `POST /strategy-test/run` &mdash; run a backtest for the selected strategy.
+* `GET /strategy-test/history?user_id=1` &mdash; get the last run per strategy for a user.
 * `GET /api/quiver/lobby?symbols=AAPL` &mdash; counts of recent lobbying disclosures for the tickers (requires `QUIVER_API_KEY`).
 Example:
 ```bash
-curl -X POST http://localhost:9500/strategy-test/congress-long-short
+curl http://localhost:9500/strategy-test/list
+curl -X POST http://localhost:9500/strategy-test/run \
+  -H "Content-Type: application/json" \
+  -d '{"strategy":"congress_long_short","user_id":1}'
+curl http://localhost:9500/strategy-test/history?user_id=1
 ```
 
 
 The frontend now includes `signals.html`, `journal.html`, and `backtests.html` pages to interact with these endpoints and view saved results.
+
+### Strategy Tester UI
+
+1. **List & Select**  
+   - Visit `/strategy-tester` in your browser.  
+   - Click any strategy in the sidebar to select it.
+2. **Run a Backtest**  
+   - Click **Run Test** to trigger a paper-trade simulation.  
+   - Results appear instantly and are saved per your user account.
+3. **View History**  
+   - Below the results panel, your past runs are listed with date, return %, drawdown, and Sharpe.
 
 ### Optional Security Flags
 You can disable certain login checks for local testing by setting environment

@@ -1,13 +1,22 @@
 import os
 import pandas as pd
 import datetime
+import json
 import requests
 import yfinance as yf
 from pathlib import Path
+from typing import List
 from .paper_trader import PaperTrader
 from backend.app.backtest import _performance_metrics
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.yaml"
+DATA_DIR = Path("data/backtests")
+HISTORY_FILE = DATA_DIR / "history.json"
+
+
+def list_strategies() -> List[str]:
+    """Return strategy keys available to run."""
+    return ["congress_long_short"]
 
 
 def _load_config() -> dict:
@@ -20,6 +29,44 @@ def _load_config() -> dict:
         except Exception:
             return {}
     return {}
+
+
+def _load_history() -> dict:
+    if HISTORY_FILE.is_file():
+        try:
+            with open(HISTORY_FILE) as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def _save_history(data: dict) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with open(HISTORY_FILE, "w") as f:
+        json.dump(data, f)
+
+
+def record_run(user_id: int, strategy: str, params: dict, metrics: dict) -> None:
+    data = _load_history()
+    user_hist = data.setdefault(str(user_id), {})
+    user_hist[strategy] = {
+        "params": params,
+        "timestamp": datetime.datetime.utcnow().isoformat(),
+        "metrics": metrics,
+    }
+    _save_history(data)
+
+
+def get_history(user_id: int) -> dict:
+    return _load_history().get(str(user_id), {})
+
+
+def run_strategy(strategy: str) -> dict:
+    if strategy == "congress_long_short":
+        tester = CongressLongShortTester()
+        return tester.run_backtest()
+    raise ValueError("unknown strategy")
 
 
 class CongressLongShortTester:
