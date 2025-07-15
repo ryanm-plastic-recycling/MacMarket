@@ -855,7 +855,8 @@ def serve_page(page_name: str):
     if page_name in allowed_pages:
         html_file = FRONTEND_DIR / page_name
         if html_file.exists():
-            return html_file.read_text()
+            # Explicitly read using UTF-8 to avoid locale dependent decoding
+            return html_file.read_text(encoding="utf-8")
     raise HTTPException(status_code=404, detail="Not Found")
 
 
