@@ -218,3 +218,30 @@ def test_signal_rankings_csv(monkeypatch):
     assert lines[0] == "symbol,score"
     assert "A,0.7" in lines[1]
 
+
+def test_strategy_endpoints(monkeypatch, tmp_path):
+    hist_file = tmp_path / "hist.json"
+    monkeypatch.setattr("macmarket.strategy_tester.HISTORY_FILE", hist_file)
+    monkeypatch.setattr(
+        "macmarket.strategy_tester.list_strategies", lambda: ["congress_long_short"]
+    )
+    monkeypatch.setattr(
+        "macmarket.strategy_tester.run_strategy", lambda s: {"total_return": 0.1}
+    )
+
+    resp = client.get("/strategy-test/list")
+    assert resp.status_code == 200
+    assert resp.json() == ["congress_long_short"]
+
+    resp = client.post(
+        "/strategy-test/run",
+        json={"strategy": "congress_long_short", "user_id": 1},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["total_return"] == 0.1
+
+    resp = client.get("/strategy-test/history?user_id=1")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "congress_long_short" in data
+

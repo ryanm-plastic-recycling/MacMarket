@@ -24,7 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import yfinance as yf
 import requests
-from macmarket.strategy_tester import CongressLongShortTester
+from macmarket import strategy_tester as st
 import pandas as pd
 import asyncio
 import httpx
@@ -681,12 +681,25 @@ def list_backtests(user_id: int | None = None, db: Session = Depends(get_db)):
         r.metrics = json.loads(r.metrics)
     return runs
 
-@app.post("/strategy-test/congress-long-short")
-async def run_congress_backtest():
-    """Trigger the backtest and return summary performance metrics."""
-    tester = CongressLongShortTester()
-    metrics = tester.run_backtest()
+@app.get("/strategy-test/list")
+def list_strategy_keys():
+    return st.list_strategies()
+
+
+@app.post("/strategy-test/run")
+def run_strategy(payload: dict):
+    strategy = payload.get("strategy")
+    user_id = payload.get("user_id")
+    if not strategy or user_id is None:
+        raise HTTPException(status_code=400, detail="missing params")
+    metrics = st.run_strategy(strategy)
+    st.record_run(int(user_id), strategy, payload.get("params", {}), metrics)
     return metrics
+
+
+@app.get("/strategy-test/history")
+def strategy_history(user_id: int):
+    return st.get_history(user_id)
 
 
 @app.get("/api/signals/alert")
