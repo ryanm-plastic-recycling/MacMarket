@@ -53,14 +53,16 @@ if(typeof setStatus!=="function"){
     <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
     <h2>Run Backtest</h2>
     <label>Symbol <input id="bt-symbol"></label>
-    <label>Start <input type="date" id="bt-start" value="2023-01-01"></label>
+    <label>Start <input type="date" id="bt-start"></label>
     <label>End <input type="date" id="bt-end"></label>
     <button id="bt-run">Run</button>
+    <p id="bt-note" style="font-size:0.9em;opacity:0.8;">Backtests are automatically saved after running and listed below.</p>
     <pre id="bt-output"></pre>
     <h2>Strategy Tester</h2>
     <select id="st-strategy"></select>
     <button id="st-run">Run Strategy</button>
-    <pre id="st-output"></pre>
+    <div id="st-results"></div>
+    <pre id="st-output" style="display:none"></pre>
     <h2>Saved Backtests</h2>
     <table id="bt-table">
         <thead><tr><th>Date</th><th>Symbol</th><th>Total Return</th><th>CAGR</th><th>Max DD</th><th>Sharpe</th></tr></thead>
@@ -134,6 +136,13 @@ async function runStrategy(){
     if(res.ok){
         const data = await res.json();
         document.getElementById('st-output').textContent = JSON.stringify(data, null, 2);
+        const div = document.getElementById('st-results');
+        div.innerHTML = `
+          <div class="metric"><span class="metric-icon">💰</span>Total Return <span class="help" title="Overall profit or loss over the test period">?</span>: <strong>${(data.total_return*100).toFixed(2)}%</strong></div>
+          <div class="metric"><span class="metric-icon">📈</span>CAGR <span class="help" title="Compound annual growth rate">?</span>: <strong>${(data.cagr*100).toFixed(2)}%</strong></div>
+          <div class="metric"><span class="metric-icon">📉</span>Max DD <span class="help" title="Largest peak-to-trough decline">?</span>: <strong>${(data.max_drawdown*100).toFixed(2)}%</strong></div>
+          <div class="metric"><span class="metric-icon">⚖️</span>Sharpe <span class="help" title="Risk-adjusted return ratio">?</span>: <strong>${data.sharpe.toFixed(2)}</strong></div>
+        `;
         setStatus('Done','ok');
     }else{
         setStatus('Failed','error');
@@ -145,6 +154,7 @@ window.onload = () => {
     loadStrategies();
     document.getElementById('bt-run').addEventListener('click', runBacktest);
     document.getElementById('st-run').addEventListener('click', runStrategy);
+    document.getElementById('bt-start').value = new Date().toISOString().split('T')[0];
 };
 </script>
 <script src="help.js"></script>

@@ -1,9 +1,9 @@
 from fastapi import FastAPI, HTTPException, Depends
 from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
+from sqlalchemy.exc import SQLAlchemyError
 from backend.app.database import connect_to_db, SessionLocal, engine
 from backend.app import database as db_module
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
 from backend.app import models, crud, schemas
 import backend.app.security as security
 from backend.app import risk
@@ -676,7 +676,10 @@ def save_backtest(
 @app.get("/api/backtests", response_model=list[schemas.BacktestRun])
 def list_backtests(user_id: int | None = None, db: Session = Depends(get_db)):
     """Return saved backtest runs."""
-    runs = crud.get_backtest_runs(db, user_id)
+    try:
+        runs = crud.get_backtest_runs(db, user_id)
+    except SQLAlchemyError:
+        return []
     for r in runs:
         r.metrics = json.loads(r.metrics)
     return runs

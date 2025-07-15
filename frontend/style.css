@@ -312,3 +312,7 @@ th { border-bottom: 1px solid #ccc; }
   font-size: 1.2em;
   white-space: pre-wrap;
 }
+.metric { margin:4px 0; }
+.metric .help { margin-left:4px; cursor:help; opacity:0.7; }
+.metric-icon{margin-right:6px;}
+
