@@ -238,7 +238,13 @@ Several additional endpoints are available:
 * `GET /api/quiver/risk?symbols=AAPL,MSFT` &mdash; returns Quiver risk scores for the specified tickers (requires `QUIVER_API_KEY`).
 * `GET /api/quiver/whales?limit=5` &mdash; lists recent whale moves limited to the given number (requires `QUIVER_API_KEY`).
 * `GET /api/quiver/political?symbols=AAPL` &mdash; counts of recent congressional trades for the tickers (requires `QUIVER_API_KEY`).
+* `POST /strategy-test/congress-long-short` &mdash; run the Congress Long-Short strategy backtest.
 * `GET /api/quiver/lobby?symbols=AAPL` &mdash; counts of recent lobbying disclosures for the tickers (requires `QUIVER_API_KEY`).
+Example:
+```bash
+curl -X POST http://localhost:9500/strategy-test/congress-long-short
+```
+
 
 The frontend now includes `signals.html`, `journal.html`, and `backtests.html` pages to interact with these endpoints and view saved results.
 

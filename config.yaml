@@ -1,0 +1,5 @@
+quiver_api_token: "YOUR_QUIVER_TOKEN"
+strategy_tester:
+  initial_capital: 100000
+  lookback_days: 7
+  rebalance_frequency_days: 7
