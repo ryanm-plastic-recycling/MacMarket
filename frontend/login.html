@@ -5,6 +5,23 @@
     <title>Login - MacMarket</title>
     <link rel="stylesheet" href="style.css">
     <script src="theme.js"></script>
+    <script>
+        if(typeof setStatus !== 'function'){
+            window.setStatus = function(message, type = ''){
+                const div = document.getElementById('status');
+                if(!div) return;
+                if(message){
+                    div.textContent = message;
+                    div.className = type;
+                    div.style.display = 'block';
+                } else {
+                    div.textContent = '';
+                    div.className = '';
+                    div.style.display = 'none';
+                }
+            };
+        }
+    </script>
     <script src="ticker.js"></script>
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
