@@ -2,6 +2,9 @@ quiver_api_token: "YOUR_QUIVER_TOKEN"
 strategy_tester:
   available_strategies:
     - congress_long_short
+    - political_alpha
+    - lobby_power
+    - whale_watcher
   initial_capital: 100000
   lookback_days: 7
   rebalance_frequency_days: 7

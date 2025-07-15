@@ -16,7 +16,16 @@ HISTORY_FILE = DATA_DIR / "history.json"
 
 def list_strategies() -> List[str]:
     """Return strategy keys available to run."""
-    return ["congress_long_short"]
+    cfg = _load_config()
+    strategies = cfg.get("strategy_tester", {}).get("available_strategies")
+    if strategies:
+        return strategies
+    return [
+        "congress_long_short",
+        "political_alpha",
+        "lobby_power",
+        "whale_watcher",
+    ]
 
 
 def _load_config() -> dict:
@@ -66,6 +75,14 @@ def run_strategy(strategy: str) -> dict:
     if strategy == "congress_long_short":
         tester = CongressLongShortTester()
         return tester.run_backtest()
+    if strategy in {"political_alpha", "lobby_power", "whale_watcher"}:
+        # Placeholder metrics for additional strategies
+        return {
+            "total_return": 0.0,
+            "cagr": 0.0,
+            "max_drawdown": 0.0,
+            "sharpe": 0.0,
+        }
     raise ValueError("unknown strategy")
 
 
