@@ -24,6 +24,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import yfinance as yf
 import requests
+from macmarket.strategy_tester import CongressLongShortTester
 import pandas as pd
 import asyncio
 import httpx
@@ -679,6 +680,14 @@ def list_backtests(user_id: int | None = None, db: Session = Depends(get_db)):
     for r in runs:
         r.metrics = json.loads(r.metrics)
     return runs
+
+@app.post("/strategy-test/congress-long-short")
+async def run_congress_backtest():
+    """Trigger the backtest and return summary performance metrics."""
+    tester = CongressLongShortTester()
+    metrics = tester.run_backtest()
+    return metrics
+
 
 @app.get("/api/signals/alert")
 async def latest_alert():
