@@ -160,7 +160,7 @@ async function loadPositions(){
 document.getElementById('journal-form').addEventListener('submit', async e => {
     e.preventDefault();
     const payload = {
-        symbol: document.getElementById('symbol').value.trim(),
+        symbol: document.getElementById('symbol').value.trim().toUpperCase(),
         action: document.getElementById('action').value,
         quantity: parseFloat(document.getElementById('quantity').value),
         price: parseFloat(document.getElementById('price').value),
@@ -177,6 +177,7 @@ window.onload = () => {
     loadJournal();
     loadPositions();
 };
+document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
 <script src="help.js"></script>
 <script>initHelp("journal");</script>

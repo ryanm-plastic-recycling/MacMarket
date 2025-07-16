@@ -74,7 +74,7 @@
         new Sortable(body, {animation:150});
     }
     document.getElementById('add-ticker').addEventListener('click', ()=>{
-        const val=document.getElementById('new-ticker').value.trim();
+        const val=document.getElementById('new-ticker').value.trim().toUpperCase();
         if(val){
             const body=document.getElementById('tickers-body');
             const tr=document.createElement('tr');
@@ -107,6 +107,7 @@
         document.getElementById('admin-link').style.display='block';
     }
     window.onload=loadTickers;
+    document.getElementById('new-ticker').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
 <script src="help.js"></script>
 <script>initHelp("tickers");</script>

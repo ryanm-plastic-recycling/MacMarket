@@ -86,7 +86,7 @@
 if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
 
 async function fetchSignal(){
-    const sym = document.getElementById('symbol').value.trim();
+    const sym = document.getElementById('symbol').value.trim().toUpperCase();
     if(!sym) return;
     setStatus('Loading signal...', 'loading');
     const res = await fetch(`/api/signals/${sym}`);
@@ -145,7 +145,7 @@ async function fetchRecs(){
 }
 
 async function fetchSingle(){
-    const sym = document.getElementById('single-symbol').value.trim();
+    const sym = document.getElementById('single-symbol').value.trim().toUpperCase();
     if(!sym) return;
     setStatus('Loading...', 'loading');
     const res = await fetch(`/api/recommendation/${sym}`);
@@ -166,6 +166,8 @@ document.getElementById('get-signal').addEventListener('click', fetchSignal);
 document.getElementById('run-macro').addEventListener('click', fetchMacro);
 document.getElementById('get-recs').addEventListener('click', fetchRecs);
 document.getElementById('get-single').addEventListener('click', fetchSingle);
+document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+document.getElementById('single-symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
 <script src="help.js"></script>
 <script>initHelp("signals");</script>
