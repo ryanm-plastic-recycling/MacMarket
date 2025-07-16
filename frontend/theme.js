@@ -23,20 +23,27 @@ function applyTheme(theme) {
 }
 
 function initTheme() {
-const btn = document.getElementById('theme-toggle');
-if (btn) {
+  const btn = document.getElementById('theme-toggle');
   const saved = localStorage.getItem('theme') || 'light';
   applyTheme(saved);
   const select = document.getElementById('theme-select');
-  if (select) select.value = saved;
+  if (select) {
+    select.value = saved;
+    select.addEventListener('change', () => applyTheme(select.value));
+  }
+  if (btn) {
+    btn.textContent = saved === 'dark' ? 'Light Mode' : 'Dark Mode';
+    btn.addEventListener('click', () => {
+      const current = localStorage.getItem('theme') || 'light';
+      const next = current === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+      btn.textContent = next === 'dark' ? 'Light Mode' : 'Dark Mode';
+    });
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
-  const select = document.getElementById('theme-select');
-  if (select) {
-    select.addEventListener('change', () => applyTheme(select.value));
-  }
   initAuth();
   initHeader();
   initLoading();
@@ -117,22 +124,4 @@ function initLoading() {
       }
     }
   };
-}
-
-if (btn) btn.textContent = saved === 'dark' ? 'Light Mode' : 'Dark Mode';
-  if (btn) {
-    btn.addEventListener('click', () => {
-      const current = localStorage.getItem('theme') || 'light';
-      const next = current === 'light' ? 'dark' : 'light';
-      applyTheme(next);
-      btn.textContent = next === 'dark' ? 'Light Mode' : 'Dark Mode';
-    });
-  }
-  btn.textContent = saved === 'dark' ? 'Light Mode' : 'Dark Mode';
-  btn.addEventListener('click', () => {
-    const current = localStorage.getItem('theme') || 'light';
-    const next = current === 'light' ? 'dark' : 'light';
-    applyTheme(next);
-    btn.textContent = next === 'dark' ? 'Light Mode' : 'Dark Mode';
-  });
 }
