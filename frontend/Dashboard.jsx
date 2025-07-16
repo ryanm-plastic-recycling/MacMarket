@@ -24,15 +24,17 @@ function Dashboard() {
 
   useEffect(() => {
     if (!data) return;
-    if (ppiChart.current) {
+    const macro = data.macro || [];
+    const crypto = data.crypto || [];
+    if (ppiChart.current && macro.length) {
       const ctx = ppiChart.current.getContext('2d');
       new Chart(ctx, {
         type: 'line',
         data: {
-          labels: data.macro.map(m => m.timestamp).reverse(),
+          labels: macro.map(m => m.timestamp).reverse(),
           datasets: [{
             label: 'PPI',
-            data: data.macro.map(m => m.value).reverse(),
+            data: macro.map(m => m.value).reverse(),
             borderColor: 'blue',
             fill: false
           }]
@@ -40,15 +42,15 @@ function Dashboard() {
         options: { scales: { x: { display: false } } }
       });
     }
-    if (cryptoChart.current) {
+    if (cryptoChart.current && crypto.length) {
       const ctx = cryptoChart.current.getContext('2d');
       new Chart(ctx, {
         type: 'line',
         data: {
-          labels: data.crypto.map(c => c.symbol),
+          labels: crypto.map(c => c.symbol),
           datasets: [{
             label: 'Price',
-            data: data.crypto.map(c => c.value),
+            data: crypto.map(c => c.value),
             borderColor: 'green',
             fill: false
           }]
