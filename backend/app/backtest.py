@@ -29,7 +29,8 @@ def _performance_metrics(df: pd.DataFrame) -> dict:
 
 def sma_crossover_backtest(symbol: str, start: str = "2023-01-01", end: str | None = None) -> dict:
     """Run a simple SMA crossover backtest and return trades and metrics."""
-    df = yf.download(symbol, start=start, end=end)
+    symbol = symbol.upper()
+    df = yf.download(symbol, start=start, end=end, progress=False)
     if df.empty:
         return {"trades": [], "metrics": {}, "equity": []}
 
@@ -44,12 +45,13 @@ def sma_crossover_backtest(symbol: str, start: str = "2023-01-01", end: str | No
     df["equity"] = (1 + df["strategy_return"]).cumprod()
 
     trades = []
-    prev = 0
+    prev = 0.0
     for date, row in df.iterrows():
-        if row["signal"] != prev and row["signal"] != 0:
-            action = "buy" if row["signal"] == 1 else "sell"
+        signal = float(row["signal"])
+        if signal != prev and signal != 0:
+            action = "buy" if signal == 1 else "sell"
             trades.append({"date": date.strftime("%Y-%m-%d"), "action": action, "price": float(row["Close"])})
-        prev = row["signal"]
+        prev = signal
 
     metrics = _performance_metrics(df)
     equity = [

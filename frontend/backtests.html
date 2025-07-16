@@ -92,7 +92,7 @@ async function loadBacktests(){
 }
 
 async function runBacktest(){
-    const symbol = document.getElementById('bt-symbol').value.trim();
+    const symbol = document.getElementById('bt-symbol').value.trim().toUpperCase();
     const start = document.getElementById('bt-start').value;
     const end = document.getElementById('bt-end').value;
     if(!symbol) return;
@@ -154,7 +154,12 @@ window.onload = () => {
     loadStrategies();
     document.getElementById('bt-run').addEventListener('click', runBacktest);
     document.getElementById('st-run').addEventListener('click', runStrategy);
-    document.getElementById('bt-start').value = new Date().toISOString().split('T')[0];
+    const btSym = document.getElementById('bt-symbol');
+    btSym.addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+    const today = new Date();
+    document.getElementById('bt-end').value = today.toISOString().split('T')[0];
+    const past = new Date(today); past.setDate(past.getDate()-30);
+    document.getElementById('bt-start').value = past.toISOString().split('T')[0];
 };
 </script>
 <script src="help.js"></script>
