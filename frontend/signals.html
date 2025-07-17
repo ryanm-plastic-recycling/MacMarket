@@ -83,6 +83,14 @@
     </section>
 </main>
 <script>
+function setStatus(message) {
+  const el = document.getElementById('status');
+  if (el) {
+    el.textContent = message;
+  } else {
+    console.warn('Status element not found:', message);
+  }
+}
 if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
 
 async function fetchSignal(){

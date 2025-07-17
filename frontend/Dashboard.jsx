@@ -1,7 +1,7 @@
 const { useState, useEffect, useRef } = React;
 
 function Dashboard() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState({ macro: [], crypto: [], political: {}, news: {}, risk: {}, validated: {} });
   const ppiChart = useRef(null);
   const cryptoChart = useRef(null);
   const [chat, setChat] = useState([]);
@@ -13,8 +13,12 @@ function Dashboard() {
       .then(r => r.json())
       .then(d => {
         if (!mounted) return;
-        setData(d);
-        setChat(d.discord || []);
+        setData({
+          ...d,
+          macro: Array.isArray(d.macro) ? d.macro : [],
+          crypto: Array.isArray(d.crypto) ? d.crypto : []
+        });
+        setChat(Array.isArray(d.discord) ? d.discord : []);
       })
       .catch(err => console.error(err));
     return () => {
@@ -31,10 +35,10 @@ function Dashboard() {
       new Chart(ctx, {
         type: 'line',
         data: {
-          labels: macro.map(m => m.timestamp).reverse(),
+          labels: data.macro?.map(m => m.timestamp).reverse(),
           datasets: [{
             label: 'PPI',
-            data: macro.map(m => m.value).reverse(),
+            data: data.macro?.map(m => m.value).reverse(),
             borderColor: 'blue',
             fill: false
           }]
@@ -47,10 +51,10 @@ function Dashboard() {
       new Chart(ctx, {
         type: 'line',
         data: {
-          labels: crypto.map(c => c.symbol),
+          labels: data.crypto?.map(c => c.symbol),
           datasets: [{
             label: 'Price',
-            data: crypto.map(c => c.value),
+            data: data.crypto?.map(c => c.value),
             borderColor: 'green',
             fill: false
           }]
@@ -77,7 +81,7 @@ function Dashboard() {
       React.createElement('div', { className: 'panel' },
         React.createElement('h3', null, 'Political Signals'),
         React.createElement('ul', null,
-          politicalItems.map((p, i) =>
+          politicalItems?.map((p, i) =>
             React.createElement('li', { key: i },
               `${p.Ticker || p.ticker || p.symbol || ''} ${p.Representative || (p.metrics && p.metrics.Representative) || ''}`
             )
@@ -87,7 +91,7 @@ function Dashboard() {
       React.createElement('div', { className: 'panel' },
         React.createElement('h3', null, 'News Feed'),
         React.createElement('ul', null,
-          newsItems.map((n, i) =>
+          newsItems?.map((n, i) =>
             React.createElement('li', { key: i },
               React.createElement('a', {
                 href: n.url || (n.metrics && n.metrics.url),
@@ -108,7 +112,7 @@ function Dashboard() {
       React.createElement('div', { className: 'panel' },
         React.createElement('h3', null, 'Community Chat'),
         React.createElement('ul', null,
-          chat.map(m => {
+          chat?.map(m => {
             const v = data.validated && data.validated[m.id];
             if (v && v.trustScore && v.trustScore <= 2) return null;
             return React.createElement('li', { key: m.id }, `${m.author}: ${m.content}`,
