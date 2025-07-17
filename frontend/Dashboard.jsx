@@ -28,7 +28,9 @@ function Dashboard() {
 
   useEffect(() => {
     if (!data) return;
-    if (ppiChart.current) {
+    const macro = data.macro || [];
+    const crypto = data.crypto || [];
+    if (ppiChart.current && macro.length) {
       const ctx = ppiChart.current.getContext('2d');
       new Chart(ctx, {
         type: 'line',
@@ -44,7 +46,7 @@ function Dashboard() {
         options: { scales: { x: { display: false } } }
       });
     }
-    if (cryptoChart.current) {
+    if (cryptoChart.current && crypto.length) {
       const ctx = cryptoChart.current.getContext('2d');
       new Chart(ctx, {
         type: 'line',
