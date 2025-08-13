@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HACO Signals</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="sidebar">
+    <a href="/index.html">Home</a>
+    <a href="/signals.html">Signals</a>
+    <a href="/signals/haco">Signals → HACO</a>
+</div>
+<main>
+    <h2>HACO Strategy</h2>
+    <div id="controls">
+        <label>Symbol <input id="symbol" value="AAPL"></label>
+        <label>Timeframe <input id="timeframe" value="Day"></label>
+        <label>Length Up <input id="lenUp" value="34" type="number"></label>
+        <label>Length Down <input id="lenDown" value="34" type="number"></label>
+        <label>Alert Lookback <input id="alertLookback" value="1" type="number"></label>
+        <label>Lookback <input id="lookback" value="200" type="number"></label>
+        <label><input type="checkbox" id="toggleHa"> Show Heikin-Ashi</label>
+        <button id="run">Run</button>
+    </div>
+    <div id="chart" style="height:400px;"></div>
+    <div id="explain"></div>
+    <div id="scan">
+        <input id="scanList" placeholder="Symbols comma separated">
+        <button id="scanBuy">Run Buy Scan</button>
+        <button id="scanSell">Run Sell Scan</button>
+        <div id="scanResults"></div>
+    </div>
+</main>
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/static/js/haco-ui.js"></script>
+</body>
+</html>

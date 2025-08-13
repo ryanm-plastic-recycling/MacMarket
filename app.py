@@ -30,6 +30,7 @@ import asyncio
 import httpx
 from cachetools import TTLCache
 from dotenv import load_dotenv
+from api.haco import router as haco_router, page_router as haco_page_router
 
 load_dotenv()
 
@@ -53,6 +54,11 @@ if REACT_BUILD_DIR.is_dir():
         StaticFiles(directory=REACT_BUILD_DIR, html=True),
         name="static",
     )
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static-files")
+app.include_router(haco_router)
+app.include_router(haco_page_router)
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
