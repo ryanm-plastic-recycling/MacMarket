@@ -20,6 +20,12 @@ function renderChart(series){
     const chartEl = document.getElementById('haco-chart');
     chartEl.innerHTML = '';
     const chart = LightweightCharts.createChart(chartEl, {height:400});
+
+    const signalChartEl = document.getElementById('haco-signal-chart');
+    if(signalChartEl){
+        signalChartEl.innerHTML = '';
+    }
+    const signalChart = LightweightCharts.createChart(signalChartEl, {height:100});
     const candleSeries = chart.addCandlestickSeries();
     const haToggle = document.getElementById('haco-toggleHa').checked;
 
@@ -33,8 +39,8 @@ function renderChart(series){
             res.color = '#e74c3c';
             res.borderColor = '#e74c3c';
         }
-        if(bar.upw) markers.push({time: bar.time, position:'belowBar', color:'green', shape:'arrowUp'});
-        if(bar.dnw) markers.push({time: bar.time, position:'aboveBar', color:'red', shape:'arrowDown'});
+        if(bar.upw) markers.push({time: bar.time, position:'belowBar', color:'green', shape:'arrowUp', size:3});
+        if(bar.dnw) markers.push({time: bar.time, position:'aboveBar', color:'red', shape:'arrowDown', size:3});
         return res;
     });
     candleSeries.setData(candles);
@@ -54,6 +60,10 @@ function renderChart(series){
         const haSeries = chart.addCandlestickSeries({upColor:'#999', downColor:'#555'});
         haSeries.setData(series.map(b=>({time:b.time, open:b.haOpen, high:Math.max(b.h,b.haOpen), low:Math.min(b.l,b.haOpen), close:b.haC})));
     }
+
+    const signalSeries = signalChart.addHistogramSeries({base:0, priceFormat:{type:'volume'}, lineWidth:5});
+    const signalData = series.map(b=>({time:b.time, value:1, color:b.state?'#2ecc71':'#e74c3c'}));
+    signalSeries.setData(signalData);
 }
 
 function explainLast(last){
