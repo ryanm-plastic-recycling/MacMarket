@@ -1,9 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
 
 from indicators.haco import compute_haco
 from services.data import get_candles
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
+templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/haco")
@@ -25,5 +28,35 @@ def haco_api(
         alert_lookback=alertLookback,
     )
     return data
+
+
+@router.get("/haco/scan")
+def haco_scan(symbols: str, timeframe: str = "Day", lookback: int = 500):
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    out = []
+    for sym in syms:
+        try:
+            candles = get_candles(sym, timeframe, lookback)
+            data = compute_haco(candles)
+            b = data["series"][-1] if data["series"] else {}
+            out.append({
+                "symbol": sym,
+                "upw": bool(b.get("upw")),
+                "dnw": bool(b.get("dnw")),
+                "state": b.get("state"),
+                "changed": bool(data["last"].get("changed")),
+                "reason": b.get("reason", ""),
+            })
+        except Exception as e:
+            out.append({"symbol": sym, "error": str(e)})
+    return JSONResponse(out)
+
+
+page_router = APIRouter()
+
+
+@page_router.get("/signals/haco", response_class=HTMLResponse)
+def signals_haco_page(request: Request):
+    return templates.TemplateResponse("signals_haco.html", {"request": request})
 
 

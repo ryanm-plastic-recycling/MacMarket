@@ -88,7 +88,7 @@ def compute_haco(
 
     state = [0] * n
     state[0] = 1 if c[0] >= o[0] else 0
-    reasons = ["seed"]
+    reasons = [""] * n
 
     keep1u_alert = [False] * n
     keep1u_price = [False] * n
@@ -176,7 +176,14 @@ def compute_haco(
             reason_i.append("utr")
         if dtr[i]:
             reason_i.append("dtr")
-        reasons.append(", ".join(reason_i))
+        keep1_alert = keep1u_alert[i]
+        keep1_price = keep1u_price[i]
+        keep1_trend = keep2u[i]
+        reason_i.append(
+            f"keep1={keep1_alert}/{keep1_price}/{keep1_trend} "
+            f"ZlDifU={zl_dif_u[i]:.2f} ZlDifD={zl_dif_d[i]:.2f}"
+        )
+        reasons[i] = ", ".join(reason_i)
 
     series = []
     for i in range(n):
@@ -219,7 +226,7 @@ def compute_haco(
             "upw": upw[i],
             "dnw": dnw[i],
             "state": state[i],
-            "reason": reasons[i + 1],
+            "reason": reasons[i],
         })
 
     last = {

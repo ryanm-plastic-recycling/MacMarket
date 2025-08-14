@@ -30,7 +30,7 @@ import asyncio
 import httpx
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from api.haco import router as haco_router
+from api.haco import router as haco_router, page_router as haco_page_router
 
 load_dotenv()
 
@@ -45,7 +45,11 @@ political_cache = TTLCache(maxsize=1, ttl=POLITICAL_CACHE_TTL) if POLITICAL_CACH
 news_cache = TTLCache(maxsize=2, ttl=NEWS_CACHE_TTL) if NEWS_CACHE_TTL > 0 else None
 quiver_cache = TTLCache(maxsize=10, ttl=300)
 
-# Serve React build if present
+# Dynamic routes first
+app.include_router(haco_router)
+app.include_router(haco_page_router)
+
+# Serve React build if present (mount AFTER dynamic routes)
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 REACT_BUILD_DIR = FRONTEND_DIR / "build"
 if REACT_BUILD_DIR.is_dir():
@@ -57,7 +61,6 @@ if REACT_BUILD_DIR.is_dir():
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static-files")
-app.include_router(haco_router)
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
