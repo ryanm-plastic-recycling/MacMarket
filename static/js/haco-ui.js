@@ -19,13 +19,19 @@ async function fetchHaco(){
 function renderChart(series){
     const chartEl = document.getElementById('haco-chart');
     chartEl.innerHTML = '';
-    const chart = LightweightCharts.createChart(chartEl, {height:400});
+    const chart = LightweightCharts.createChart(chartEl, {height:400, width: chartEl.clientWidth});
 
     const signalChartEl = document.getElementById('haco-signal-chart');
     if(signalChartEl){
         signalChartEl.innerHTML = '';
     }
-    const signalChart = LightweightCharts.createChart(signalChartEl, {height:100});
+    const signalChart = LightweightCharts.createChart(signalChartEl, {
+        height:100,
+        width: signalChartEl.clientWidth,
+        timeScale:{visible:false},
+        rightPriceScale:{visible:false},
+        leftPriceScale:{visible:false}
+    });
     const candleSeries = chart.addCandlestickSeries();
     const haToggle = document.getElementById('haco-toggleHa').checked;
 
@@ -39,8 +45,8 @@ function renderChart(series){
             res.color = '#e74c3c';
             res.borderColor = '#e74c3c';
         }
-        if(bar.upw) markers.push({time: bar.time, position:'belowBar', color:'green', shape:'arrowUp', size:3});
-        if(bar.dnw) markers.push({time: bar.time, position:'aboveBar', color:'red', shape:'arrowDown', size:3});
+        if(bar.upw) markers.push({time: bar.time, position:'belowBar', color:'green', shape:'text', text:'▲', size:2});
+        if(bar.dnw) markers.push({time: bar.time, position:'aboveBar', color:'red', shape:'text', text:'▼', size:2});
         return res;
     });
     candleSeries.setData(candles);
@@ -61,9 +67,14 @@ function renderChart(series){
         haSeries.setData(series.map(b=>({time:b.time, open:b.haOpen, high:Math.max(b.h,b.haOpen), low:Math.min(b.l,b.haOpen), close:b.haC})));
     }
 
-    const signalSeries = signalChart.addHistogramSeries({base:0, priceFormat:{type:'volume'}, lineWidth:5});
+    const signalSeries = signalChart.addHistogramSeries({
+        priceScaleId:'',
+        priceFormat:{type:'price', precision:0, minMove:1}
+    });
+    signalSeries.priceScale().applyOptions({scaleMargins:{top:0,bottom:0}});
     const signalData = series.map(b=>({time:b.time, value:1, color:b.state?'#2ecc71':'#e74c3c'}));
     signalSeries.setData(signalData);
+    signalChart.timeScale().fitContent();
 }
 
 function explainLast(last){
