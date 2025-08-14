@@ -30,7 +30,7 @@ import asyncio
 import httpx
 from cachetools import TTLCache
 from dotenv import load_dotenv
-from api.haco import router as haco_router, page_router as haco_page_router
+from api.haco import router as haco_router
 
 load_dotenv()
 
@@ -47,7 +47,6 @@ quiver_cache = TTLCache(maxsize=10, ttl=300)
 
 # Dynamic routes first
 app.include_router(haco_router)
-app.include_router(haco_page_router)
 
 # Serve React build if present (mount AFTER dynamic routes)
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
