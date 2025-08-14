@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
     <title>Signals - MacMarket</title>
     <link rel="stylesheet" href="style.css">
 <script type="module" src="theme.js"></script>
@@ -103,12 +103,23 @@
         <div id="haco-chart" style="height:400px; position:relative;"></div>
         <div id="haco-signal-chart" style="height:100px;"></div>
         <div id="haco-explain"></div>
-        <div id="haco-scan">
-            <input id="haco-scanList" placeholder="Symbols comma separated">
-            <button id="haco-scanBuy">Run Buy Scan</button>
-            <button id="haco-scanSell">Run Sell Scan</button>
-            <div id="haco-scanResults"></div>
-        </div>
+    </section>
+
+    <section class="scan">
+        <form id="scan-form" class="row" style="display:flex;gap:.5rem;align-items:center;">
+            <label for="scan-symbols"><strong>Symbols</strong> (comma-separated):</label>
+            <input id="scan-symbols" type="text" value="AAPL,MSFT" style="min-width:260px;">
+            <button id="scan-run" type="submit">Scan</button>
+        </form>
+        <div id="scan-status" class="muted" style="margin:.5rem 0;"></div>
+        <table id="scan-table" class="table">
+            <thead>
+                <tr>
+                    <th>Symbol</th><th>Up</th><th>Down</th><th>State</th><th>Changed</th><th>Reason</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </section>
 </main>
 <script>
@@ -206,7 +217,7 @@ document.getElementById('get-single').addEventListener('click', fetchSingle);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 document.getElementById('single-symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
-<script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/static/js/lightweight-charts.standalone.production.js"></script>
 <script>
     (function(){
       const scripts = Array.from(document.scripts);
@@ -217,6 +228,7 @@ document.getElementById('single-symbol').addEventListener('input', e => { e.targ
     })();
   </script>
 <script src="/static/js/haco-ui.js?v=1"></script>
+<script src="/static/js/haco-scan.js"></script>
 <script src="help.js"></script>
 <script>initHelp("signals");</script>
 </body>
