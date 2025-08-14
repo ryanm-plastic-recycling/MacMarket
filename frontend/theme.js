@@ -1,7 +1,7 @@
-const LOGO_LIGHT = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAE/gK+Xm0RgQAAAABJRU5ErkJggg==';
-const LOGO_DARK = LOGO_LIGHT;
-const SPINNER_LIGHT = LOGO_LIGHT;
-const SPINNER_DARK = LOGO_LIGHT;
+import LOGO_LIGHT from './logo_light.js';
+import LOGO_DARK from './logo_dark.js';
+import SPINNER_LIGHT from './spinner_light.js';
+import SPINNER_DARK from './spinner_dark.js';
 
 function updateThemeAssets(theme) {
   const logo = document.getElementById('header-logo');
