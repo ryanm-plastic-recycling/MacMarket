@@ -316,3 +316,22 @@ th { border-bottom: 1px solid #ccc; }
 .metric .help { margin-left:4px; cursor:help; opacity:0.7; }
 .metric-icon{margin-right:6px;}
 
+/* ===== HACO Overlay (transparent & non-interactive) ===== */
+#haco-chart { position: relative; }
+.haco-overlay {
+  position: absolute;
+  inset: 0;
+  background: transparent !important;
+  pointer-events: none;
+  z-index: 2;
+}
+.haco-arrow {
+  position: absolute;
+  font-size: 28px;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+.haco-arrow.up   { color: green; }
+.haco-arrow.down { color: red;   }
+
