@@ -68,6 +68,7 @@ Planned support for:
 - News feed defaults to the last week and is timezone-aware
 - Signals include exit price/date suggestions
 - Admin panel features an API tester for validating data sources
+- HACO strategy with zero-lag Heikin-Ashi trend detection, interactive chart, and ticker scanner
 - Optional Discord bot integration for realtime alerts
 
 ## 🛠️ To Do
@@ -226,6 +227,7 @@ uses an LLM (if configured) to suggest potential actions.
 Several additional endpoints are available:
 
 * `GET /api/signals/<symbol>` &mdash; returns news sentiment and technical signals for a ticker.
+* `GET /api/signals/haco` &mdash; zero-lag Heikin-Ashi strategy with up/down wave alerts; query params: `symbol`, `timeframe`, `lengthUp`, `lengthDown`, `alertLookback`, `lookback`.
 * `POST /api/macro-signal` with a JSON body `{"text": "..."}` to interpret macroeconomic commentary via an LLM.
 * `GET /api/backtest/<symbol>` &mdash; runs a simple SMA crossover backtest.
 * `POST /api/backtest/<symbol>` &mdash; run a backtest and store the results.
