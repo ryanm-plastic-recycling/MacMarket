@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="style.css">
 <script type="module" src="theme.js"></script>
     <script src="ticker.js"></script>
+    <style>
+        .haco-overlay { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+        .haco-arrow { position:absolute; transform:translate(-50%,-50%); line-height:1; text-shadow:0 0 3px rgba(0,0,0,.45); font-weight:700; }
+        .haco-arrow.up   { color:#16a34a; }
+        .haco-arrow.down { color:#dc2626; }
+    </style>
 </head>
 <body>
 <div id="sidebar">
@@ -94,7 +100,7 @@
             <label><input type="checkbox" id="haco-toggleHa"> Show Heikin-Ashi</label>
             <button id="haco-run">Run</button>
         </div>
-        <div id="haco-chart" style="height:400px;"></div>
+        <div id="haco-chart" style="height:400px; position:relative;"></div>
         <div id="haco-signal-chart" style="height:100px;"></div>
         <div id="haco-explain"></div>
         <div id="haco-scan">
@@ -200,7 +206,16 @@ document.getElementById('get-single').addEventListener('click', fetchSingle);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 document.getElementById('single-symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
-<script src="https://unpkg.com/lightweight-charts@4.0.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+    (function(){
+      const scripts = Array.from(document.scripts);
+      const lw = scripts.find(s => s.src.includes('lightweight-charts'));
+      console.log('[HACO] Loaded Lightweight Charts:', lw?.src || '(inline)');
+      // Some builds expose version; if not, the pinned URL is our source of truth
+      console.log('[HACO] LW Charts version (from URL):', (lw?.src.match(/@([\d.]+)/)||[])[1] || 'unknown');
+    })();
+  </script>
 <script src="/static/js/haco-ui.js?v=1"></script>
 <script src="help.js"></script>
 <script>initHelp("signals");</script>

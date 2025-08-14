@@ -20,6 +20,38 @@ function renderChart(series){
     const chartEl = document.getElementById('haco-chart');
     chartEl.innerHTML = '';
     const chart = LightweightCharts.createChart(chartEl, {height:400, width: chartEl.clientWidth});
+    const overlay = document.createElement('div');
+    overlay.className = 'haco-overlay';
+    chartEl.appendChild(overlay);
+
+    function drawOverlayArrows(series, chart, candleSeries, overlayEl, px = 26) {
+        overlayEl.innerHTML = '';
+        const ts = chart.timeScale();
+        for (const b of series) {
+            if (!b.upw && !b.dnw) continue;
+
+            const x = ts.timeToCoordinate(b.time);
+            const yAnchor = b.upw ? b.low ?? b.l : b.high ?? b.h;
+            const y = candleSeries.priceToCoordinate(yAnchor);
+            if (x == null || y == null) continue;
+
+            const el = document.createElement('div');
+            el.className = `haco-arrow ${b.upw ? 'up' : 'down'}`;
+            el.textContent = b.upw ? '▲' : '▼';
+            el.style.left = `${x}px`;
+            el.style.top  = `${y + (b.upw ? 14 : -14)}px`;
+            el.style.fontSize = `${px}px`;
+            overlayEl.appendChild(el);
+        }
+    }
+
+    function rafRedraw(fn) {
+        let rafId = null;
+        return function(...args){
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => fn(...args));
+        };
+    }
 
     const signalChartEl = document.getElementById('haco-signal-chart');
     if(signalChartEl){
@@ -52,19 +84,26 @@ function renderChart(series){
     candleSeries.setData(candles);
     candleSeries.setMarkers(markers);
 
+    const redraw = rafRedraw(() => drawOverlayArrows(series, chart, candleSeries, overlay, 28));
+    redraw();
+
+    chart.timeScale().subscribeVisibleTimeRangeChange(redraw);
+    chart.subscribeCrosshairMove(redraw);
+    window.addEventListener('resize', redraw);
+
     const zlHaU = chart.addLineSeries({color:'blue'});
     const zlClU = chart.addLineSeries({color:'orange'});
     const zlHaD = chart.addLineSeries({color:'purple'});
     const zlClD = chart.addLineSeries({color:'gray'});
 
-    zlHaU.setData(series.map(b=>({time:b.time, value:b.ZlHaU})));
-    zlClU.setData(series.map(b=>({time:b.time, value:b.ZlClU})));
-    zlHaD.setData(series.map(b=>({time:b.time, value:b.ZlHaD})));
-    zlClD.setData(series.map(b=>({time:b.time, value:b.ZlClD})));
+    zlHaU.setData(series.map(b=>({time:b.time, value:b.ZlHaU}))); 
+    zlClU.setData(series.map(b=>({time:b.time, value:b.ZlClU}))); 
+    zlHaD.setData(series.map(b=>({time:b.time, value:b.ZlHaD}))); 
+    zlClD.setData(series.map(b=>({time:b.time, value:b.ZlClD}))); 
 
     if(haToggle){
-        const haSeries = chart.addCandlestickSeries({upColor:'#999', downColor:'#555'});
-        haSeries.setData(series.map(b=>({time:b.time, open:b.haOpen, high:Math.max(b.h,b.haOpen), low:Math.min(b.l,b.haOpen), close:b.haC})));
+        const haSeries = chart.addCandlestickSeries({upColor:'#999', downColor:'#555'}); 
+        haSeries.setData(series.map(b=>({time:b.time, open:b.haOpen, high:Math.max(b.h,b.haOpen), low:Math.min(b.l,b.haOpen), close:b.haC}))); 
     }
 
     const signalSeries = signalChart.addHistogramSeries({
