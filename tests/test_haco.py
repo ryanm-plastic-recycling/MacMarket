@@ -1,5 +1,4 @@
 from indicators.haco import tema, zero_lag_from_tema, compute_haco
-from indicators.haco import tema, zero_lag_from_tema, compute_haco
 
 
 def test_tema_constant():

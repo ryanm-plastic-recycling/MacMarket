@@ -5,6 +5,21 @@ from pathlib import Path
 from typing import List, Dict
 
 import yfinance as yf
+from datetime import datetime, timezone
+
+
+def _to_time(v):
+    s = str(v).strip() if v is not None else ""
+    # epoch seconds or ms
+    if s.replace('.', '', 1).isdigit():
+        x = float(s)
+        return int(x / 1000) if x > 1e12 else int(x)
+    # ISO or YYYY-MM-DD
+    try:
+        dt = datetime.fromisoformat(s.replace('Z', '+00:00'))
+    except Exception:
+        dt = datetime.strptime(s, '%Y-%m-%d')
+    return int(dt.replace(tzinfo=timezone.utc).timestamp())
 
 
 def _timeframe_to_interval(timeframe: str) -> str:
@@ -35,15 +50,22 @@ def get_candles(symbol: str, timeframe: str, lookback: int) -> List[Dict[str, fl
     if fname.exists():
         with fname.open() as f:
             reader = csv.DictReader(f)
-            for row in reader:
+            for rec in reader:
                 try:
-                    candles.append({
-                        "time": row.get("time") or row.get("date"),
-                        "o": float(row["o" if "o" in row else "open"]),
-                        "h": float(row["h" if "h" in row else "high"]),
-                        "l": float(row["l" if "l" in row else "low"]),
-                        "c": float(row["c" if "c" in row else "close"]),
-                    })
+                    key_map = {
+                        "o": "open", "h": "high", "l": "low", "c": "close",
+                        "O": "open", "H": "high", "L": "low", "C": "close",
+                        "Date": "date", "timestamp": "time", "Timestamp": "time"
+                    }
+                    rec2 = {key_map.get(k, k): v for k, v in rec.items()}
+                    row = {
+                        "time": _to_time(rec2.get("time") or rec2.get("date")),
+                        "o": float(rec2.get("o") or rec2.get("open")),
+                        "h": float(rec2.get("h") or rec2.get("high")),
+                        "l": float(rec2.get("l") or rec2.get("low")),
+                        "c": float(rec2.get("c") or rec2.get("close")),
+                    }
+                    candles.append(row)
                 except Exception:
                     continue
 
@@ -57,10 +79,8 @@ def get_candles(symbol: str, timeframe: str, lookback: int) -> List[Dict[str, fl
                 candles = []
                 for _, row in hist.iterrows():
                     ts = row.iloc[0]
-                    if hasattr(ts, "strftime"):
-                        ts = ts.strftime("%Y-%m-%d")
                     candles.append({
-                        "time": ts,
+                        "time": _to_time(ts),
                         "o": float(row["Open"]),
                         "h": float(row["High"]),
                         "l": float(row["Low"]),

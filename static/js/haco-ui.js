@@ -70,13 +70,11 @@ function renderChart(series){
     const markers = [];
     const candles = series.map(bar => {
         const res = {time: bar.time, open: bar.o, high: bar.h, low: bar.l, close: bar.c};
-        if(bar.state){
-            res.color = '#2ecc71';
-            res.borderColor = '#2ecc71';
-        }else{
-            res.color = '#e74c3c';
-            res.borderColor = '#e74c3c';
-        }
+        const up = '#2ecc71', down = '#e74c3c';
+        const col = (bar.state ? up : down);
+        res.color = col;
+        res.borderColor = col;
+        res.wickColor = col;
         if(bar.upw) markers.push({time: bar.time, position:'belowBar', color:'green', shape:'text', text:'▲', size:2});
         if(bar.dnw) markers.push({time: bar.time, position:'aboveBar', color:'red', shape:'text', text:'▼', size:2});
         return res;
@@ -102,8 +100,14 @@ function renderChart(series){
     zlClD.setData(series.map(b=>({time:b.time, value:b.ZlClD}))); 
 
     if(haToggle){
-        const haSeries = chart.addCandlestickSeries({upColor:'#999', downColor:'#555'}); 
-        haSeries.setData(series.map(b=>({time:b.time, open:b.haOpen, high:Math.max(b.h,b.haOpen), low:Math.min(b.l,b.haOpen), close:b.haC}))); 
+        const haSeries = chart.addCandlestickSeries({upColor:'#999', downColor:'#555'});
+        haSeries.setData(series.map(b => ({
+          time: b.time,
+          open: b.haOpen,
+          high: Math.max(b.h, b.haOpen, b.haC),
+          low:  Math.min(b.l, b.haOpen, b.haC),
+          close: b.haC
+        })));
     }
 
     const signalSeries = signalChart.addHistogramSeries({
@@ -140,8 +144,11 @@ async function scan(direction){
     document.getElementById('haco-scanResults').innerHTML = out;
 }
 
-document.getElementById('haco-run').addEventListener('click', fetchHaco);
-document.getElementById('haco-scanBuy').addEventListener('click', ()=>scan('buy'));
-document.getElementById('haco-scanSell').addEventListener('click', ()=>scan('sell'));
+const runBtn = document.getElementById('haco-run');
+if(runBtn) runBtn.addEventListener('click', fetchHaco);
+const scanBuyBtn = document.getElementById('haco-scanBuy');
+if(scanBuyBtn) scanBuyBtn.addEventListener('click', ()=>scan('buy'));
+const scanSellBtn = document.getElementById('haco-scanSell');
+if(scanSellBtn) scanSellBtn.addEventListener('click', ()=>scan('sell'));
 
 fetchHaco();

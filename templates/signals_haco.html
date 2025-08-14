@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HACO Signals</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .haco-overlay { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+    .haco-arrow { position:absolute; transform:translate(-50%,-50%); line-height:1; text-shadow:0 0 3px rgba(0,0,0,.45); font-weight:700; }
+    .haco-arrow.up { color:#16a34a; }
+    .haco-arrow.down { color:#dc2626; }
+  </style>
+</head>
+<body>
+<main>
+<section>
+  <div id="haco-controls">
+    <label>Symbol <input id="haco-symbol" value="AAPL"></label>
+    <label>Timeframe <input id="haco-timeframe" value="Day"></label>
+    <label>Length Up <input id="haco-lenUp" value="34" type="number"></label>
+    <label>Length Down <input id="haco-lenDown" value="34" type="number"></label>
+    <label>Alert Lookback <input id="haco-alertLookback" value="1" type="number"></label>
+    <label>Lookback <input id="haco-lookback" value="200" type="number"></label>
+    <label><input type="checkbox" id="haco-toggleHa"> Show Heikin-Ashi</label>
+    <button id="haco-run" type="button">Run</button>
+  </div>
+  <div id="haco-chart" style="height:400px; position:relative;"></div>
+  <div id="haco-signal-chart" style="height:100px;"></div>
+  <div id="haco-explain"></div>
+</section>
+
+<!-- HACO scan UI (new) -->
+<section class="scan">
+  <form id="scan-form" class="row" style="gap:.5rem;align-items:center;">
+    <label for="scan-symbols"><strong>Symbols</strong> (comma-separated):</label>
+    <input id="scan-symbols" type="text" value="AAPL,MSFT" style="min-width:260px;">
+    <button id="scan-run" type="submit">Scan</button>
+  </form>
+  <div id="scan-status" class="muted" style="margin:.5rem 0;"></div>
+  <table id="scan-table" class="table">
+    <thead>
+      <tr>
+        <th>Symbol</th><th>Up</th><th>Down</th><th>State</th><th>Changed</th><th>Reason</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+</main>
+<script src="https://unpkg.com/lightweight-charts@5.0.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/static/js/haco-ui.js"></script>
+<script src="/static/js/haco-scan.js"></script>
+</body>
+</html>
