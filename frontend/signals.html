@@ -14,7 +14,6 @@
     <a href="account.html">Account</a>
     <a href="tickers.html">Tickers</a>
     <a href="signals.html">Signals</a>
-    <a href="signals/haco">Signals → HACO</a>
     <a href="journal.html">Journal</a>
     <a href="backtests.html">Backtests</a>
     <a href="github.html">GitHub</a>
@@ -81,6 +80,27 @@
             </thead>
             <tbody></tbody>
         </table>
+    </section>
+    <section class="signal-section">
+        <h3>HACO Strategy</h3>
+        <div id="haco-controls">
+            <label>Symbol <input id="haco-symbol" value="AAPL"></label>
+            <label>Timeframe <input id="haco-timeframe" value="Day"></label>
+            <label>Length Up <input id="haco-lenUp" value="34" type="number"></label>
+            <label>Length Down <input id="haco-lenDown" value="34" type="number"></label>
+            <label>Alert Lookback <input id="haco-alertLookback" value="1" type="number"></label>
+            <label>Lookback <input id="haco-lookback" value="200" type="number"></label>
+            <label><input type="checkbox" id="haco-toggleHa"> Show Heikin-Ashi</label>
+            <button id="haco-run">Run</button>
+        </div>
+        <div id="haco-chart" style="height:400px;"></div>
+        <div id="haco-explain"></div>
+        <div id="haco-scan">
+            <input id="haco-scanList" placeholder="Symbols comma separated">
+            <button id="haco-scanBuy">Run Buy Scan</button>
+            <button id="haco-scanSell">Run Sell Scan</button>
+            <div id="haco-scanResults"></div>
+        </div>
     </section>
 </main>
 <script>
@@ -178,6 +198,8 @@ document.getElementById('get-single').addEventListener('click', fetchSingle);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 document.getElementById('single-symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
+<script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+<script src="/static/js/haco-ui.js"></script>
 <script src="help.js"></script>
 <script>initHelp("signals");</script>
 </body>
