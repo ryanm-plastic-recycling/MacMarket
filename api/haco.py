@@ -1,14 +1,9 @@
-from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, HTTPException
 
 from indicators.haco import compute_haco
 from services.data import get_candles
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
-page_router = APIRouter()
-
-templates = Jinja2Templates(directory="templates")
 
 
 @router.get("/haco")
@@ -32,6 +27,3 @@ def haco_api(
     return data
 
 
-@page_router.get("/signals/haco", response_class=HTMLResponse)
-async def haco_page(request: Request):
-    return templates.TemplateResponse("signals_haco.html", {"request": request})

@@ -1,10 +1,10 @@
 async function fetchHaco(){
-    const symbol = document.getElementById('symbol').value.trim();
-    const timeframe = document.getElementById('timeframe').value.trim();
-    const lenUp = document.getElementById('lenUp').value;
-    const lenDown = document.getElementById('lenDown').value;
-    const alertLookback = document.getElementById('alertLookback').value;
-    const lookback = document.getElementById('lookback').value;
+    const symbol = document.getElementById('haco-symbol').value.trim();
+    const timeframe = document.getElementById('haco-timeframe').value.trim();
+    const lenUp = document.getElementById('haco-lenUp').value;
+    const lenDown = document.getElementById('haco-lenDown').value;
+    const alertLookback = document.getElementById('haco-alertLookback').value;
+    const lookback = document.getElementById('haco-lookback').value;
     const url = `/api/signals/haco?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&lengthUp=${lenUp}&lengthDown=${lenDown}&alertLookback=${alertLookback}&lookback=${lookback}`;
     const res = await fetch(url);
     if(!res.ok){
@@ -17,11 +17,11 @@ async function fetchHaco(){
 }
 
 function renderChart(series){
-    const chartEl = document.getElementById('chart');
+    const chartEl = document.getElementById('haco-chart');
     chartEl.innerHTML = '';
     const chart = LightweightCharts.createChart(chartEl, {height:400});
     const candleSeries = chart.addCandlestickSeries();
-    const haToggle = document.getElementById('toggleHa').checked;
+    const haToggle = document.getElementById('haco-toggleHa').checked;
 
     const markers = [];
     const candles = series.map(bar => {
@@ -57,13 +57,13 @@ function renderChart(series){
 }
 
 function explainLast(last){
-    const el = document.getElementById('explain');
-    el.innerHTML = `<p>State: ${last.state} (${last.upw?'UP':'')}${last.dnw?'DOWN':''}</p><p>${last.reasons}</p>`;
+    const el = document.getElementById('haco-explain');
+    el.innerHTML = `<p>State: ${last.state} (${last.upw ? 'UP' : ''}${last.dnw ? 'DOWN' : ''})</p><p>${last.reasons}</p>`;
 }
 
 async function scan(direction){
-    const list = document.getElementById('scanList').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
-    const timeframe = document.getElementById('timeframe').value.trim();
+    const list = document.getElementById('haco-scanList').value.split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+    const timeframe = document.getElementById('haco-timeframe').value.trim();
     const results = [];
     for(const sym of list){
         const url = `/api/signals/haco?symbol=${sym}&timeframe=${timeframe}&lookback=2`;
@@ -77,11 +77,11 @@ async function scan(direction){
         }catch(e){}
     }
     const out = results.map(r=>`${r.sym} ${r.mark}`).join('<br>');
-    document.getElementById('scanResults').innerHTML = out;
+    document.getElementById('haco-scanResults').innerHTML = out;
 }
 
-document.getElementById('run').addEventListener('click', fetchHaco);
-document.getElementById('scanBuy').addEventListener('click', ()=>scan('buy'));
-document.getElementById('scanSell').addEventListener('click', ()=>scan('sell'));
+document.getElementById('haco-run').addEventListener('click', fetchHaco);
+document.getElementById('haco-scanBuy').addEventListener('click', ()=>scan('buy'));
+document.getElementById('haco-scanSell').addEventListener('click', ()=>scan('sell'));
 
 fetchHaco();
