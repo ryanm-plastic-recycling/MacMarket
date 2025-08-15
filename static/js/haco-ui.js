@@ -52,10 +52,7 @@
       setTimeout(redraw, 50);
 
       return {
-        updateMarkers(next) {
-          data = Array.isArray(next) ? next : data;
-          redraw();
-        },
+        updateMarkers(next) { data = Array.isArray(next) ? next : data; redraw(); },
         redraw,
       };
     }
@@ -66,7 +63,7 @@
   window.HACOOverlay = HACOOverlay;
 })();
 
-// ===== Signal sub-chart: create once if the element exists =====
+// ===== Signal sub-chart: create once if the element exists (feature-detected series) =====
 (function () {
   const signalChartEl = document.getElementById('haco-signal-chart');
   if (!signalChartEl) return;
@@ -83,44 +80,46 @@
       leftPriceScale: { visible: false },
     });
 
-    // Some old/light builds may not have histogram; fall back to line.
-    let series;
+    let series = null;
     if (typeof api.addHistogramSeries === 'function') {
       series = api.addHistogramSeries({
         priceScaleId: '',
         priceFormat: { type: 'price', precision: 0, minMove: 1 },
       });
-      series.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0 } });
-    } else {
+      if (series?.priceScale) {
+        series.priceScale().applyOptions({ scaleMargins: { top: 0, bottom: 0 } });
+      }
+    } else if (typeof api.addLineSeries === 'function') {
       console.warn('[HACO] addHistogramSeries not available; using line series fallback for signal chart.');
       series = api.addLineSeries({ priceScaleId: '' });
+    } else if (typeof api.addAreaSeries === 'function') {
+      console.warn('[HACO] No histogram/line; using area series fallback for signal chart.');
+      series = api.addAreaSeries({ priceScaleId: '' });
+    } else {
+      console.warn('[HACO] No histogram/line/area series available; skipping signal chart.');
+      Object.defineProperty(signalChartEl, '__signalChart', { value: api, writable: false });
+      window.__setSignalData = () => {}; // no-op to avoid later errors
+      return;
     }
 
     Object.defineProperties(signalChartEl, {
       __signalChart: { value: api, writable: false },
       __signalSeries: { value: series, writable: false },
-      __signalIsHist: { value: typeof api.addHistogramSeries === 'function', writable: false },
+      __signalKind: { value: (series && series.setData) ? 'ok' : 'none', writable: false },
     });
   }
 
   // Setter used by renderChart()
   window.__setSignalData = (bars) => {
     const series = signalChartEl.__signalSeries;
-    if (!series) return;
-
-    // Normalize time (handle ms → sec)
+    if (!series || typeof series.setData !== 'function') return;
     const data = (bars || []).map((b) => ({
       time: normalizeTime(b.time),
       value: 1,
       color: b.state ? '#2ecc71' : '#e74c3c',
     }));
-
-    if (signalChartEl.__signalIsHist) {
-      series.setData(data);
-    } else {
-      // Line fallback can't color per point; show 1/0 as a line.
-      series.setData(data.map((d) => ({ time: d.time, value: d.value })));
-    }
+    // Some series types ignore color per point; that's fine as a fallback.
+    series.setData(data.map(d => ({ time: d.time, value: d.value, color: d.color })));
     signalChartEl.__signalChart.timeScale().fitContent();
   };
 })();
@@ -142,8 +141,8 @@ async function fetchHaco() {
     return;
   }
   const data = await res.json();
-  renderChart(data.series);
-  explainLast(data.last);
+  renderChart(data.series || []);
+  explainLast(data.last || {});
 }
 
 function normalizeTime(t) {
@@ -177,29 +176,39 @@ function renderChart(bars) {
       timeScale: { borderVisible: false },
     });
 
-    const price = api.addCandlestickSeries({
-      upColor: '#26a69a',
-      downColor: '#ef5350',
-      borderVisible: false,
-      wickUpColor: '#26a69a',
-      wickDownColor: '#ef5350',
-    });
+    const price = (typeof api.addCandlestickSeries === 'function')
+      ? api.addCandlestickSeries({
+          upColor: '#26a69a',
+          downColor: '#ef5350',
+          borderVisible: false,
+          wickUpColor: '#26a69a',
+          wickDownColor: '#ef5350',
+        })
+      : (typeof api.addAreaSeries === 'function'
+          ? api.addAreaSeries({})
+          : null);
 
     Object.defineProperties(chartEl, {
       __hacoChart: { value: api, writable: false },
       __hacoPrice: { value: price, writable: false },
     });
+
+    console.debug('[HACO] series methods on main chart',
+      typeof api.addCandlestickSeries,
+      typeof api.addLineSeries,
+      typeof api.addAreaSeries
+    );
   }
 
   const chartApi = chartEl.__hacoChart;
   const priceSeries = chartEl.__hacoPrice;
 
-  if (!chartApi || typeof chartApi.addCandlestickSeries !== 'function') {
+  if (!chartApi || (typeof chartApi.timeScale !== 'function')) {
     console.error('[HACO] Unexpected chart object:', chartApi);
     return;
   }
   if (!priceSeries || typeof priceSeries.setData !== 'function') {
-    console.error('[HACO] Unexpected price series object:', priceSeries);
+    console.error('[HACO] Price series not available on this build.');
     return;
   }
 
@@ -208,79 +217,105 @@ function renderChart(bars) {
     window.__setSignalData(bars);
   }
 
-  // Candles (normalize time)
-  const candles = (bars || []).map((b) => {
-    const up = '#2ecc71', down = '#e74c3c';
-    const col = b.state ? up : down;
-    return {
-      time: normalizeTime(b.time),
-      open: b.o,
-      high: b.h,
-      low: b.l,
-      close: b.c,
-      color: col,
-      borderColor: col,
-      wickColor: col,
-    };
-  });
-  priceSeries.setData(candles);
-
-  // Small LW markers
-  const markers = [];
-  for (const b of bars || []) {
-    if (b.upw)
-      markers.push({
-        time: normalizeTime(b.time),
-        position: 'belowBar',
-        color: 'green',
-        shape: 'text',
-        text: '▲',
-        size: 2,
-      });
-    if (b.dnw)
-      markers.push({
-        time: normalizeTime(b.time),
-        position: 'aboveBar',
-        color: 'red',
-        shape: 'text',
-        text: '▼',
-        size: 2,
-      });
+  // Candles/area data (normalize time)
+  const candles = (bars || []).map((b) => ({
+    time: normalizeTime(b.time),
+    open: b.o,
+    high: b.h,
+    low:  b.l,
+    close: b.c,
+    color: b.state ? '#2ecc71' : '#e74c3c',
+    borderColor: b.state ? '#2ecc71' : '#e74c3c',
+    wickColor: b.state ? '#2ecc71' : '#e74c3c',
+  }));
+  // setData tolerates OHLC on candle series; for area series it will just read `value`
+  // Provide a fallback transform for non-candle:
+  if (priceSeries.setData.length) {
+    try {
+      priceSeries.setData(
+        (priceSeries.seriesType && priceSeries.seriesType() === 'Area')
+          ? candles.map(c => ({ time: c.time, value: c.close }))
+          : candles
+      );
+    } catch {
+      // Some builds don’t expose seriesType(); default to close
+      priceSeries.setData(candles.map(c => ({ time: c.time, value: c.close })));
+    }
   }
-  priceSeries.setMarkers(markers);
+
+  // Small LW markers (only if the series supports setMarkers)
+  if (typeof priceSeries.setMarkers === 'function') {
+    const markers = [];
+    for (const b of bars || []) {
+      if (b.upw)
+        markers.push({
+          time: normalizeTime(b.time),
+          position: 'belowBar',
+          color: 'green',
+          shape: 'text',
+          text: '▲',
+          size: 2,
+        });
+      if (b.dnw)
+        markers.push({
+          time: normalizeTime(b.time),
+          position: 'aboveBar',
+          color: 'red',
+          shape: 'text',
+          text: '▼',
+          size: 2,
+        });
+    }
+    priceSeries.setMarkers(markers);
+  }
 
   // Big HTML arrows overlay (non-blocking)
   if (window.HACOOverlay && typeof window.HACOOverlay.attach === 'function') {
     window.HACOOverlay.attach({ container: chartEl, chart: chartApi, series: priceSeries, bars });
   }
 
-  // Indicator lines (reuse if they already exist)
-  const zlHaU = chartApi.__zlHaU || chartApi.addLineSeries({ color: 'blue' });
-  const zlClU = chartApi.__zlClU || chartApi.addLineSeries({ color: 'orange' });
-  const zlHaD = chartApi.__zlHaD || chartApi.addLineSeries({ color: 'purple' });
-  const zlClD = chartApi.__zlClD || chartApi.addLineSeries({ color: 'gray' });
-  chartApi.__zlHaU = zlHaU;
-  chartApi.__zlClU = zlClU;
-  chartApi.__zlHaD = zlHaD;
-  chartApi.__zlClD = zlClD;
+  // Indicator lines (feature-detected creation, reused)
+  function ensureLineLikeSeries(cacheKey, color) {
+    if (chartApi[cacheKey]) return chartApi[cacheKey];
+    let s = null;
+    if (typeof chartApi.addLineSeries === 'function') {
+      s = chartApi.addLineSeries({ color });
+    } else if (typeof chartApi.addAreaSeries === 'function') {
+      s = chartApi.addAreaSeries({}); // color not guaranteed here
+    } else {
+      console.warn('[HACO] No line/area series available for indicators; skipping', cacheKey);
+      chartApi[cacheKey] = null;
+      return null;
+    }
+    chartApi[cacheKey] = s;
+    return s;
+  }
 
-  zlHaU.setData((bars || []).map((b) => ({ time: normalizeTime(b.time), value: b.ZlHaU })));
-  zlClU.setData((bars || []).map((b) => ({ time: normalizeTime(b.time), value: b.ZlClU })));
-  zlHaD.setData((bars || []).map((b) => ({ time: normalizeTime(b.time), value: b.ZlHaD })));
-  zlClD.setData((bars || []).map((b) => ({ time: normalizeTime(b.time), value: b.ZlClD })));
+  const zlHaU = ensureLineLikeSeries('__zlHaU', 'blue');
+  const zlClU = ensureLineLikeSeries('__zlClU', 'orange');
+  const zlHaD = ensureLineLikeSeries('__zlHaD', 'purple');
+  const zlClD = ensureLineLikeSeries('__zlClD', 'gray');
 
-  chartApi.timeScale().fitContent();
+  if (zlHaU?.setData) zlHaU.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlHaU })));
+  if (zlClU?.setData) zlClU.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlClU })));
+  if (zlHaD?.setData) zlHaD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlHaD })));
+  if (zlClD?.setData) zlClD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlClD })));
+
+  if (typeof chartApi.timeScale === 'function') {
+    chartApi.timeScale().fitContent();
+  }
 }
 
 function explainLast(last) {
   const el = document.getElementById('haco-explain');
-  el.innerHTML = `<p>State: ${last.state} (${last.upw ? 'UP' : ''}${last.dnw ? 'DOWN' : ''})</p><p>${last.reasons}</p>`;
+  if (!el) return;
+  el.innerHTML = `<p>State: ${last?.state ?? ''} (${last?.upw ? 'UP' : ''}${last?.dnw ? 'DOWN' : ''})</p><p>${last?.reasons ?? ''}</p>`;
 }
 
-// Optional scan helpers (only run if buttons/inputs exist in DOM)
+// Optional scan helpers (only run if inputs exist)
 async function scan(direction) {
   const input = document.getElementById('haco-scanList');
-  if (!input) return; // avoid errors if element not present
+  if (!input) return;
   const list = input.value.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
   const timeframe = document.getElementById('haco-timeframe').value.trim();
   const results = [];
