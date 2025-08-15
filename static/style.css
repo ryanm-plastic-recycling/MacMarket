@@ -1,3 +1,5 @@
+/* Disable HACO HTML overlay arrows entirely */
+.haco-overlay, .haco-arrow { display: none !important; }
 :root {
   --bg-color: #fafafa;
   --text-color: #333;
