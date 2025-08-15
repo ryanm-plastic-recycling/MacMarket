@@ -33,56 +33,60 @@
 <main>
     <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
     <h2>Signals</h2>
+    
+    <!-- New grid wrapper for page sections -->
+    <div class="signals-grid">
 
-    <section class="signal-section">
+      <!-- 1) TOP ROW (LEFT): Symbol Signal -->
+      <section class="signal-section">
         <h3>Symbol Signal</h3>
-        <label>Symbol <input id="symbol"></label>
-        <button id="get-signal">Get Signal</button>
-        <div id="signal-container">
-            <div>
-                <h4>News Sentiment</h4>
-                <div id="news-output"></div>
-                <small>Higher score indicates more positive news coverage.</small>
-            </div>
-            <div>
-                <h4>Technical Signal</h4>
-                <div id="tech-output"></div>
-                <small>Based on 20/50 day moving average crossover.</small>
-            </div>
+        <div class="row-controls">
+          <label>Symbol <input id="symbol" type="text"></label>
+          <button id="get-signal">Get Signal</button>
         </div>
-    </section>
+        <div id="signal-container">
+          <div>
+            <h4>News Sentiment</h4>
+            <div id="news-output"></div>
+            <small>Higher score indicates more positive news coverage.</small>
+          </div>
+          <div>
+            <h4>Technical Signal</h4>
+            <div id="tech-output"></div>
+            <small>Based on 20/50 day moving average crossover.</small>
+          </div>
+        </div>
+      </section>
 
-    <section class="signal-section">
-        <h3>Macro Outlook</h3>
-        <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
-        <br><button id="run-macro">Analyze</button>
-        <div id="macro-output"></div>
-        <small>LLM interpretation of the provided text.</small>
-    </section>
+      <!-- 1) TOP ROW (RIGHT): Get Recommendation for Symbol -->
+      <section class="signal-section">
+        <h3>Get Recommendation for Symbol</h3>
+        <div class="row-controls">
+          <label>Ticker <input id="single-symbol" type="text"></label>
+          <button id="get-single">Get</button>
+        </div>
+        <table id="single-rec">
+          <thead>
+            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
 
-    <section class="signal-section">
+      <!-- 2) Recommendations (full width) -->
+      <section class="signal-section span-2">
         <h3>Recommendations</h3>
         <button id="get-recs">Get Recommendations</button>
         <table id="recs-table">
-            <thead>
-                <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
-            </thead>
-            <tbody></tbody>
+          <thead>
+            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+          </thead>
+          <tbody></tbody>
         </table>
-    </section>
+      </section>
 
-    <section class="signal-section">
-        <h3>Get Recommendation for Symbol</h3>
-        <label>Ticker <input id="single-symbol"></label>
-        <button id="get-single">Get</button>
-        <table id="single-rec">
-            <thead>
-                <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </section>
-    <section class="signal-section">
+      <!-- 3) HACO Strategy (full width, includes charts) -->
+      <section class="signal-section span-2">
         <h3>HACO Strategy</h3>
         <div id="haco-controls">
             <label>Symbol <input id="haco-symbol" value="AAPL"></label>
@@ -97,24 +101,37 @@
         <div id="haco-chart" style="height:400px; position:relative;"></div>
         <div id="haco-signal-chart" style="height:100px;"></div>
         <div id="haco-explain"></div>
-    </section>
+      </section>
 
-    <section class="scan">
+      <!-- 4) HACO Table (renamed from Scan; full width) -->
+      <section class="signal-section span-2" id="haco-table">
+        <h3>HACO Table</h3>
         <form id="scan-form" class="row" style="display:flex;gap:.5rem;align-items:center;">
-            <label for="scan-symbols"><strong>Symbols</strong> (comma-separated):</label>
-            <input id="scan-symbols" type="text" value="AAPL,MSFT" style="min-width:260px;">
-            <button id="scan-run" type="submit">Scan</button>
+          <label for="scan-symbols"><strong>Symbols</strong> (comma-separated):</label>
+          <input id="scan-symbols" type="text" value="AAPL,MSFT" style="min-width:260px;">
+          <button id="scan-run" type="submit">Scan</button>
         </form>
         <div id="scan-status" class="muted" style="margin:.5rem 0;"></div>
         <table id="scan-table" class="table">
-            <thead>
-                <tr>
-                    <th>Symbol</th><th>Up</th><th>Down</th><th>State</th><th>Changed</th><th>Reason</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
+          <thead>
+            <tr>
+              <th>Symbol</th><th>Up</th><th>Down</th><th>State</th><th>Changed</th><th>Reason</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
         </table>
-    </section>
+      </section>
+
+      <!-- 5) Macro Outlook (full width; last) -->
+      <section class="signal-section span-2">
+        <h3>Macro Outlook</h3>
+        <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
+        <br><button id="run-macro">Analyze</button>
+        <div id="macro-output"></div>
+        <small>LLM interpretation of the provided text.</small>
+      </section>
+
+    </div> <!-- /.signals-grid -->
 </main>
 <script>
 function setStatus(message) {
