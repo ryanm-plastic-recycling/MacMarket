@@ -122,7 +122,35 @@
     series.setData(data.map(d => ({ time: d.time, value: d.value, color: d.color })));
     signalChartEl.__signalChart.timeScale().fitContent();
   };
+
+  // Expose getter so we can wire up pan/zoom sync from the main chart
+  window.__getSignalChart = () => signalChartEl.__signalChart || null;
 })();
+
+// ===== Pan/zoom synchronization between two Lightweight Charts =====
+function syncCharts(main, sub) {
+  if (!main || !sub) return;
+  if (main.__syncedWith === sub) return; // already wired
+  let syncing = false;
+  const mainToSub = () => {
+    if (syncing) return;
+    syncing = true;
+    const r = main.timeScale().getVisibleLogicalRange();
+    if (r) sub.timeScale().setVisibleLogicalRange(r);
+    syncing = false;
+  };
+  const subToMain = () => {
+    if (syncing) return;
+    syncing = true;
+    const r = sub.timeScale().getVisibleLogicalRange();
+    if (r) main.timeScale().setVisibleLogicalRange(r);
+    syncing = false;
+  };
+  main.timeScale().subscribeVisibleLogicalRangeChange(mainToSub);
+  sub.timeScale().subscribeVisibleLogicalRangeChange(subToMain);
+  main.__syncedWith = sub;
+  sub.__syncedWith = main;
+}
 
 async function fetchHaco() {
   const symbol = document.getElementById('haco-symbol').value.trim();
@@ -269,10 +297,7 @@ function renderChart(bars) {
     priceSeries.setMarkers(markers);
   }
 
-  // Big HTML arrows overlay (non-blocking)
-  if (window.HACOOverlay && typeof window.HACOOverlay.attach === 'function') {
-    window.HACOOverlay.attach({ container: chartEl, chart: chartApi, series: priceSeries, bars });
-  }
+  // (HTML overlay removed)
 
   // Indicator lines (feature-detected creation, reused)
   function ensureLineLikeSeries(cacheKey, color) {
@@ -301,8 +326,17 @@ function renderChart(bars) {
   if (zlHaD?.setData) zlHaD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlHaD })));
   if (zlClD?.setData) zlClD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlClD })));
 
-  if (typeof chartApi.timeScale === 'function') {
-    chartApi.timeScale().fitContent();
+  chartApi.timeScale().fitContent();
+
+  // ===== Sync the signal chart's pan/zoom to the main chart (and vice-versa) =====
+  if (typeof window.__getSignalChart === 'function') {
+    const sub = window.__getSignalChart();
+    if (sub) {
+      syncCharts(chartApi, sub);
+      // Initialize sub to main’s current range
+      const r = chartApi.timeScale().getVisibleLogicalRange();
+      if (r) sub.timeScale().setVisibleLogicalRange(r);
+    }
   }
 }
 
