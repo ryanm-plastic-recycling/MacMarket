@@ -362,3 +362,12 @@ th { border-bottom: 1px solid #ccc; }
     align-items: start;
   }
 }
+
+/* The single-rec table that now lives under Symbol Signal should span full width */
+.signal-section.symbol-signal .single-rec-wrap {
+  grid-column: 1 / -1;
+  margin-top: .5rem;
+}
+.signal-section.symbol-signal .single-rec-wrap table {
+  width: 100%;
+}
