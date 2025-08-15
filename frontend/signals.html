@@ -57,27 +57,26 @@
           </div>
         </div>
       </section>
-
-      <!-- 1) TOP ROW (RIGHT): Get Recommendation for Symbol -->
-      <section class="signal-section">
-        <h3>Get Recommendation for Symbol</h3>
-        <div class="row-controls">
-          <label>Ticker <input id="single-symbol" type="text"></label>
-          <button id="get-single">Get</button>
-        </div>
-        <table id="single-rec">
+        
+      <!-- 2) Recommendations (full width) -->
+      <section class="signal-section span-2">
+        <h3>Recommendations</h3>
+        <button id="get-recs">Get Recommendations</button>
+        <table id="recs-table">
           <thead>
             <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
           </thead>
           <tbody></tbody>
         </table>
       </section>
-
-      <!-- 2) Recommendations (full width) -->
-      <section class="signal-section span-2">
-        <h3>Recommendations</h3>
-        <button id="get-recs">Get Recommendations</button>
-        <table id="recs-table">
+        
+      <section class="signal-section">
+        <h3>Get Recommendations by Symbol</h3>
+        <div class="row-controls">
+          <label>Ticker <input id="single-symbol" type="text"></label>
+          <button id="get-single">Get</button>
+        </div>
+        <table id="single-rec">
           <thead>
             <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
           </thead>
