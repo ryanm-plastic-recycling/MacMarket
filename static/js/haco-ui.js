@@ -1,5 +1,35 @@
 // /static/js/haco-ui.js
 (function () {
+  // ===== Time-scale alignment helper for HACO charts =====
+  // Keeps two Lightweight Charts in perfect horizontal (time) alignment by syncing
+  // visible *logical* range in both directions, with an initial normalization.
+  function linkTimeScales(chartA, chartB) {
+    if (!chartA || !chartB) return;
+    // Normalize key time options to reduce drift
+    chartA.applyOptions({ timeScale: { timeVisible: true, secondsVisible: false }});
+    chartB.applyOptions({ timeScale: { timeVisible: true, secondsVisible: false }});
+    let syncing = false;
+    const sync = (src, dst) => () => {
+      if (syncing) return;
+      syncing = true;
+      const range = src.timeScale().getVisibleLogicalRange();
+      if (range) dst.timeScale().setVisibleLogicalRange(range);
+      syncing = false;
+    };
+    chartA.timeScale().subscribeVisibleLogicalRangeChange(sync(chartA, chartB));
+    chartB.timeScale().subscribeVisibleLogicalRangeChange(sync(chartB, chartA));
+    // Initial alignment after data/size settle
+    setTimeout(() => {
+      try {
+        chartA.timeScale().fitContent();
+        chartB.timeScale().fitContent();
+        const r = chartA.timeScale().getVisibleLogicalRange();
+        if (r) chartB.timeScale().setVisibleLogicalRange(r);
+      } catch(e) { console.warn('[HACO] linkTimeScales init:', e); }
+    }, 0);
+  }
+  window.HACOSync = { linkTimeScales };
+
   // ===== HACO big-arrow overlay helper (HTML overlay, non-blocking) =====
   const HACOOverlay = (function () {
     function ensureOverlay(container) {
@@ -128,29 +158,6 @@
 })();
 
 // ===== Pan/zoom synchronization between two Lightweight Charts =====
-function syncCharts(main, sub) {
-  if (!main || !sub) return;
-  if (main.__syncedWith === sub) return; // already wired
-  let syncing = false;
-  const mainToSub = () => {
-    if (syncing) return;
-    syncing = true;
-    const r = main.timeScale().getVisibleLogicalRange();
-    if (r) sub.timeScale().setVisibleLogicalRange(r);
-    syncing = false;
-  };
-  const subToMain = () => {
-    if (syncing) return;
-    syncing = true;
-    const r = sub.timeScale().getVisibleLogicalRange();
-    if (r) main.timeScale().setVisibleLogicalRange(r);
-    syncing = false;
-  };
-  main.timeScale().subscribeVisibleLogicalRangeChange(mainToSub);
-  sub.timeScale().subscribeVisibleLogicalRangeChange(subToMain);
-  main.__syncedWith = sub;
-  sub.__syncedWith = main;
-}
 
 async function fetchHaco() {
   const symbol = document.getElementById('haco-symbol').value.trim();
@@ -328,14 +335,12 @@ function renderChart(bars) {
 
   chartApi.timeScale().fitContent();
 
-  // ===== Sync the signal chart's pan/zoom to the main chart (and vice-versa) =====
-  if (typeof window.__getSignalChart === 'function') {
+  // ===== Keep signal chart aligned with main chart =====
+  if (typeof window.__getSignalChart === 'function' && window.HACOSync) {
     const sub = window.__getSignalChart();
-    if (sub) {
-      syncCharts(chartApi, sub);
-      // Initialize sub to main’s current range
-      const r = chartApi.timeScale().getVisibleLogicalRange();
-      if (r) sub.timeScale().setVisibleLogicalRange(r);
+    if (sub && !chartApi.__linked) {
+      HACOSync.linkTimeScales(chartApi, sub);
+      chartApi.__linked = true;
     }
   }
 }

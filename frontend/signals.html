@@ -37,7 +37,7 @@
     <!-- New grid wrapper for page sections -->
     <div class="signals-grid">
 
-      <!-- 1) TOP ROW (LEFT): Symbol Signal -->
+      <!-- 1) TOP ROW (LEFT): Symbol Signal (now also drives single-rec below) -->
       <section class="signal-section symbol-signal">
         <h3>Symbol Signal</h3>
         <div class="row-controls">
@@ -56,20 +56,15 @@
             <small>Based on 20/50 day moving average crossover.</small>
           </div>
         </div>
-      </section>
-        
-      <section class="signal-section">
-        <h3>Get Recommendations by Symbol</h3>
-        <div class="row-controls">
-          <label>Ticker <input id="single-symbol" type="text"></label>
-          <button id="get-single">Get</button>
+        <!-- Moved here: single-symbol recommendation table (driven by #symbol) -->
+        <div class="single-rec-wrap">
+          <table id="single-rec">
+            <thead>
+              <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
-        <table id="single-rec">
-          <thead>
-            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
       </section>
         
       <!-- 2) Recommendations (full width) -->
@@ -203,7 +198,8 @@ async function fetchRecs(){
 }
 
 async function fetchSingle(){
-    const sym = document.getElementById('single-symbol').value.trim().toUpperCase();
+    // Use the same input as Symbol Signal
+    const sym = document.getElementById('symbol').value.trim().toUpperCase();
     if(!sym) return;
     setStatus('Loading...', 'loading');
     const res = await fetch(`/api/recommendation/${sym}`);
@@ -220,12 +216,13 @@ async function fetchSingle(){
     setStatus('Done', 'ok');
 }
 
-document.getElementById('get-signal').addEventListener('click', fetchSignal);
+// One click runs both: signals + single recommendation (shared input #symbol)
+document.getElementById('get-signal').addEventListener('click', async () => {
+    await Promise.allSettled([ fetchSignal(), fetchSingle() ]);
+});
 document.getElementById('run-macro').addEventListener('click', fetchMacro);
 document.getElementById('get-recs').addEventListener('click', fetchRecs);
-document.getElementById('get-single').addEventListener('click', fetchSingle);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
-document.getElementById('single-symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
 <!-- Official TradingView Lightweight Charts (UMD/standalone) -->
 <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
