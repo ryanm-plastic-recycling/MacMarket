@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline';">
     <title>Signals - MacMarket</title>
     <link rel="stylesheet" href="style.css">
     <script type="module" src="theme.js"></script>
@@ -211,7 +211,8 @@ document.getElementById('get-single').addEventListener('click', fetchSingle);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 document.getElementById('single-symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
-<script src="/static/js/lightweight-charts.standalone.production.js"></script>
+<!-- Official TradingView Lightweight Charts (UMD/standalone) -->
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
 <script>
     (function(){
       const scripts = Array.from(document.scripts);
