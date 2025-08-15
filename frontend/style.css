@@ -318,3 +318,47 @@ th { border-bottom: 1px solid #ccc; }
 .metric .help { margin-left:4px; cursor:help; opacity:0.7; }
 .metric-icon{margin-right:6px;}
 
+/* === Symbol Signal: header, controls, and boxes on one row === */
+.signal-section.symbol-signal {
+  display: grid;
+  grid-template-columns: max-content max-content 1fr; /* h3 | controls | boxes */
+  align-items: center;
+  column-gap: 1rem;
+  row-gap: .5rem;
+}
+.signal-section.symbol-signal h3 {
+  margin: 0;
+  white-space: nowrap;
+}
+.signal-section.symbol-signal .row-controls {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin: 0; /* compact row */
+}
+/* Override global label/form rules only inside this section */
+.signal-section.symbol-signal .row-controls label {
+  display: inline-flex;            /* override global label:block */
+  align-items: center;
+  gap: .4rem;
+  margin: 0;                       /* override global label margins */
+}
+.signal-section.symbol-signal .row-controls input[type="text"] {
+  width: auto;                     /* override global form input width:100% */
+  max-width: 180px;                /* keep it tidy */
+}
+.signal-section.symbol-signal #signal-container {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.signal-section.symbol-signal #signal-container > div {
+  flex: 1 1 240px;
+  min-width: 240px;
+}
+@media (max-width: 1100px) {
+  .signal-section.symbol-signal {
+    grid-template-columns: 1fr;    /* stack on small screens */
+    align-items: start;
+  }
+}
