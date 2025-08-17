@@ -288,7 +288,7 @@ async def political():
 
     if isinstance(quiver_resp, httpx.Response) and quiver_resp.status_code == 200:
         try:
-            data["quiver"] = quiver_resp.json()[:5]
+            data["quiver"] = quiver_resp.json()[:40]
         except Exception:
             pass
     if isinstance(whales_resp, httpx.Response) and whales_resp.status_code == 200:
