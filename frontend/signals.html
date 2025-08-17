@@ -54,6 +54,7 @@
             <h4>Technical Signal</h4>
             <div id="tech-output"></div>
             <small>Based on 20/50 day moving average crossover.</small>
+            <div id="tech-chart" style="height:300px;margin-top:1rem;"></div>
           </div>
         </div>
         <!-- Moved here: single-symbol recommendation table (driven by #symbol) -->
@@ -138,6 +139,52 @@ function setStatus(message) {
 }
 if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
 
+function sma(values, period){
+    const res = [];
+    let sum = 0;
+    for(let i=0;i<values.length;i++){
+        sum += values[i];
+        if(i >= period) sum -= values[i-period];
+        res.push(i >= period-1 ? sum/period : null);
+    }
+    return res;
+}
+
+function findLastCross(shortArr, longArr){
+    for(let i=shortArr.length-1;i>0;i--){
+        if(shortArr[i]==null || longArr[i]==null || shortArr[i-1]==null || longArr[i-1]==null) continue;
+        if(shortArr[i-1] < longArr[i-1] && shortArr[i] > longArr[i]) return {index:i, dir:'up'};
+        if(shortArr[i-1] > longArr[i-1] && shortArr[i] < longArr[i]) return {index:i, dir:'down'};
+    }
+    return null;
+}
+
+async function renderTechChart(sym){
+    try{
+        const res = await fetch(`/api/history?symbol=${sym}&period=6mo&interval=1d`);
+        if(!res.ok) return;
+        const hist = await res.json();
+        const dates = hist.dates;
+        const closes = hist.close;
+        const ma20 = sma(closes,20);
+        const ma50 = sma(closes,50);
+        const chartEl = document.getElementById('tech-chart');
+        chartEl.innerHTML = '';
+        const chart = LightweightCharts.createChart(chartEl,{height:300});
+        const priceSeries = chart.addLineSeries({color:'#4c78ff'});
+        const ma20Series = chart.addLineSeries({color:'green'});
+        const ma50Series = chart.addLineSeries({color:'red'});
+        const priceData = dates.map((d,i)=>({time:d,value:closes[i]}));
+        priceSeries.setData(priceData);
+        ma20Series.setData(dates.map((d,i)=>ma20[i]?{time:d,value:ma20[i]}:null).filter(Boolean));
+        ma50Series.setData(dates.map((d,i)=>ma50[i]?{time:d,value:ma50[i]}:null).filter(Boolean));
+        const cross = findLastCross(ma20,ma50);
+        if(cross){
+            priceSeries.setMarkers([{time:dates[cross.index], position: cross.dir==='up'? 'belowBar':'aboveBar', color: cross.dir==='up'? 'green':'red', shape: cross.dir==='up'? 'arrowUp':'arrowDown', text:'20/50'}]);
+        }
+    }catch(e){console.error(e);}
+}
+
 async function fetchSignal(){
     const sym = document.getElementById('symbol').value.trim().toUpperCase();
     if(!sym) return;
@@ -166,6 +213,7 @@ async function fetchSignal(){
         techEl.classList.add('bearish');
         techEl.textContent += ' \u2198';
     }
+    renderTechChart(sym);
 }
 
 async function fetchMacro(){
