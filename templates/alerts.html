@@ -1,49 +1,54 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Alerts</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="/static/style.css" />
-</head>
-<body>
-  <!-- Existing site header/nav should already render; ensure an Alerts link exists -->
-  <main class="container">
-    <h1>Alerts</h1>
+{% extends "base.html" %}
+{% block title %}Alerts{% endblock %}
+{% block content %}
+<main class="container">
+  <h1>Trading Alerts</h1>
+  <p>Select which strategy to monitor. The system will run your chosen strategy at the frequency you set. If the signal flips (long→short or short→long), you’ll get an alert.</p>
 
-    <section class="card">
-      <h2>Delivery</h2>
-      <label>Email <input id="alert-email" type="email" placeholder="you@example.com"></label>
-      <label>SMS <input id="alert-sms" type="tel" placeholder="+13175551234"></label>
-    </section>
+  <section class="card">
+    <h2>Strategy</h2>
+    <select id="alert-strategy">
+      <option value="HACO">HACO (High-Accuracy Composite Oscillator)</option>
+      <option value="SMA">SMA Crossover</option>
+      <option value="MACD">MACD</option>
+    </select>
+    <small>This determines how the signal is calculated.</small>
+  </section>
 
-    <section class="card">
-      <h2>Frequency</h2>
-      <select id="alert-frequency">
-        <option value="5m">Every 5 minutes</option>
-        <option value="15m">Every 15 minutes</option>
-        <option value="1h">Hourly</option>
-        <option value="1d">Daily</option>
-      </select>
-    </section>
+  <section class="card">
+    <h2>Frequency</h2>
+    <select id="alert-frequency">
+      <option value="5m">Every 5 minutes</option>
+      <option value="15m">Every 15 minutes</option>
+      <option value="1h">Hourly</option>
+      <option value="1d">Daily</option>
+    </select>
+    <small>This is how often the server checks the strategy.</small>
+  </section>
 
-    <section class="card">
-      <h2>Symbols</h2>
-      <div class="row">
-        <input id="symbol-input" type="text" placeholder="AAPL">
-        <button id="add-symbol">Add</button>
-      </div>
-      <ul id="symbol-list"></ul>
-    </section>
+  <section class="card">
+    <h2>Delivery</h2>
+    <label>Email <input id="alert-email" type="email" placeholder="you@example.com"></label>
+    <label>SMS <input id="alert-sms" type="tel" placeholder="+13175551234"></label>
+    <small>You’ll receive alerts here when the signal changes.</small>
+  </section>
 
+  <section class="card">
+    <h2>Symbols</h2>
     <div class="row">
-      <button id="save-alerts">Save Settings</button>
-      <button id="test-alerts" class="secondary">Run Test</button>
+      <input id="symbol-input" type="text" placeholder="AAPL">
+      <button id="add-symbol">Add</button>
     </div>
+    <div id="symbol-list" class="symbol-cards"></div>
+    <small>Symbols are enriched with company name and price for easy review.</small>
+  </section>
 
-    <div id="toast" class="toast" style="display:none;"></div>
-  </main>
+  <div class="row">
+    <button id="save-alerts">Save Settings</button>
+    <button id="test-alerts" class="secondary">Run Test</button>
+  </div>
 
-  <script src="/static/js/alerts.js"></script>
-</body>
-</html>
+  <div id="toast" class="toast" style="display:none;"></div>
+</main>
+<script src="/static/js/alerts.js"></script>
+{% endblock %}

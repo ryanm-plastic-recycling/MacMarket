@@ -1,0 +1,2 @@
+ALTER TABLE user_alert_settings
+  ADD COLUMN strategy VARCHAR(50) NOT NULL DEFAULT 'HACO';
