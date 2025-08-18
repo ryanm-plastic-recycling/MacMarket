@@ -10,6 +10,7 @@ from backend.app import risk
 import pyotp
 from backend.app import signals, backtest, alerts
 from backend.app.signals import format_price, fetch_unusual_whales
+from backend.app.quotes import fetch_latest_price
 from datetime import datetime
 import json
 from fastapi import Request
@@ -170,10 +171,10 @@ def price_history(symbol: str, period: str = "1mo", interval: str = "1d"):
 @app.get("/api/price/{symbol}")
 def current_price(symbol: str):
     """Return the latest price for a symbol."""
-    price = signals._current_price(symbol)
+    price = fetch_latest_price(symbol)
     if price is None:
-        raise HTTPException(status_code=404, detail="Price unavailable")
-    return {"symbol": symbol, "price": format_price(price)}
+        raise HTTPException(status_code=404, detail="no_data")
+    return {"symbol": symbol.upper(), "price": format_price(price)}
 
 
 @app.get("/api/news")

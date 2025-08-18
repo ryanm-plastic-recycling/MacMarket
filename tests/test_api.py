@@ -92,7 +92,7 @@ def test_recommendations_endpoint(monkeypatch):
 
 
 def test_price_endpoint(monkeypatch):
-    monkeypatch.setattr("app.signals._current_price", lambda s: 123.45)
+    monkeypatch.setattr("app.fetch_latest_price", lambda s: 123.45)
     resp = client.get("/api/price/AAPL")
     assert resp.status_code == 200
     assert resp.json()["price"] == 123.45
