@@ -20,7 +20,7 @@ import os
 # simple in-memory alert store
 LATEST_ALERT = {"id": 0, "ticker": "AAPL", "price": 0.0}
 
-from fastapi.responses import HTMLResponse, Response, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
@@ -55,17 +55,10 @@ quiver_cache = TTLCache(maxsize=10, ttl=300)
 app.include_router(haco_router)
 app.include_router(alerts_router)
 
-# Alerts page
-@app.get("/alerts", response_class=HTMLResponse)
-async def alerts_page(request: Request):
-    # TODO: add auth dependency if needed, e.g., Depends(get_current_user)
-    return templates.TemplateResponse("alerts.html", {"request": request})
-
 # Directories for static assets
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
-REACT_BUILD_DIR = FRONTEND_DIR / "build"
+REACT_BUILD_DIR = FRONTEND_DIR / "build"  # if you ever build a SPA here
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-PUBLIC_DIR = Path(__file__).resolve().parent / "public"
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -869,35 +862,18 @@ def get_readme():
 
 
 
-# Serve simple static HTML pages for the frontend
-@app.get("/{page_name}", response_class=HTMLResponse)
-def serve_page(page_name: str):
-    """Return one of the bundled frontend HTML pages."""
-    allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html", "github.html"}
-    if page_name in allowed_pages:
-        # Prefer serving pages from the updated frontend directory.
-        # Fall back to the legacy public directory only if needed.
-        html_file = (
-            FRONTEND_DIR / page_name
-            if (FRONTEND_DIR / page_name).exists()
-            else PUBLIC_DIR / page_name
-        )
-        if html_file.exists():
-            # Explicitly read using UTF-8 to avoid locale dependent decoding
-            return html_file.read_text(encoding="utf-8")
-    raise HTTPException(status_code=404, detail="Not Found")
+# Lightweight route so /alerts works even if a template existed once
+@app.get("/alerts")
+def alerts_redirect():
+    return RedirectResponse(url="/alerts.html", status_code=307)
 
-# keep this AFTER routes so it doesn't swallow them
-if PUBLIC_DIR.exists():
-    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
+# keep this AFTER API routes so it doesn't swallow them
+if FRONTEND_DIR.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    # Back-compat for pages that still request /static/*
+    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static-files")
 elif REACT_BUILD_DIR.is_dir():
-    app.mount(
-        "/",
-        StaticFiles(directory=REACT_BUILD_DIR, html=True),
-        name="static",
-    )
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static-files")
+    app.mount("/", StaticFiles(directory=REACT_BUILD_DIR, html=True), name="static")
 
 
 # Fallback for SPA routes when React build is present

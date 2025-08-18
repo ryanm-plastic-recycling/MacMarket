@@ -180,8 +180,10 @@ app.post('/api/alerts/test', async (req, res) => {
 // // TODO: enable in a later PR
 // // cron.schedule('*/5 * * * *', () => { console.log('[alerts] tick'); });
 
-// Serve static pages
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve the site from ./frontend
+app.use(express.static(path.join(__dirname, 'frontend')));
+// Back-compat for templates that request /static/*
+app.use('/static', express.static(path.join(__dirname, 'frontend')));
 
 app.use(express.static(path.join(__dirname, 'frontend', 'build')));
 app.get('*', (req, res) => {
