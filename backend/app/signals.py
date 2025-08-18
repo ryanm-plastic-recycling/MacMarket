@@ -9,6 +9,7 @@ import requests
 import pandas as pd
 import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from .quotes import fetch_latest_prices
 
 try:
     import openai  # optional
@@ -182,7 +183,14 @@ def news_sentiment_signal(symbol: str) -> dict:
 
 def technical_indicator_signal(symbol: str) -> dict:
     """Generate a simple moving-average crossover signal."""
-    data = yf.download(symbol, period="3mo", interval="1d")
+    data = yf.download(
+        symbol,
+        period="3mo",
+        interval="1d",
+        auto_adjust=False,
+        progress=False,
+        threads=True,
+    )
     if data.empty:
         return {"type": "technical", "symbol": symbol, "signal": "none"}
     data["ma_short"] = data["Close"].rolling(20).mean()
@@ -216,20 +224,6 @@ def macro_llm_signal(text: str) -> dict:
             pass
     return {"type": "macro_llm", "outlook": "unknown"}
 
-def _current_price(symbol: str) -> float | None:
-    """Return the latest price for a symbol."""
-    try:
-        t = yf.Ticker(symbol)
-        price = t.info.get("regularMarketPrice")
-        if price is None:
-            hist = t.history(period="1d")
-            if not hist.empty:
-                price = float(hist["Close"].iloc[-1])
-        return float(price) if price is not None else None
-    except Exception:
-        return None
-
-
 def _calculate_exit(
     symbol: str, entry_price: float, entry_date: datetime.date
 ) -> tuple[datetime.date, float]:
@@ -243,6 +237,9 @@ def _calculate_exit(
             start=entry_date,
             period=f"{EXIT_MAX_HOLD_DAYS}d",
             interval="1d",
+            auto_adjust=False,
+            progress=False,
+            threads=True,
         )
         profit_target = entry_price * (1 + EXIT_PROFIT_TARGET_PCT)
         stop_loss = entry_price * (1 - EXIT_STOP_LOSS_PCT)
@@ -269,7 +266,14 @@ def _calculate_exit(
 def _exit_levels(symbol: str, action: str, price: float) -> tuple[dict | None, str]:
     """Return low/medium/high risk exit levels and an explanation."""
     try:
-        data = yf.download(symbol, period="2mo", interval="1d")
+        data = yf.download(
+            symbol,
+            period="2mo",
+            interval="1d",
+            auto_adjust=False,
+            progress=False,
+            threads=True,
+        )
         if data.empty:
             return None, "No historical data for exits"
         high = data["High"]
@@ -312,10 +316,11 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
     risk_scores = get_risk_factors(symbols)
     political = get_political_moves(symbols)
     lobby = get_lobby_disclosures(symbols)
+    prices = fetch_latest_prices(symbols)
     for sym in symbols:
         news = news_sentiment_signal(sym)
         tech = technical_indicator_signal(sym)
-        price = _current_price(sym)
+        price = prices.get(sym)
         base_score = news.get("score", 0) + (1 if tech.get("signal") == "bullish" else -1)
         risk = risk_scores.get(sym, 0)
         pol = political.get(sym, 0)

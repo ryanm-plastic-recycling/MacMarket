@@ -5,7 +5,7 @@ def test_generate_recommendations_quiver(monkeypatch):
     monkeypatch.setattr(signals, "news_sentiment_signal", lambda s: {"score": 1})
     monkeypatch.setattr(signals, "technical_indicator_signal", lambda s: {"signal": "bullish"})
     monkeypatch.setattr(signals, "get_risk_factors", lambda syms: {"AAPL": 0.2})
-    monkeypatch.setattr(signals, "_current_price", lambda s: 100.0)
+    monkeypatch.setattr(signals, "fetch_latest_prices", lambda syms: {s: 100.0 for s in syms})
     monkeypatch.setattr(
         signals,
         "_calculate_exit",
