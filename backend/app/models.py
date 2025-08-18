@@ -26,6 +26,26 @@ class User(Base):
 
     alerts = relationship("AlertPreference", back_populates="user")
 
+
+class HacoAlert(Base):
+    __tablename__ = "haco_alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    symbol = Column(String(10), nullable=False)
+    frequency = Column(Integer, nullable=False)
+    email = Column(String(255), nullable=True)
+    sms = Column(String(20), nullable=True)
+    last_state = Column(String(10), nullable=True)
+    last_checked = Column(TIMESTAMP, nullable=True)
+    created_at = Column(
+        TIMESTAMP,
+        nullable=False,
+        server_default=text('CURRENT_TIMESTAMP'),
+    )
+
+    user = relationship("User")
+
 class AlertPreference(Base):
     __tablename__ = "alert_preferences"
 

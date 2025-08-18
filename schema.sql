@@ -22,6 +22,20 @@ CREATE TABLE alert_preferences (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- HACO alert subscriptions per user
+CREATE TABLE haco_alerts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    symbol VARCHAR(10) NOT NULL,
+    frequency INT NOT NULL,
+    email VARCHAR(255) DEFAULT NULL,
+    sms VARCHAR(20) DEFAULT NULL,
+    last_state VARCHAR(10) DEFAULT NULL,
+    last_checked TIMESTAMP NULL DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Each user can store a custom list of ticker symbols
 CREATE TABLE user_tickers (
     id INT AUTO_INCREMENT PRIMARY KEY,

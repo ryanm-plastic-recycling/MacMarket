@@ -29,6 +29,37 @@ class AlertPreference(AlertPreferenceBase):
         orm_mode = True
         from_attributes = True
 
+
+class HacoAlertBase(BaseModel):
+    symbol: str
+    frequency: int
+    email: Optional[EmailStr] = None
+    sms: Optional[str] = None
+    last_state: Optional[str] = None
+    last_checked: Optional[datetime] = None
+
+
+class HacoAlertCreate(HacoAlertBase):
+    pass
+
+
+class HacoAlertUpdate(BaseModel):
+    symbol: Optional[str] = None
+    frequency: Optional[int] = None
+    email: Optional[EmailStr] = None
+    sms: Optional[str] = None
+    last_state: Optional[str] = None
+    last_checked: Optional[datetime] = None
+
+
+class HacoAlert(HacoAlertBase):
+    id: int
+    user_id: int
+
+    class Config:
+        orm_mode = True
+        from_attributes = True
+
 class User(BaseModel):
     id: int
     username: str

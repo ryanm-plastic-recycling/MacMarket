@@ -58,3 +58,32 @@ def delete_alert(user_id: int, alert_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Alert not found")
     crud.delete_alert(db, alert_obj)
     return {"status": "deleted"}
+
+
+@app.get("/users/{user_id}/haco-alerts", response_model=list[schemas.HacoAlert])
+def read_haco_alerts(user_id: int, db: Session = Depends(get_db)):
+    return crud.get_haco_alerts(db, user_id)
+
+
+@app.post("/users/{user_id}/haco-alerts", response_model=schemas.HacoAlert)
+def create_haco_alert(user_id: int, alert: schemas.HacoAlertCreate, db: Session = Depends(get_db)):
+    if not crud.get_user(db, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    return crud.create_haco_alert(db, user_id, alert)
+
+
+@app.put("/users/{user_id}/haco-alerts/{alert_id}", response_model=schemas.HacoAlert)
+def update_haco_alert(user_id: int, alert_id: int, alert: schemas.HacoAlertUpdate, db: Session = Depends(get_db)):
+    alert_obj = crud.get_haco_alert(db, user_id, alert_id)
+    if not alert_obj:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return crud.update_haco_alert(db, alert_obj, alert)
+
+
+@app.delete("/users/{user_id}/haco-alerts/{alert_id}")
+def delete_haco_alert(user_id: int, alert_id: int, db: Session = Depends(get_db)):
+    alert_obj = crud.get_haco_alert(db, user_id, alert_id)
+    if not alert_obj:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    crud.delete_haco_alert(db, alert_obj)
+    return {"status": "deleted"}
