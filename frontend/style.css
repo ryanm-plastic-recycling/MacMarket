@@ -145,6 +145,9 @@ main {
 .up { color: #0f0; }
 .down { color: #f00; }
 
+.profit-val.pos { color: #0a7d32; font-weight: 600; }
+.profit-val.neg { color: #c0392b; font-weight: 600; }
+
 #ticker-toggle {
   position: absolute;
   left: 5px;
