@@ -21,6 +21,7 @@ LATEST_ALERT = {"id": 0, "ticker": "AAPL", "price": 0.0}
 
 from fastapi.responses import HTMLResponse, Response, FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pathlib import Path
 import yfinance as yf
 import requests
@@ -40,6 +41,9 @@ POLITICAL_CACHE_TTL = int(os.getenv("POLITICAL_CACHE_TTL", "300"))
 
 app = FastAPI()
 
+# Jinja2 template setup
+templates = Jinja2Templates(directory="templates")
+
 # Initialize caches only if TTL > 0 so caching can be disabled via env vars
 political_cache = TTLCache(maxsize=1, ttl=POLITICAL_CACHE_TTL) if POLITICAL_CACHE_TTL > 0 else None
 news_cache = TTLCache(maxsize=2, ttl=NEWS_CACHE_TTL) if NEWS_CACHE_TTL > 0 else None
@@ -48,18 +52,16 @@ quiver_cache = TTLCache(maxsize=10, ttl=300)
 # Dynamic routes first
 app.include_router(haco_router)
 
-# Serve React build if present (mount AFTER dynamic routes)
+# Alerts page
+@app.get("/alerts", response_class=HTMLResponse)
+async def alerts_page(request: Request):
+    # TODO: add auth dependency if needed, e.g., Depends(get_current_user)
+    return templates.TemplateResponse("alerts.html", {"request": request})
+
+# Directories for static assets
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 REACT_BUILD_DIR = FRONTEND_DIR / "build"
-if REACT_BUILD_DIR.is_dir():
-    app.mount(
-        "/",
-        StaticFiles(directory=REACT_BUILD_DIR, html=True),
-        name="static",
-    )
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static-files")
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -865,6 +867,16 @@ def serve_page(page_name: str):
             # Explicitly read using UTF-8 to avoid locale dependent decoding
             return html_file.read_text(encoding="utf-8")
     raise HTTPException(status_code=404, detail="Not Found")
+
+# keep this AFTER routes so it doesn't swallow them
+if REACT_BUILD_DIR.is_dir():
+    app.mount(
+        "/",
+        StaticFiles(directory=REACT_BUILD_DIR, html=True),
+        name="static",
+    )
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static-files")
 
 
 # Fallback for SPA routes when React build is present

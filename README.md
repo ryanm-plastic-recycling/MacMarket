@@ -112,7 +112,7 @@ python scripts/backtest_signals.py \
 Use this tool to validate any symbol’s LLM/API-generated signals before deploying live.
 
 ## 📣 HACO Alerts
-Users can configure email or SMS notifications for HACO indicator state changes from `alerts.html`.
+Users can configure email or SMS notifications for HACO indicator state changes from `alerts`.
 
 **Database**
 - Apply migrations from `schema.sql` to create the new `haco_alerts` table.
