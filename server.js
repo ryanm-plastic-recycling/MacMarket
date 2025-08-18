@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
 import mysql from 'mysql2/promise';
-import { fetchTickerData } from './services/marketData.js';
+import { fetchTickerData, fetchQuote } from './services/marketData.js';
 import { fetchAlerts } from './services/alertData.js';
 import { fetchPolitical } from './services/politicalData.js';
 import { fetchRiskScores } from './services/riskData.js';
@@ -125,6 +125,17 @@ app.post('/api/scenarios', express.json(), async (req, res) => {
   }
 });
 
+// Simple quote endpoint used by alerts.js to decorate saved symbols
+app.get('/api/quote/:symbol', async (req, res) => {
+  try {
+    const q = await fetchQuote(req.params.symbol);
+    res.json(q);
+  } catch (e) {
+    console.error('quote error', e);
+    res.status(500).json({ error: 'quote_failed' });
+  }
+});
+
 // ALERTS ROUTES
 app.get('/api/alerts/me', async (req, res) => {
   try {
@@ -173,6 +184,74 @@ app.post('/api/alerts/me', express.json(), async (req, res) => {
 app.post('/api/alerts/test', async (req, res) => {
   // no external calls; just confirm wiring
   res.json({ ok: true });
+});
+
+// --- Back-compat for legacy HACO routes ------------------------------------
+// GET list of "alerts" (one per symbol) for this user
+app.get('/api/users/:userId/haco-alerts', async (req, res) => {
+  try {
+    const userId = await getUserId(req);
+    if (String(userId) !== String(req.params.userId)) return res.status(403).json({ error: 'forbidden' });
+    const [[pref]] = await pool.query(
+      'SELECT email, sms, frequency FROM user_alert_settings WHERE user_id = ? LIMIT 1',
+      [userId]
+    );
+    const [rows] = await pool.query(
+      'SELECT symbol FROM user_alert_symbols WHERE user_id = ? ORDER BY symbol',
+      [userId]
+    );
+    const email = pref?.email || '';
+    const sms = pref?.sms || '';
+    const frequency = pref?.frequency || '15m';
+    // Present each symbol as an "alert row" with inherited settings
+    const data = rows.map(r => ({
+      id: r.symbol,
+      symbol: r.symbol,
+      frequency,
+      email,
+      sms,
+      last_state: null
+    }));
+    res.json(data);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// POST add a single symbol as an alert
+app.post('/api/users/:userId/haco-alerts', express.json(), async (req, res) => {
+  try {
+    const userId = await getUserId(req);
+    if (String(userId) !== String(req.params.userId)) return res.status(403).json({ error: 'forbidden' });
+    const sym = String(req.body?.symbol || '').toUpperCase().trim();
+    if (!sym) return res.status(400).json({ error: 'symbol_required' });
+    await pool.query(
+      `INSERT INTO user_alert_settings (user_id,email,sms,frequency,strategy)
+       VALUES (?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE user_id=user_id`,
+      [userId, '', '', '15m', 'HACO']
+    );
+    await pool.query('INSERT IGNORE INTO user_alert_symbols (user_id, symbol) VALUES (?, ?)', [userId, sym]);
+    res.status(201).json({ id: sym, symbol: sym });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+// DELETE remove a symbol by its ID (symbol string)
+app.delete('/api/users/:userId/haco-alerts/:id', async (req, res) => {
+  try {
+    const userId = await getUserId(req);
+    if (String(userId) !== String(req.params.userId)) return res.status(403).json({ error: 'forbidden' });
+    const sym = String(req.params.id).toUpperCase();
+    await pool.query('DELETE FROM user_alert_symbols WHERE user_id = ? AND symbol = ?', [userId, sym]);
+    res.json({ status: 'deleted' });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
 });
 
 // OPTIONAL placeholder for future cron worker (disabled):
