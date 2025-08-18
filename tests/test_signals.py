@@ -8,7 +8,7 @@ def test_generate_recommendations_quiver(monkeypatch):
     monkeypatch.setattr(signals, "fetch_latest_prices", lambda syms: {s: 100.0 for s in syms})
     monkeypatch.setattr(
         signals,
-        "_calculate_exit",
+        "_calculate_exit_date",
         lambda sym, price, date: (date, price + 5),
     )
     monkeypatch.setattr(signals, "get_political_moves", lambda syms: {"AAPL": 1})

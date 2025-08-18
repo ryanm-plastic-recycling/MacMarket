@@ -63,6 +63,7 @@ async def alerts_page(request: Request):
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 REACT_BUILD_DIR = FRONTEND_DIR / "build"
 STATIC_DIR = Path(__file__).resolve().parent / "static"
+PUBLIC_DIR = Path(__file__).resolve().parent / "public"
 
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
@@ -652,12 +653,6 @@ def signal_rankings(format: str = "json"):
 
     return {"rankings": ranks}
 
-@app.get("/api/signals/{symbol}")
-def get_signals(symbol: str):
-    news = signals.news_sentiment_signal(symbol)
-    tech = signals.technical_indicator_signal(symbol)
-    return {"news": news, "technical": tech}
-
 @app.post("/api/macro-signal")
 def macro_signal(data: dict):
     return signals.macro_llm_signal(data.get("text", ""))
@@ -734,6 +729,17 @@ def update_alert(alert: dict):
     return {"status": "ok"}
 
 
+@app.get("/api/signals/{symbol}")
+def get_signals(symbol: str):
+    import re
+
+    if not re.fullmatch(r"[A-Za-z0-9\-.]{1,15}", symbol):
+        return {"error": "invalid_symbol"}
+    news = signals.news_sentiment_signal(symbol)
+    tech = signals.technical_indicator_signal(symbol)
+    return {"news": news, "technical": tech}
+
+
 @app.get("/api/crypto")
 def crypto(limit: int = 5):
     """Return top crypto market data from Coingecko."""
@@ -780,21 +786,6 @@ def macro():
     raise HTTPException(status_code=502, detail="API error")
 
 
-@app.get("/api/signals/{symbol}")
-def get_signals(symbol: str):
-    news = signals.news_sentiment_signal(symbol)
-    tech = signals.technical_indicator_signal(symbol)
-    return {"news": news, "technical": tech}
-
-@app.post("/api/macro-signal")
-def macro_signal(data: dict):
-    return signals.macro_llm_signal(data.get("text", ""))
-
-@app.get("/api/backtest/{symbol}")
-def run_backtest(symbol: str):
-    return backtest.sma_crossover_backtest(symbol)
-
-# Serve static assets for the simple frontend
 @app.get("/style.css")
 def style_css():
     css_file = FRONTEND_DIR / "style.css"
@@ -863,14 +854,16 @@ def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
     allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html", "github.html"}
     if page_name in allowed_pages:
-        html_file = FRONTEND_DIR / page_name
+        html_file = PUBLIC_DIR / page_name if (PUBLIC_DIR / page_name).exists() else FRONTEND_DIR / page_name
         if html_file.exists():
             # Explicitly read using UTF-8 to avoid locale dependent decoding
             return html_file.read_text(encoding="utf-8")
     raise HTTPException(status_code=404, detail="Not Found")
 
 # keep this AFTER routes so it doesn't swallow them
-if REACT_BUILD_DIR.is_dir():
+if PUBLIC_DIR.exists():
+    app.mount("/", StaticFiles(directory=PUBLIC_DIR, html=True), name="public")
+elif REACT_BUILD_DIR.is_dir():
     app.mount(
         "/",
         StaticFiles(directory=REACT_BUILD_DIR, html=True),
