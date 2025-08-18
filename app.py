@@ -875,7 +875,13 @@ def serve_page(page_name: str):
     """Return one of the bundled frontend HTML pages."""
     allowed_pages = {"index.html", "login.html", "account.html", "tickers.html", "signals.html", "journal.html", "backtests.html", "admin.html", "help.html", "github.html"}
     if page_name in allowed_pages:
-        html_file = PUBLIC_DIR / page_name if (PUBLIC_DIR / page_name).exists() else FRONTEND_DIR / page_name
+        # Prefer serving pages from the updated frontend directory.
+        # Fall back to the legacy public directory only if needed.
+        html_file = (
+            FRONTEND_DIR / page_name
+            if (FRONTEND_DIR / page_name).exists()
+            else PUBLIC_DIR / page_name
+        )
         if html_file.exists():
             # Explicitly read using UTF-8 to avoid locale dependent decoding
             return html_file.read_text(encoding="utf-8")
