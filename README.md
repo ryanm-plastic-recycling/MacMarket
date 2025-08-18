@@ -110,6 +110,19 @@ python scripts/backtest_signals.py \
 - Console summary of total return, CAGR, max drawdown, Sharpe ratio
 
 Use this tool to validate any symbol’s LLM/API-generated signals before deploying live.
+
+## 📣 HACO Alerts
+Users can configure email or SMS notifications for HACO indicator state changes from `alerts.html`.
+
+**Database**
+- Apply migrations from `schema.sql` to create the new `haco_alerts` table.
+
+**Background worker**
+```bash
+python scripts/haco_worker.py
+```
+This process checks each user's subscribed symbols at the requested frequency and sends alerts via the SMTP/Twilio settings when the HACO state changes.
+
 ## 🧠 Ideas in the Pipeline
 - LangChain or semantic memory for trade history
 - Real-time news clustering and tagging

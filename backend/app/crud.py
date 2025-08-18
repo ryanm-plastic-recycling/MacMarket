@@ -99,6 +99,40 @@ def delete_alert(db: Session, alert_obj: models.AlertPreference):
     db.commit()
 
 
+# HACO alert helpers
+def get_haco_alert(db: Session, user_id: int, alert_id: int):
+    return (
+        db.query(models.HacoAlert)
+        .filter(models.HacoAlert.user_id == user_id, models.HacoAlert.id == alert_id)
+        .first()
+    )
+
+def get_haco_alerts(db: Session, user_id: int):
+    return db.query(models.HacoAlert).filter(models.HacoAlert.user_id == user_id).all()
+
+def get_all_haco_alerts(db: Session):
+    return db.query(models.HacoAlert).all()
+
+def create_haco_alert(db: Session, user_id: int, alert: schemas.HacoAlertCreate):
+    db_alert = models.HacoAlert(user_id=user_id, **alert.dict())
+    db.add(db_alert)
+    db.commit()
+    db.refresh(db_alert)
+    return db_alert
+
+def update_haco_alert(db: Session, alert_obj: models.HacoAlert, alert: schemas.HacoAlertUpdate):
+    for field, value in alert.dict(exclude_unset=True).items():
+        setattr(alert_obj, field, value)
+    db.add(alert_obj)
+    db.commit()
+    db.refresh(alert_obj)
+    return alert_obj
+
+def delete_haco_alert(db: Session, alert_obj: models.HacoAlert):
+    db.delete(alert_obj)
+    db.commit()
+
+
 # User ticker helpers
 def get_tickers(db: Session, user_id: int):
     return db.query(models.UserTicker).filter(models.UserTicker.user_id == user_id).all()

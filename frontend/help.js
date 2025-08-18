@@ -52,6 +52,10 @@ const helpContent = {
   github: `
     <h2>GitHub</h2>
     <p>This page shows a link to the project repository and the README contents loaded from the server.</p>
+  `,
+  alerts: `
+    <h2>Alerts</h2>
+    <p>Create HACO indicator alerts. Enter a symbol, frequency in minutes and optional email or SMS number.</p>
   `
 };
 
