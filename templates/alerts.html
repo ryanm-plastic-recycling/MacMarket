@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Alerts{% endblock %}
 {% block content %}
-<main class="container">
+<div class="container">
   <h1>Trading Alerts</h1>
   <p>Select which strategy to monitor. The system will run your chosen strategy at the frequency you set. If the signal flips (long→short or short→long), you’ll get an alert.</p>
 
@@ -49,6 +49,6 @@
   </div>
 
   <div id="toast" class="toast" style="display:none;"></div>
-</main>
+</div>
 <script src="/static/js/alerts.js"></script>
 {% endblock %}
