@@ -1,5 +1,6 @@
 (async function() {
   const $ = sel => document.querySelector(sel);
+  const stratEl = $('#alert-strategy');
   const emailEl = $('#alert-email');
   const smsEl = $('#alert-sms');
   const freqEl = $('#alert-frequency');
@@ -22,21 +23,35 @@
   function renderSymbols() {
     symList.innerHTML = '';
     symbols.forEach((s, i) => {
-      const li = document.createElement('li');
-      li.textContent = s;
+      const card = document.createElement('div');
+      card.className = 'card row';
+      const title = document.createElement('strong');
+      title.textContent = s;
+      card.appendChild(title);
+      const meta = document.createElement('span');
+      meta.textContent = '...';
+      card.appendChild(meta);
       const btn = document.createElement('button');
       btn.textContent = 'Remove';
       btn.onclick = () => { symbols.splice(i,1); renderSymbols(); };
-      li.appendChild(btn);
-      symList.appendChild(li);
+      card.appendChild(btn);
+      symList.appendChild(card);
+      fetch(`/api/quote/${s}`).then(r => r.json()).then(q => {
+        const parts = [];
+        if (q.name) parts.push(q.name);
+        if (q.price !== undefined && q.price !== null) parts.push(q.price);
+        meta.textContent = parts.join(' – ');
+      }).catch(() => { meta.textContent = ''; });
     });
   }
 
   symAdd.onclick = () => {
     const v = (symIn.value || '').trim().toUpperCase();
-    if (v && !symbols.includes(v)) symbols.push(v);
+    if (v && !symbols.includes(v)) {
+      symbols.push(v);
+      renderSymbols();
+    }
     symIn.value = '';
-    renderSymbols();
   };
 
   saveBtn.onclick = async () => {
@@ -45,6 +60,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          strategy: stratEl.value,
           email: emailEl.value || '',
           sms: smsEl.value || '',
           frequency: freqEl.value,
@@ -75,6 +91,7 @@
     const res = await fetch('/api/alerts/me');
     if (res.ok) {
       const j = await res.json();
+      stratEl.value = j.strategy || 'HACO';
       emailEl.value = j.email || '';
       smsEl.value = j.sms || '';
       freqEl.value = j.frequency || '15m';

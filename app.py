@@ -33,6 +33,7 @@ import httpx
 from cachetools import TTLCache
 from dotenv import load_dotenv
 from api.haco import router as haco_router
+from routes_alerts import router as alerts_router
 
 load_dotenv()
 
@@ -52,6 +53,7 @@ quiver_cache = TTLCache(maxsize=10, ttl=300)
 
 # Dynamic routes first
 app.include_router(haco_router)
+app.include_router(alerts_router)
 
 # Alerts page
 @app.get("/alerts", response_class=HTMLResponse)
@@ -176,6 +178,25 @@ def current_price(symbol: str):
     if price is None:
         raise HTTPException(status_code=404, detail="no_data")
     return {"symbol": symbol.upper(), "price": format_price(price)}
+
+
+@app.get("/api/quote/{symbol}")
+def quote(symbol: str):
+    """Return basic quote information for a symbol."""
+    try:
+        t = yf.Ticker(symbol)
+        info = getattr(t, "info", {}) or {}
+        name = info.get("shortName") or info.get("longName") or symbol.upper()
+        price = info.get("regularMarketPrice")
+        if price is None:
+            price = fetch_latest_price(symbol)
+        return {
+            "symbol": symbol.upper(),
+            "name": name,
+            "price": format_price(price) if price is not None else None,
+        }
+    except Exception as exc:  # pragma: no cover - external call
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @app.get("/api/news")

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}{% endblock %} - MacMarket</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav class="navbar">
+      <a href="/" class="logo">MacMarket</a>
+      <a href="/alerts">Alerts</a>
+    </nav>
+  </header>
+  {% block content %}{% endblock %}
+</body>
+</html>

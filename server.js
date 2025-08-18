@@ -130,10 +130,10 @@ app.get('/api/alerts/me', async (req, res) => {
   try {
     const userId = await getUserId(req);
     const [rows] = await pool.query(
-      'SELECT email, sms, frequency FROM user_alert_settings WHERE user_id = ? LIMIT 1',
+      'SELECT email, sms, frequency, strategy FROM user_alert_settings WHERE user_id = ? LIMIT 1',
       [userId]
     );
-    const base = rows[0] || { email: '', sms: '', frequency: '15m' };
+    const base = rows[0] || { email: '', sms: '', frequency: '15m', strategy: 'HACO' };
     const [sym] = await pool.query(
       'SELECT symbol FROM user_alert_symbols WHERE user_id = ? ORDER BY symbol',
       [userId]
@@ -148,13 +148,13 @@ app.get('/api/alerts/me', async (req, res) => {
 app.post('/api/alerts/me', express.json(), async (req, res) => {
   try {
     const userId = await getUserId(req);
-    const { email = '', sms = '', frequency = '15m', symbols = [] } = req.body || {};
+    const { strategy = 'HACO', email = '', sms = '', frequency = '15m', symbols = [] } = req.body || {};
 
     await pool.query(
-      `INSERT INTO user_alert_settings (user_id, email, sms, frequency)
-       VALUES (?,?,?,?)
-       ON DUPLICATE KEY UPDATE email=VALUES(email), sms=VALUES(sms), frequency=VALUES(frequency)`,
-      [userId, email, sms, frequency]
+      `INSERT INTO user_alert_settings (user_id, email, sms, frequency, strategy)
+       VALUES (?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE email=VALUES(email), sms=VALUES(sms), frequency=VALUES(frequency), strategy=VALUES(strategy)`,
+      [userId, email, sms, frequency, strategy]
     );
 
     await pool.query('DELETE FROM user_alert_symbols WHERE user_id = ?', [userId]);
