@@ -5,14 +5,39 @@
   <title>{% block title %}{% endblock %} - MacMarket</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="/static/style.css" />
+  <script type="module" src="/static/theme.js"></script>
+  <script src="/static/ticker.js"></script>
 </head>
 <body>
-  <header class="site-header">
-    <nav class="navbar">
-      <a href="/" class="logo">MacMarket</a>
-      <a href="/alerts">Alerts</a>
-    </nav>
-  </header>
+<div id="sidebar">
+    <a href="/index.html">Home</a>
+    <a href="/login.html">Login</a>
+    <a href="/account.html">Account</a>
+    <a href="/tickers.html">Tickers</a>
+    <a href="/signals.html">Signals</a>
+    <a href="/alerts">Alerts</a>
+    <a href="/journal.html">Journal</a>
+    <a href="/backtests.html">Backtests</a>
+    <a href="/github.html">GitHub</a>
+    <a href="/help.html#alerts">Help</a>
+    <a href="/admin.html" id="admin-link" style="display:none;">Admin</a>
+    <a href="#" id="logout-link">Logout</a>
+    <button id="theme-toggle">Toggle Theme</button>
+</div>
+<header>
+    <img id="header-logo" src="images/logo-light.png" alt="Logo">
+    <h1>MacMarket</h1>
+    <div id="user-info"></div>
+    <div id="time"></div>
+    <div id="status"></div>
+</header>
+<main>
+  <div id="ticker-bar">
+    <button id="ticker-toggle">Pause</button>
+    <div id="ticker-track"></div>
+  </div>
   {% block content %}{% endblock %}
+</main>
 </body>
 </html>
+
