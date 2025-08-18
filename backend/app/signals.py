@@ -224,7 +224,39 @@ def macro_llm_signal(text: str) -> dict:
             pass
     return {"type": "macro_llm", "outlook": "unknown"}
 
-def _calculate_exit(
+def _scalar(x):
+    """Return a float from either a scalar or a pandas Series/Index."""
+    try:
+        import pandas as pd
+        if hasattr(x, "iloc"):
+            xn = x.dropna().iloc[-1] if hasattr(x, "dropna") else x.iloc[-1]
+            return float(xn)
+    except Exception:  # pragma: no cover - defensive
+        pass
+    try:
+        return float(x)
+    except Exception:  # pragma: no cover - defensive
+        return None
+
+
+def _calculate_exit(symbol, data, entry_price, take_profit_pct=0.02, stop_loss_pct=0.01, **kwargs):
+    """Return exit recommendation based on latest price targets."""
+    close_series = data["Close"] if "Close" in data else (data["Adj Close"] if "Adj Close" in data else None)
+    last_close = _scalar(close_series)
+    if last_close is None:
+        return {"rec": "hold", "reason": "no price"}
+
+    profit_target = float(entry_price) * (1.0 + float(take_profit_pct))
+    stop_target = float(entry_price) * (1.0 - float(stop_loss_pct))
+
+    if last_close >= profit_target:
+        return {"rec": "sell", "reason": f"Target {profit_target:.2f}"}
+    if last_close <= stop_target:
+        return {"rec": "sell", "reason": f"Stop {stop_target:.2f}"}
+    return {"rec": "hold", "reason": "Within band"}
+
+
+def _calculate_exit_date(
     symbol: str, entry_price: float, entry_date: datetime.date
 ) -> tuple[datetime.date, float]:
     """Return exit date and price based on fixed target, stop and time limit."""
@@ -241,10 +273,12 @@ def _calculate_exit(
             progress=False,
             threads=True,
         )
-        profit_target = entry_price * (1 + EXIT_PROFIT_TARGET_PCT)
-        stop_loss = entry_price * (1 - EXIT_STOP_LOSS_PCT)
+        profit_target = _scalar(entry_price) * (1 + EXIT_PROFIT_TARGET_PCT)
+        stop_loss = _scalar(entry_price) * (1 - EXIT_STOP_LOSS_PCT)
         for date, row in forward.iterrows():
-            price = row["Close"]
+            price = _scalar(row["Close"])
+            if price is None:
+                continue
             if price >= profit_target:
                 exit_date, exit_price = date.date(), profit_target
                 break
@@ -254,12 +288,12 @@ def _calculate_exit(
         if exit_date is None and forward is not None and not forward.empty:
             last_date = forward.index[-1].date()
             exit_date = last_date
-            exit_price = forward.iloc[-1]["Close"]
-    except Exception as exc:
+            exit_price = _scalar(forward.iloc[-1]["Close"])
+    except Exception:
         logging.exception("Exit calculation failed for %s", symbol)
     if exit_date is None:
         exit_date = entry_date + datetime.timedelta(days=EXIT_MAX_HOLD_DAYS)
-        exit_price = entry_price
+        exit_price = _scalar(entry_price)
     return exit_date, float(exit_price)
 
 
@@ -332,7 +366,7 @@ def generate_recommendations(symbols: list[str]) -> list[dict]:
         exit_date = None
         exit_price = None
         if entry_price is not None:
-            exit_date, exit_price = _calculate_exit(sym, entry_price, entry_date)
+            exit_date, exit_price = _calculate_exit_date(sym, entry_price, entry_date)
         probability = round(min(0.9, 0.5 + min(abs(score) / 10, 0.4)), 2)
         parts = [
             f"News score {news.get('score')} and {tech.get('signal')} MA signal",
