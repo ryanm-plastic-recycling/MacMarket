@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Alerts - MacMarket</title>
-    <link rel="stylesheet" href="/style.css">
-    <script src="/theme.js" defer></script>
-    <script src="/ticker.js" defer></script>
-    <script src="/js/alerts.js" defer></script>
+  <meta charset="UTF-8" />
+  <title>Alerts - MacMarket</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="/theme.js" defer></script>
+  <script src="/ticker.js" defer></script>
+  <script src="/js/alerts.js" defer></script>
 </head>
 <body>
-<div id="sidebar">
+  <div id="sidebar">
     <a href="index.html">Home</a>
     <a href="login.html">Login</a>
     <a href="account.html">Account</a>
     <a href="tickers.html">Tickers</a>
     <a href="signals.html">Signals</a>
-    <a href="/alerts">Alerts</a>
+    <a href="alerts.html">Alerts</a>
     <a href="journal.html">Journal</a>
     <a href="backtests.html">Backtests</a>
     <a href="github.html">GitHub</a>
@@ -23,80 +23,55 @@
     <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
     <a href="#" id="logout-link">Logout</a>
     <button id="theme-toggle">Toggle Theme</button>
-</div>
-<header>
-    <img id="header-logo" src="/images/logo-light.png" alt="MacMarket Logo">
+  </div>
+  <header>
+    <img id="header-logo" src="/images/logo-light.png" alt="MacMarket Logo" />
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
     <div id="status"></div>
-</header>
-<main>
+  </header>
+  <main>
     <div id="ticker-bar">
-        <button id="ticker-toggle">Pause</button>
-        <div id="ticker-track"></div>
+      <button id="ticker-toggle">Pause</button>
+      <div id="ticker-track"></div>
     </div>
-    <h2>HACO Alerts</h2>
-    <table id="alert-table">
-        <thead>
-            <tr><th>Symbol</th><th>Price</th><th>Freq (min)</th><th>Email</th><th>SMS</th><th>Last State</th><th>Actions</th></tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <form id="alert-form">
-        <label>Symbol <input id="alert-symbol"></label>
-        <label>Frequency (min) <input id="alert-frequency" type="number"></label>
-        <label>Email <input id="alert-email" type="email"></label>
-        <label>SMS <input id="alert-sms" type="text"></label>
-        <button type="submit">Add Alert</button>
-    </form>
-</main>
-<script>
-const userId = localStorage.getItem('userId');
-if(!userId){ window.location.href = 'login.html'; }
-if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
-
-async function loadAlerts(){
-    const res = await fetch(`/api/users/${userId}/haco-alerts`);
-    if(!res.ok) return;
-    const data = await res.json();
-    const body = document.querySelector('#alert-table tbody');
-    body.innerHTML='';
-    for(const a of data){
-        const priceRes = await fetch(`/api/price/${a.symbol}`);
-        const price = priceRes.ok ? (await priceRes.json()).price : '';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${a.symbol}</td><td>${price}</td><td>${a.frequency}</td>`+
-            `<td>${a.email||''}</td><td>${a.sms||''}</td><td>${a.last_state||''}</td>`;
-        const actions = document.createElement('td');
-        const delBtn = document.createElement('button');
-        delBtn.textContent = 'Delete';
-        delBtn.onclick = async () => {
-            await fetch(`/api/users/${userId}/haco-alerts/${a.id}`, {method:'DELETE'});
-            loadAlerts();
-        };
-        actions.appendChild(delBtn);
-        tr.appendChild(actions);
-        body.appendChild(tr);
-    }
-}
-
-document.getElementById('alert-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const symbol = document.getElementById('alert-symbol').value.trim().toUpperCase();
-    const frequency = parseInt(document.getElementById('alert-frequency').value, 10);
-    const email = document.getElementById('alert-email').value.trim();
-    const sms = document.getElementById('alert-sms').value.trim();
-    const payload = {symbol, frequency, email: email || null, sms: sms || null};
-    await fetch(`/api/users/${userId}/haco-alerts`, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-    document.getElementById('alert-form').reset();
-    loadAlerts();
-});
-
-window.onload = () => { loadAlerts(); };
-document.getElementById('alert-symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
-</script>
-<script src="help.js"></script>
-<script>initHelp('alerts');</script>
+    <h2>Alerts</h2>
+    <section class="card">
+      <h3>Strategy</h3>
+      <select id="alert-strategy">
+        <option value="HACO">HACO</option>
+        <option value="SMA">SMA Crossover</option>
+        <option value="MACD">MACD</option>
+      </select>
+    </section>
+    <section class="card">
+      <h3>Frequency</h3>
+      <select id="alert-frequency">
+        <option value="5m">Every 5 minutes</option>
+        <option value="15m" selected>Every 15 minutes</option>
+        <option value="1h">Hourly</option>
+        <option value="1d">Daily</option>
+      </select>
+    </section>
+    <section class="card">
+      <h3>Delivery</h3>
+      <label>Email <input id="alert-email" type="email" placeholder="you@example.com"></label>
+      <label>SMS <input id="alert-sms" type="tel" placeholder="+13175551234"></label>
+    </section>
+    <section class="card">
+      <h3>Symbols</h3>
+      <div class="row">
+        <input id="symbol-input" type="text" placeholder="AAPL" />
+        <button id="add-symbol" type="button">Add</button>
+      </div>
+      <div id="symbol-list" class="symbol-cards"></div>
+    </section>
+    <div class="row">
+      <button id="save-alerts" type="button">Save Settings</button>
+      <button id="test-alerts" class="secondary" type="button">Run Test</button>
+    </div>
+    <div id="toast" class="toast" style="display:none;"></div>
+  </main>
 </body>
 </html>

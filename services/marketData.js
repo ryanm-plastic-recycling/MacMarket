@@ -17,3 +17,15 @@ export async function fetchTickerData(symbols) {
 // Backwards compatibility
 export const fetchMarket = fetchTickerData;
 
+// Return { symbol, name, price } for a single ticker
+export async function fetchQuote(symbol) {
+  const sym = String(symbol).toUpperCase();
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(sym)}`;
+  const res = await axios.get(url);
+  const result = res?.data?.quoteResponse?.result?.[0] || {};
+  return {
+    symbol: sym,
+    name: result.shortName || result.longName || sym,
+    price: result.regularMarketPrice ?? null
+  };
+}
