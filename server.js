@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
+import mysql from 'mysql2/promise';
 import { fetchTickerData } from './services/marketData.js';
 import { fetchAlerts } from './services/alertData.js';
 import { fetchPolitical } from './services/politicalData.js';
@@ -18,6 +19,20 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+
+// MySQL pool for alerts
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
+  connectionLimit: 10
+});
+
+async function getUserId(req) {
+  // TODO: replace with real auth user id
+  return (req.user && req.user.id) ? req.user.id : 1;
+}
 
 app.get('/api/panorama', async (req, res) => {
   try {
@@ -109,6 +124,64 @@ app.post('/api/scenarios', express.json(), async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ALERTS ROUTES
+app.get('/api/alerts/me', async (req, res) => {
+  try {
+    const userId = await getUserId(req);
+    const [rows] = await pool.query(
+      'SELECT email, sms, frequency FROM user_alert_settings WHERE user_id = ? LIMIT 1',
+      [userId]
+    );
+    const base = rows[0] || { email: '', sms: '', frequency: '15m' };
+    const [sym] = await pool.query(
+      'SELECT symbol FROM user_alert_symbols WHERE user_id = ? ORDER BY symbol',
+      [userId]
+    );
+    res.json({ ...base, symbols: sym.map(r => r.symbol) });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/alerts/me', express.json(), async (req, res) => {
+  try {
+    const userId = await getUserId(req);
+    const { email = '', sms = '', frequency = '15m', symbols = [] } = req.body || {};
+
+    await pool.query(
+      `INSERT INTO user_alert_settings (user_id, email, sms, frequency)
+       VALUES (?,?,?,?)
+       ON DUPLICATE KEY UPDATE email=VALUES(email), sms=VALUES(sms), frequency=VALUES(frequency)`,
+      [userId, email, sms, frequency]
+    );
+
+    await pool.query('DELETE FROM user_alert_symbols WHERE user_id = ?', [userId]);
+    if (Array.isArray(symbols) && symbols.length) {
+      const vals = symbols.map(s => [userId, String(s).toUpperCase()]);
+      await pool.query('INSERT INTO user_alert_symbols (user_id, symbol) VALUES ?', [vals]);
+    }
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
+app.post('/api/alerts/test', async (req, res) => {
+  // no external calls; just confirm wiring
+  res.json({ ok: true });
+});
+
+// OPTIONAL placeholder for future cron worker (disabled):
+// import cron from 'node-cron';
+// // TODO: enable in a later PR
+// // cron.schedule('*/5 * * * *', () => { console.log('[alerts] tick'); });
+
+// Serve static pages
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(express.static(path.join(__dirname, 'frontend', 'build')));
 app.get('*', (req, res) => {

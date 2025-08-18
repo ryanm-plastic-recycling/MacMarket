@@ -96,3 +96,19 @@ CREATE TABLE IF NOT EXISTS tickers (
     symbol VARCHAR(10) NOT NULL,
     position INT DEFAULT 0
 );
+
+-- Alert settings
+CREATE TABLE IF NOT EXISTS user_alert_settings (
+  user_id    BIGINT PRIMARY KEY,
+  email      VARCHAR(255) NOT NULL DEFAULT '',
+  sms        VARCHAR(32)  NOT NULL DEFAULT '',
+  frequency  ENUM('5m','15m','1h','1d') NOT NULL DEFAULT '15m',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_alert_symbols (
+  user_id BIGINT NOT NULL,
+  symbol  VARCHAR(16) NOT NULL,
+  PRIMARY KEY (user_id, symbol),
+  CONSTRAINT fk_uas_user FOREIGN KEY (user_id) REFERENCES user_alert_settings(user_id) ON DELETE CASCADE
+);
