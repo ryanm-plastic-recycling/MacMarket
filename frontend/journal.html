@@ -73,7 +73,7 @@ async function loadJournal(){
     const data = await res.json();
     const body = document.querySelector('#journal-table tbody');
     body.innerHTML='';
-    const totals = {qty:0, price:0, current:0, pl:0, pct:0};
+    const totals = {invested:0, current:0};
     for(const e of data){
         const tr = document.createElement('tr');
         const when = new Date(e.created_at).toLocaleString();
@@ -128,21 +128,22 @@ async function loadJournal(){
         actions.appendChild(delBtn);
         tr.appendChild(actions);
         body.appendChild(tr);
-        totals.qty += e.quantity;
-        totals.price += e.price;
-        if(cur !== null) totals.current += cur;
-        totals.pl += pl;
-        totals.pct += pct;
+        const invested = e.quantity * e.price;
+        totals.invested += invested;
+        if(cur !== null) {
+            totals.current += e.quantity * cur;
+        }
     }
     const foot = document.querySelector('#journal-table tfoot');
     const row = document.createElement('tr');
-    const cls = totals.pl >= 0 ? 'up' : 'down';
-    row.innerHTML = `<th colspan="3">Total</th>`+
-        `<th>${totals.qty.toFixed(2)}</th>`+
-        `<th>${totals.price.toFixed(2)}</th>`+
+    const profit = totals.current - totals.invested;
+    const pct = totals.invested ? (totals.current / totals.invested) * 100 : 0;
+    const cls = profit >= 0 ? 'up' : 'down';
+    row.innerHTML = `<th colspan="4">Total</th>`+
+        `<th>${totals.invested.toFixed(2)}</th>`+
         `<th>${totals.current.toFixed(2)}</th>`+
-        `<th class="${cls}">${totals.pl.toFixed(2)}</th>`+
-        `<th class="${cls}">${totals.pct.toFixed(2)}%</th>`+
+        `<th class="${cls}">${profit.toFixed(2)}</th>`+
+        `<th class="${cls}">${pct.toFixed(2)}%</th>`+
         `<th colspan="3"></th>`;
     foot.innerHTML='';
     foot.appendChild(row);
