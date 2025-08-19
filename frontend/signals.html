@@ -42,7 +42,7 @@
       <section class="signal-section symbol-signal">
         <h3>Symbol Signal</h3>
         <form id="symbol-form" class="row-controls" onsubmit="return false">
-          <label>Symbol <input id="symbol" type="text" placeholder="AAPL" autocomplete="off"></label>
+          <label>Symbol <input id="symbol" type="text" value="SPY" autocomplete="off"></label>
           <button id="get-signal" type="submit" aria-label="Run HACO">Run</button>
         </form>
         <div id="signal-container">
@@ -85,7 +85,7 @@
       <section class="signal-section span-2" id="haco-section">
         <h3>HACO Strategy</h3>
         <form id="haco-form" class="row" style="display:flex;gap:.5rem;align-items:center;" onsubmit="return false">
-            <label>Symbol <input id="haco-symbol" value="AAPL"></label>
+            <label>Symbol <input id="haco-symbol" value="SPY"></label>
             <label>Timeframe <input id="haco-timeframe" value="Day"></label>
             <label>Length Up <input id="haco-lenUp" value="34" type="number"></label>
             <label>Length Down <input id="haco-lenDown" value="34" type="number"></label>
@@ -274,11 +274,10 @@ document.getElementById('run-macro').addEventListener('click', fetchMacro);
 document.getElementById('get-recs').addEventListener('click', fetchRecs);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
-    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js" defer></script>
-    <!-- keep these from frontend/js; cache-bust to avoid stale code -->
-    <script src="/js/haco-scan.js?v=15" defer></script>
-    <script src="/js/haco-ui.js?v=15" defer></script>
-    <script src="/js/haco-debug.js?v=15" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Use frontend/js via /js mount and bust cache -->
+    <script src="/js/haco-ui.js?v=16"></script>
+    <script src="/js/haco-scan.js?v=16"></script>
     <script src="help.js"></script>
 </body>
 </html>
