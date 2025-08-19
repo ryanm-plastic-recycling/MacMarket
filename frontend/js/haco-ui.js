@@ -166,9 +166,8 @@ async function fetchHaco() {
   const lenDown = document.getElementById('haco-lenDown').value;
   const alertLookback = document.getElementById('haco-alertLookback').value;
   const lookback = document.getElementById('haco-lookback').value;
-  const url = `/api/signals/haco?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(
-    timeframe
-  )}&lengthUp=${lenUp}&lengthDown=${lenDown}&alertLookback=${alertLookback}&lookback=${lookback}`;
+  const showHa = document.getElementById('haco-toggleHa')?.checked ? '&showHa=true' : '';
+  const url = `/api/signals/haco?symbol=${encodeURIComponent(symbol)}&timeframe=${encodeURIComponent(timeframe)}&lengthUp=${lenUp}&lengthDown=${lenDown}&alertLookback=${alertLookback}&lookback=${lookback}${showHa}`;
 
   const res = await fetch(url);
   if (!res.ok) {
@@ -217,21 +216,22 @@ function renderChart(bars) {
     const api = LW.createChart(chartEl, {
       height: 400,
       layout: { background: { color: 'transparent' } },
-      rightPriceScale: { borderVisible: false },
+      // Price on RIGHT; indicators on LEFT (hidden) so they don't squash candles
+      rightPriceScale: { borderVisible: false, visible: true },
+      leftPriceScale:  { borderVisible: false, visible: false },
       timeScale: { borderVisible: false },
     });
 
-    const price = (typeof api.addCandlestickSeries === 'function')
-      ? api.addCandlestickSeries({
-          upColor: '#26a69a',
-          downColor: '#ef5350',
-          borderVisible: false,
-          wickUpColor: '#26a69a',
-          wickDownColor: '#ef5350',
-        })
-      : (typeof api.addAreaSeries === 'function'
-          ? api.addAreaSeries({})
-          : null);
+    // FORCE candlesticks on RIGHT scale
+    const price = api.addCandlestickSeries({
+      upColor: '#26a69a',
+      downColor: '#ef5350',
+      borderUpColor: '#26a69a',
+      borderDownColor: '#ef5350',
+      wickUpColor: '#26a69a',
+      wickDownColor: '#ef5350',
+      priceScaleId: 'right'
+    });
 
     Object.defineProperties(chartEl, {
       __hacoChart: { value: api, writable: false },
@@ -262,55 +262,25 @@ function renderChart(bars) {
     window.__setSignalData(bars);
   }
 
-  // Candles/area data (normalize time)
+  // Candles data (normalize time)
   const candles = (bars || []).map((b) => ({
     time: normalizeTime(b.time),
     open: b.o,
     high: b.h,
     low:  b.l,
-    close: b.c,
-    color: b.state ? '#2ecc71' : '#e74c3c',
-    borderColor: b.state ? '#2ecc71' : '#e74c3c',
-    wickColor: b.state ? '#2ecc71' : '#e74c3c',
+    close: b.c
   }));
-  // setData tolerates OHLC on candle series; for area series it will just read `value`
-  // Provide a fallback transform for non-candle:
-  if (priceSeries.setData.length) {
-    try {
-      priceSeries.setData(
-        (priceSeries.seriesType && priceSeries.seriesType() === 'Area')
-          ? candles.map(c => ({ time: c.time, value: c.close }))
-          : candles
-      );
-    } catch {
-      // Some builds don’t expose seriesType(); default to close
-      priceSeries.setData(candles.map(c => ({ time: c.time, value: c.close })));
-    }
-  }
+  priceSeries.setData(candles);
 
   // Small LW markers (only if the series supports setMarkers)
   if (typeof priceSeries.setMarkers === 'function') {
-    const markers = [];
-    for (const b of bars || []) {
-      if (b.upw)
-        markers.push({
-          time: normalizeTime(b.time),
-          position: 'belowBar',
-          color: 'green',
-          shape: 'text',
-          text: '▲',
-          size: 2,
-        });
-      if (b.dnw)
-        markers.push({
-          time: normalizeTime(b.time),
-          position: 'aboveBar',
-          color: 'red',
-          shape: 'text',
-          text: '▼',
-          size: 2,
-        });
-    }
+    const markers = (bars || []).flatMap(b => {
+      const t = normalizeTime(b.time);
+      const out = [];
+      if (b.upw) out.push({ time: t, position: 'belowBar', color: 'green', shape: 'arrowUp',   text: 'HACO' });
+      if (b.dnw) out.push({ time: t, position: 'aboveBar', color: 'red',   shape: 'arrowDown', text: 'HACO' });
+      return out;
+    });
     priceSeries.setMarkers(markers);
   }
 
@@ -319,16 +289,8 @@ function renderChart(bars) {
   // Indicator lines (feature-detected creation, reused)
   function ensureLineLikeSeries(cacheKey, color) {
     if (chartApi[cacheKey]) return chartApi[cacheKey];
-    let s = null;
-    if (typeof chartApi.addLineSeries === 'function') {
-      s = chartApi.addLineSeries({ color });
-    } else if (typeof chartApi.addAreaSeries === 'function') {
-      s = chartApi.addAreaSeries({}); // color not guaranteed here
-    } else {
-      console.warn('[HACO] No line/area series available for indicators; skipping', cacheKey);
-      chartApi[cacheKey] = null;
-      return null;
-    }
+    // Put indicators on the LEFT scale (hidden) so they never distort candle autoscale
+    const s = chartApi.addLineSeries({ color, lineWidth: 1, priceScaleId: 'left' });
     chartApi[cacheKey] = s;
     return s;
   }
@@ -338,10 +300,11 @@ function renderChart(bars) {
   const zlHaD = ensureLineLikeSeries('__zlHaD', 'purple');
   const zlClD = ensureLineLikeSeries('__zlClD', 'gray');
 
-  if (zlHaU?.setData) zlHaU.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlHaU })));
-  if (zlClU?.setData) zlClU.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlClU })));
-  if (zlHaD?.setData) zlHaD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlHaD })));
-  if (zlClD?.setData) zlClD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: b.ZlClD })));
+  const toLine = (v) => (v === null || v === undefined || Number.isNaN(v)) ? null : Number(v);
+  if (zlHaU?.setData) zlHaU.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: toLine(b.ZlHaU) })).filter(p => p.value != null));
+  if (zlClU?.setData) zlClU.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: toLine(b.ZlClU) })).filter(p => p.value != null));
+  if (zlHaD?.setData) zlHaD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: toLine(b.ZlHaD) })).filter(p => p.value != null));
+  if (zlClD?.setData) zlClD.setData((bars || []).map(b => ({ time: normalizeTime(b.time), value: toLine(b.ZlClD) })).filter(p => p.value != null));
 
   chartApi.timeScale().fitContent();
 
