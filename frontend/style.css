@@ -94,7 +94,7 @@ main {
 
 #user-info {
   position: absolute;
-  left: 60px; /* offset from logo */
+  left: 120px; /* offset from logo */
   top: 10px;
   font-size: 0.9em;
 }
