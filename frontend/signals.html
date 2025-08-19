@@ -6,12 +6,7 @@
     <link rel="stylesheet" href="/style.css">
     <script src="/theme.js" defer></script>
     <script src="/ticker.js" defer></script>
-    <!-- Lightweight Charts -->
-    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js" defer></script>
-    <script src="/js/haco-scan.js" defer></script>
-    <script src="/js/haco-ui.js" defer></script>
-    <script src="/js/haco-debug.js" defer></script>
-    <script src="/help.js" defer></script>
+    <!-- Lightweight Charts and HACO scripts loaded at end of body -->
 </head>
 <body>
 <div id="sidebar">
@@ -279,16 +274,12 @@ document.getElementById('run-macro').addEventListener('click', fetchMacro);
 document.getElementById('get-recs').addEventListener('click', fetchRecs);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
-<!-- Official TradingView Lightweight Charts (UMD/standalone) -->
-<script>
-    (function(){
-      const scripts = Array.from(document.scripts);
-      const lw = scripts.find(s => s.src.includes('lightweight-charts'));
-      console.log('[HACO] Loaded Lightweight Charts:', lw?.src || '(inline)');
-      // Some builds expose version; if not, the pinned URL is our source of truth
-      console.log('[HACO] LW Charts version (from URL):', (lw?.src.match(/@([\d.]+)/)||[])[1] || 'unknown');
-    })();
-  </script>
-<!-- help.js may auto-init; if not, no hard dependency on initHelp here -->
+    <!-- Official TradingView Lightweight Charts (UMD/standalone) -->
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Force the CHART version of HACO (lives under /static) and bust cache -->
+    <script src="/static/js/haco-ui.js?v=14"></script>
+    <!-- HACO table (multi-symbol scan) -->
+    <script src="/static/js/haco-scan.js?v=14"></script>
+    <script src="help.js"></script>
 </body>
 </html>
