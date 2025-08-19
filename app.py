@@ -61,6 +61,14 @@ FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"
 REACT_BUILD_DIR = FRONTEND_DIR / "build"  # if you ever build a SPA here
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static-files")
+
+# Serve JS from the simple HTML pages (frontend/js) at /js/*
+FRONTEND_JS_DIR = FRONTEND_DIR / "js"
+if FRONTEND_JS_DIR.exists():
+    app.mount("/js", StaticFiles(directory=FRONTEND_JS_DIR), name="frontend-js")
+
 class QuotaMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
@@ -871,8 +879,6 @@ def alerts_redirect():
 # keep this AFTER API routes so it doesn't swallow them
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
-    # Back-compat for pages that still request /static/*
-    app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static-files")
 elif REACT_BUILD_DIR.is_dir():
     app.mount("/", StaticFiles(directory=REACT_BUILD_DIR, html=True), name="static")
 

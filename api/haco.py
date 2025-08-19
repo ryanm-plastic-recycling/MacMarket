@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException, Query, Body
+from typing import List, Optional, Dict, Any
 import time
 import math
 import pandas as pd
@@ -148,6 +148,43 @@ def _build_series(
     }
 
 
+def _series_to_candles(series: List[Dict[str, Any]]):
+    """Convert {time,o,h,l,c,...} to LW candlesticks + simple markers."""
+    candles = [
+        {
+            "time": b["time"],
+            "open": b["o"],
+            "high": b["h"],
+            "low": b["l"],
+            "close": b["c"],
+        }
+        for b in series
+    ]
+    markers: List[Dict[str, Any]] = []
+    for b in series:
+        if b.get("upw"):
+            markers.append(
+                {
+                    "time": b["time"],
+                    "position": "belowBar",
+                    "shape": "arrowUp",
+                    "color": "green",
+                    "text": "HACO",
+                }
+            )
+        if b.get("dnw"):
+            markers.append(
+                {
+                    "time": b["time"],
+                    "position": "aboveBar",
+                    "shape": "arrowDown",
+                    "color": "red",
+                    "text": "HACO",
+                }
+            )
+    return candles, markers
+
+
 @router.get("")
 def haco(
     symbol: str = Query(..., alias="symbol"),
@@ -171,11 +208,18 @@ def haco(
 
 @router.get("/scan")
 def haco_scan(
-    symbols: str = Query(..., description="Comma separated symbols"),
+    symbols: Optional[str] = Query(None, description="Comma-separated symbols for table output"),
+    symbol: Optional[str] = Query(None, description="Single symbol for chart output"),
     timeframe: str = Query("Day"),
 ):
-    """Return last-bar HACO flags for many symbols (for the HACO table)."""
-    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    """Return HACO scan results: table or chart-friendly output."""
+    # If single 'symbol' provided and no 'symbols', return chart data
+    if symbol and not symbols:
+        data = _build_series(symbol.strip().upper(), timeframe, 34, 34, 200, False)
+        candles, markers = _series_to_candles(data["series"])
+        return {"candles": candles, "markers": markers}
+
+    syms = [s.strip().upper() for s in (symbols or "").split(",") if s.strip()]
     if not syms:
         return []
     out = []
@@ -206,4 +250,15 @@ def haco_scan(
         except Exception as e:  # pragma: no cover - defensive
             out.append({"symbol": s, "error": str(e)})
     return out
+
+
+@router.post("/scan")
+def haco_scan_post(payload: Dict[str, Any] = Body(...)):
+    """Chart compatibility: POST {"symbol": "..."} -> {candles, markers}."""
+    sym = str(payload.get("symbol", "")).strip().upper()
+    if not sym:
+        raise HTTPException(status_code=400, detail="symbol_required")
+    data = _build_series(sym, "Day", 34, 34, 200, False)
+    candles, markers = _series_to_candles(data["series"])
+    return {"candles": candles, "markers": markers}
 
