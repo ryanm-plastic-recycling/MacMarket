@@ -2,11 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline';">
     <title>Signals - MacMarket</title>
-    <link rel="stylesheet" href="style.css">
-    <script type="module" src="theme.js"></script>
-    <script src="ticker.js"></script>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/theme.js" defer></script>
+    <script src="/ticker.js" defer></script>
+    <!-- Lightweight Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js" defer></script>
+    <script src="/js/haco-ui.js" defer></script>
+    <script src="/js/haco-scan.js" defer></script>
+    <script src="/help.js" defer></script>
 </head>
 <body>
 <div id="sidebar">
@@ -42,8 +46,8 @@
       <section class="signal-section symbol-signal">
         <h3>Symbol Signal</h3>
         <div class="row-controls">
-          <label>Symbol <input id="symbol" type="text"></label>
-          <button id="get-signal">Get Signal</button>
+          <label>Symbol <input id="symbol" type="text" placeholder="AAPL"></label>
+          <button id="get-signal" type="button">Run</button>
         </div>
         <div id="signal-container">
           <div>
@@ -94,7 +98,7 @@
             <label><input type="checkbox" id="haco-toggleHa"> Show Heikin-Ashi</label>
             <button id="haco-run">Run</button>
         </div>
-        <div id="haco-chart" style="height:400px; position:relative;"></div>
+        <div id="haco-chart" style="height:420px; position:relative;"></div>
         <div id="haco-signal-chart" style="height:100px;"></div>
         <div id="haco-explain"></div>
       </section>
@@ -274,7 +278,6 @@ document.getElementById('get-recs').addEventListener('click', fetchRecs);
 document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
 </script>
 <!-- Official TradingView Lightweight Charts (UMD/standalone) -->
-<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
 <script>
     (function(){
       const scripts = Array.from(document.scripts);
@@ -284,9 +287,6 @@ document.getElementById('symbol').addEventListener('input', e => { e.target.valu
       console.log('[HACO] LW Charts version (from URL):', (lw?.src.match(/@([\d.]+)/)||[])[1] || 'unknown');
     })();
   </script>
-<script src="/static/js/haco-ui.js?v=9"></script>
-<script src="/static/js/haco-scan.js"></script>
-<script src="help.js"></script>
 <script>initHelp("signals");</script>
 </body>
 </html>
