@@ -1,7 +1,6 @@
-// HACO UI binding with delegation + diagnostics
 window.HACO = window.HACO || {};
 
-function showToast(msg, ms = 1800) {
+function showToast(msg, ms = 1500) {
   const t = document.getElementById('haco-toast');
   if (!t) return;
   t.textContent = msg;
@@ -11,19 +10,19 @@ function showToast(msg, ms = 1800) {
 }
 
 function bindHacoUI() {
-  console.log('[HACO:UI] bind start, readyState=', document.readyState);
+  console.log('[HACO:UI] bind start');
   const form   = document.getElementById('haco-form');
-  const button = document.getElementById('get-signal');
-  const input  = document.getElementById('symbol');
-  console.log('[HACO:UI] elements found', { form: !!form, button: !!button, input: !!input });
+  const input  = document.getElementById('haco-symbol');
+  const button = document.getElementById('haco-run');
+  console.log('[HACO:UI] found', { form: !!form, input: !!input, button: !!button });
 
-  // Delegated handler works even if elements are re-rendered later.
+  // Delegated click so re-renders won’t break it
   document.addEventListener('click', (e) => {
-    const target = e.target.closest?.('#get-signal');
-    if (!target) return;
+    const btn = e.target.closest?.('#haco-run');
+    if (!btn) return;
     e.preventDefault();
-    const sym = (document.getElementById('symbol')?.value || '').trim().toUpperCase();
-    console.log('[HACO:UI] Run (click) symbol=', sym);
+    const sym = (document.getElementById('haco-symbol')?.value || '').trim().toUpperCase();
+    console.log('[HACO:UI] Run (click)', sym);
     if (!sym) return showToast('Enter a symbol (e.g., AAPL)');
     runHaco(sym);
   });
@@ -31,16 +30,10 @@ function bindHacoUI() {
   // Form submit (Enter key)
   form?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const sym = (document.getElementById('symbol')?.value || '').trim().toUpperCase();
-    console.log('[HACO:UI] Run (submit) symbol=', sym);
+    const sym = (document.getElementById('haco-symbol')?.value || '').trim().toUpperCase();
+    console.log('[HACO:UI] Run (submit)', sym);
     if (!sym) return showToast('Enter a symbol (e.g., AAPL)');
     runHaco(sym);
-  });
-
-  // Quick hint when input changes
-  input?.addEventListener('keyup', (e) => {
-    if (e.key === 'Enter') return; // submit handler will catch it
-    console.log('[HACO:UI] input=', e.target.value);
   });
 
   console.log('[HACO:UI] bind OK');
@@ -61,7 +54,7 @@ async function runHaco(symbol) {
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', bindHacoUI);
 } else {
-  // Already parsed
   bindHacoUI();
 }
 window.addEventListener('load', () => console.log('[HACO:UI] window load fired'));
+
