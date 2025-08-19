@@ -51,8 +51,9 @@ political_cache = TTLCache(maxsize=1, ttl=POLITICAL_CACHE_TTL) if POLITICAL_CACH
 news_cache = TTLCache(maxsize=2, ttl=NEWS_CACHE_TTL) if NEWS_CACHE_TTL > 0 else None
 quiver_cache = TTLCache(maxsize=10, ttl=300)
 
-# Dynamic routes first
+# Include HACO routes EARLY to avoid shadowing
 app.include_router(haco_router)
+# Other dynamic routes
 app.include_router(alerts_router)
 
 # Directories for static assets
