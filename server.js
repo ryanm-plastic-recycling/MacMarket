@@ -275,8 +275,18 @@ app.post('/api/signals/haco/scan', express.json(), async (req, res) => {
   try {
     const sym = String((req.body?.symbol || req.query?.symbol || '')).toUpperCase();
     if (!sym) return res.status(400).json({ error: 'symbol_required' });
-    // TODO: call HACO engine; stubbed shape below:
-    res.json({ candles: [], markers: [] });
+    // TODO: call your HACO engine; stub sample so frontend visibly updates
+    const now = Math.floor(Date.now() / 1000);
+    const candles = Array.from({ length: 50 }, (_, i) => {
+      const t = now - (50 - i) * 3600;
+      const o = 100 + i * 0.2;
+      const c = o + (i % 2 ? 0.5 : -0.3);
+      const h = Math.max(o, c) + 0.6;
+      const l = Math.min(o, c) - 0.6;
+      return { time: t, open: o, high: h, low: l, close: c };
+    });
+    const markers = [{ time: candles.at(-1).time, position: 'belowBar', shape: 'arrowUp', color: 'green', text: 'HACO' }];
+    res.json({ candles, markers });
   } catch (e) {
     console.error('haco scan error', e);
     res.status(500).json({ error: 'server_error' });

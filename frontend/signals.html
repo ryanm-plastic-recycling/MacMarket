@@ -8,8 +8,9 @@
     <script src="/ticker.js" defer></script>
     <!-- Lightweight Charts -->
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js" defer></script>
-    <script src="/js/haco-ui.js" defer></script>
     <script src="/js/haco-scan.js" defer></script>
+    <script src="/js/haco-ui.js" defer></script>
+    <script src="/js/haco-debug.js" defer></script>
     <script src="/help.js" defer></script>
 </head>
 <body>
@@ -45,10 +46,10 @@
       <!-- 1) TOP ROW (LEFT): Symbol Signal (now also drives single-rec below) -->
       <section class="signal-section symbol-signal">
         <h3>Symbol Signal</h3>
-        <div class="row-controls">
-          <label>Symbol <input id="symbol" type="text" placeholder="AAPL"></label>
-          <button id="get-signal" type="button">Run</button>
-        </div>
+        <form id="haco-form" class="row-controls" onsubmit="return false">
+          <label>Symbol <input id="symbol" type="text" placeholder="AAPL" autocomplete="off"></label>
+          <button id="get-signal" type="submit" aria-label="Run HACO">Run</button>
+        </form>
         <div id="signal-container">
           <div>
             <h4>News Sentiment</h4>
@@ -99,6 +100,7 @@
             <button id="haco-run">Run</button>
         </div>
         <div id="haco-chart" style="height:420px; position:relative;"></div>
+        <div id="haco-toast" class="toast" style="display:none;"></div>
         <div id="haco-signal-chart" style="height:100px;"></div>
         <div id="haco-explain"></div>
       </section>
