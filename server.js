@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
+import helmet from 'helmet';
 import mysql from 'mysql2/promise';
 import { fetchTickerData, fetchQuote } from './services/marketData.js';
 import { fetchAlerts } from './services/alertData.js';
@@ -13,12 +14,27 @@ import { fetchNews } from './services/newsData.js';
 import { runBacktest } from './backtest/strategyEngine.js';
 import { query as dbQuery } from './db/index.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+// Content Security Policy (allow our CDN + fonts)
+app.use(helmet({
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      "default-src": ["'self'"],
+      "script-src": ["'self'", "https://cdn.jsdelivr.net"],
+      "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+      "img-src": ["'self'", "data:"],
+      "connect-src": ["'self'"]
+    }
+  }
+}));
 
 // MySQL pool for alerts
 const pool = mysql.createPool({
@@ -254,6 +270,19 @@ app.delete('/api/users/:userId/haco-alerts/:id', async (req, res) => {
   }
 });
 
+// HACO scan API (place above any wildcard/static fallthroughs)
+app.post('/api/signals/haco/scan', express.json(), async (req, res) => {
+  try {
+    const sym = String((req.body?.symbol || req.query?.symbol || '')).toUpperCase();
+    if (!sym) return res.status(400).json({ error: 'symbol_required' });
+    // TODO: call HACO engine; stubbed shape below:
+    res.json({ candles: [], markers: [] });
+  } catch (e) {
+    console.error('haco scan error', e);
+    res.status(500).json({ error: 'server_error' });
+  }
+});
+
 // OPTIONAL placeholder for future cron worker (disabled):
 // import cron from 'node-cron';
 // // TODO: enable in a later PR
@@ -263,11 +292,6 @@ app.delete('/api/users/:userId/haco-alerts/:id', async (req, res) => {
 app.use(express.static(path.join(__dirname, 'frontend')));
 // Back-compat for templates that request /static/*
 app.use('/static', express.static(path.join(__dirname, 'frontend')));
-
-app.use(express.static(path.join(__dirname, 'frontend', 'build')));
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'frontend', 'build', 'index.html'));
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
