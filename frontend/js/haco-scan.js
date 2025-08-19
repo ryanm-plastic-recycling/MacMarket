@@ -11,13 +11,18 @@ window.HACO.runScan = async function runScan(symbol) {
     });
     console.log('[HACO:SCAN] POST status', res.status);
     if (res.status === 404 || res.status === 405) throw new Error('fallback');
-  } catch {
+  } catch (e) {
     const url = `/api/signals/haco/scan?symbol=${encodeURIComponent(symbol)}`;
     console.log('[HACO:SCAN] fallback GET', url);
     res = await fetch(url);
   }
-  if (!res.ok) throw new Error(`scan failed: ${res.status}`);
-  const data = await res.json();
+  const text = await res.text();
+  let data;
+  try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
+  if (!res.ok) {
+    console.error('[HACO:SCAN] server error', res.status, data || text);
+    throw new Error(`scan failed: ${res.status}`);
+  }
   console.log('[HACO:SCAN] payload', data);
 
   const el = document.getElementById('haco-chart');

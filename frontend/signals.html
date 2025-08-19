@@ -289,6 +289,6 @@ document.getElementById('symbol').addEventListener('input', e => { e.target.valu
       console.log('[HACO] LW Charts version (from URL):', (lw?.src.match(/@([\d.]+)/)||[])[1] || 'unknown');
     })();
   </script>
-<script>initHelp("signals");</script>
+<!-- help.js may auto-init; if not, no hard dependency on initHelp here -->
 </body>
 </html>

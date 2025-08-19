@@ -1,52 +1,63 @@
-from fastapi import APIRouter, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, HTTPException, Query, Body
+from pydantic import BaseModel
+from typing import Optional
+import time
 
-from indicators.haco import compute_haco
-from services.data import get_candles
-
-router = APIRouter(prefix="/api/signals", tags=["signals"])
+router = APIRouter(prefix="/api/signals/haco", tags=["haco"])
 
 
-@router.get("/haco")
-def haco_api(
-    symbol: str,
-    timeframe: str = "Day",
-    lengthUp: int = 34,
-    lengthDown: int = 34,
-    alertLookback: int = 1,
-    lookback: int = 500,
+class ScanReq(BaseModel):
+    symbol: str
+
+
+def _resolve_symbol(
+    symbol: Optional[str] = Query(None, alias="symbol"),
+    ticker: Optional[str] = Query(None, alias="ticker"),
+    body: Optional[ScanReq] = Body(None),
 ):
-    candles = get_candles(symbol, timeframe, lookback)
-    if not candles:
-        raise HTTPException(status_code=404, detail="No data")
-    data = compute_haco(
-        candles,
-        length_up=lengthUp,
-        length_down=lengthDown,
-        alert_lookback=alertLookback,
-    )
-    return data
+    """Accept symbol from body or either query param name."""
+    s = (body.symbol if body else None) or symbol or ticker
+    if not s or not s.strip():
+        # 400 (not 422) so frontend handles cleanly
+        raise HTTPException(status_code=400, detail="symbol_required")
+    return s.strip().upper()
 
 
-@router.get("/haco/scan")
-def haco_scan(symbols: str, timeframe: str = "Day", lookback: int = 500):
-    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()]
-    out = []
-    for sym in syms:
-        try:
-            candles = get_candles(sym, timeframe, lookback)
-            data = compute_haco(candles)
-            b = data["series"][-1] if data["series"] else {}
-            out.append({
-                "symbol": sym,
-                "upw": bool(b.get("upw")),
-                "dnw": bool(b.get("dnw")),
-                "state": b.get("state"),
-                "changed": bool(data["last"].get("changed")),
-                "reason": b.get("reason", ""),
-            })
-        except Exception as e:
-            out.append({"symbol": sym, "error": str(e)})
-    return JSONResponse(out)
+def _stub_payload(sym: str):
+    now = int(time.time())
+    candles = []
+    # 50 hourly bars, gently moving so chart is visibly alive
+    base = 100.0
+    for i in range(50):
+        t = now - (50 - i) * 3600
+        o = base + i * 0.2
+        c = o + (0.5 if i % 2 else -0.3)
+        h = max(o, c) + 0.6
+        l = min(o, c) - 0.6
+        candles.append({"time": t, "open": o, "high": h, "low": l, "close": c})
+    markers = [
+        {
+            "time": candles[-1]["time"],
+            "position": "belowBar",
+            "shape": "arrowUp",
+            "color": "green",
+            "text": f"HACO {sym}",
+        }
+    ]
+    return {"candles": candles, "markers": markers}
 
+
+@router.post("/scan")
+async def scan_post(payload: ScanReq = Body(...)):
+    sym = _resolve_symbol(body=payload)
+    return _stub_payload(sym)
+
+
+@router.get("/scan")
+async def scan_get(
+    symbol: Optional[str] = Query(None, alias="symbol"),
+    ticker: Optional[str] = Query(None, alias="ticker"),
+):
+    sym = _resolve_symbol(symbol=symbol, ticker=ticker)
+    return _stub_payload(sym)
 
