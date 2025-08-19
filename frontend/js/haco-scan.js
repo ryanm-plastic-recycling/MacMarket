@@ -1,4 +1,4 @@
-// HACO scan client – tries POST, falls back to GET, renders chart
+// HACO scan client – tries POST, falls back to GET, loud on errors, renders chart
 window.HACO = window.HACO || {};
 window.HACO.runScan = async function runScan(symbol) {
   console.log('[HACO:SCAN] start', { symbol });
