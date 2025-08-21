@@ -207,17 +207,20 @@ function renderChart(bars) {
     const api = LW.createChart(chartEl, {
       height: 400,
       layout: { background: { color: 'transparent' } },
-      rightPriceScale: { borderVisible: false },
+      rightPriceScale: { borderVisible: false, visible: true },
+      leftPriceScale:  { borderVisible: false, visible: false },
       timeScale: { borderVisible: false },
     });
 
     const price = (typeof api.addCandlestickSeries === 'function')
       ? api.addCandlestickSeries({
-          upColor: '#26a69a',
+          uupColor: '#26a69a',
           downColor: '#ef5350',
-          borderVisible: false,
+          borderUpColor: '#26a69a',
+          borderDownColor: '#ef5350',
           wickUpColor: '#26a69a',
           wickDownColor: '#ef5350',
+          priceScaleId: 'right'
         })
       : (typeof api.addAreaSeries === 'function'
           ? api.addAreaSeries({})
@@ -305,6 +308,11 @@ function renderChart(bars) {
   }
 
   // (HTML overlay removed)
+  
+  function normalizeTime(t){
+    if (typeof t === 'number' && t > 2_000_000_000) return Math.floor(t / 1000);
+    return t;
+  }
 
   // Indicator lines (feature-detected creation, reused)
   function ensureLineLikeSeries(cacheKey, color) {
