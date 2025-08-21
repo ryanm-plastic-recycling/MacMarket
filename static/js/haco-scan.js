@@ -7,12 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const raw = (input.value || '').toUpperCase();
-    const syms = raw.split(',').map(s => s.trim()).filter(Boolean);
-    if (syms.length === 0) {
-      status.textContent = 'Enter at least one symbol.';
-      return;
-    }
+    const syms = (input.value || '').toUpperCase().split(',').map(s => s.trim()).filter(Boolean);
+    if (!syms.length) { status.textContent = 'Enter at least one symbol.'; return; }
+
     status.textContent = 'Scanning…';
     tbody.innerHTML = '';
     try {
@@ -25,16 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (r.error) {
           tr.innerHTML = `<td>${r.symbol}</td><td colspan="5" style="color:#b00;">${r.error}</td>`;
         } else {
-          const yesNo = v => v ? 'Yes' : 'No';
           const arrow = (v, up) => v ? (up ? '▲' : '▼') : '—';
           tr.innerHTML = `
             <td>${r.symbol}</td>
             <td style="color:#2ecc71;">${arrow(r.upw, true)}</td>
             <td style="color:#e74c3c;">${arrow(r.dnw, false)}</td>
             <td>${r.state ?? '—'}</td>
-            <td>${yesNo(!!r.changed)}</td>
-            <td style="max-width:520px;overflow-wrap:anywhere;">${r.reason || '—'}</td>
-          `;
+            <td>${r.changed ? 'Yes' : 'No'}</td>
+            <td style="max-width:520px;overflow-wrap:anywhere;">${r.reason || '—'}</td>`;
         }
         tbody.appendChild(tr);
       }
@@ -44,6 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Auto-run once on load
-  form.dispatchEvent(new Event('submit'));
+  // Optional: auto-run once on load
+  // form.dispatchEvent(new Event('submit'));
 });
