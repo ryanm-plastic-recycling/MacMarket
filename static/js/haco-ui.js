@@ -214,7 +214,7 @@ function renderChart(bars) {
 
     const price = (typeof api.addCandlestickSeries === 'function')
       ? api.addCandlestickSeries({
-          uupColor: '#26a69a',
+          upColor: '#26a69a',
           downColor: '#ef5350',
           borderUpColor: '#26a69a',
           borderDownColor: '#ef5350',
@@ -308,20 +308,15 @@ function renderChart(bars) {
   }
 
   // (HTML overlay removed)
-  
-  function normalizeTime(t){
-    if (typeof t === 'number' && t > 2_000_000_000) return Math.floor(t / 1000);
-    return t;
-  }
 
   // Indicator lines (feature-detected creation, reused)
   function ensureLineLikeSeries(cacheKey, color) {
     if (chartApi[cacheKey]) return chartApi[cacheKey];
     let s = null;
     if (typeof chartApi.addLineSeries === 'function') {
-      s = chartApi.addLineSeries({ color });
+      s = chartApi.addLineSeries({ color, lineWidth: 1, priceScaleId: 'left' });
     } else if (typeof chartApi.addAreaSeries === 'function') {
-      s = chartApi.addAreaSeries({}); // color not guaranteed here
+      s = chartApi.addAreaSeries({ priceScaleId: 'left' }); // fallback still on left scale
     } else {
       console.warn('[HACO] No line/area series available for indicators; skipping', cacheKey);
       chartApi[cacheKey] = null;
