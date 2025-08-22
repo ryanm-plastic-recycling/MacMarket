@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline';">
+    <title>Signals - MacMarket</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="theme.js"></script>
+    <script src="ticker.js"></script>
+</head>
+<body>
+<div id="sidebar">
+    <a href="index.html">Home</a>
+    <a href="login.html">Login</a>
+    <a href="account.html">Account</a>
+    <a href="tickers.html">Tickers</a>
+    <a href="signals.html">Signals</a>
+    <a href="alerts.html">Alerts</a>
+    <a href="journal.html">Journal</a>
+    <a href="backtests.html">Backtests</a>
+    <a href="github.html">GitHub</a>
+    <a href="help.html#signals">Help</a>
+    <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
+    <a href="#" id="logout-link">Logout</a>
+    <button id="theme-toggle">Toggle Theme</button>
+</div>
+<header>
+    <img id="header-logo" src="" alt="Logo">
+    <h1>MacMarket</h1>
+    <div id="user-info"></div>
+    <div id="time"></div>
+    <div id="status"></div>
+</header>
+<main>
+    <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
+    <h2>Signals</h2>
+    
+    <!-- New grid wrapper for page sections -->
+    <div class="signals-grid">
+
+      <!-- 1) TOP ROW (LEFT): Symbol Signal (now also drives single-rec below) -->
+      <section class="signal-section symbol-signal">
+        <h3>Symbol Signal</h3>
+        <div class="row-controls">
+          <label>Symbol <input id="symbol" type="text"></label>
+          <button id="get-signal">Get Signal</button>
+        </div>
+        <div id="signal-container">
+          <div>
+            <h4>News Sentiment</h4>
+            <div id="news-output"></div>
+            <small>Higher score indicates more positive news coverage.</small>
+          </div>
+          <div>
+            <h4>Technical Signal</h4>
+            <div id="tech-output"></div>
+            <small>Based on 20/50 day moving average crossover.</small>
+            <div id="tech-chart" style="height:300px;margin-top:1rem;"></div>
+          </div>
+        </div>
+        <!-- Moved here: single-symbol recommendation table (driven by #symbol) -->
+        <div class="single-rec-wrap">
+          <table id="single-rec">
+            <thead>
+              <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+        
+      <!-- 2) Recommendations (full width) -->
+      <section class="signal-section span-2">
+        <h3>Recommendations to Invest</h3>
+        <button id="get-recs">Get Recommendations</button>
+        <table id="recs-table">
+          <thead>
+            <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+        
+      <!-- 3) HACO Strategy (full width, includes charts) -->
+      <section class="signal-section span-2">
+        <h3>HACO Strategy</h3>
+        <div id="haco-controls">
+            <label>Symbol <input id="haco-symbol" value="AAPL"></label>
+            <label>Timeframe <input id="haco-timeframe" value="Day"></label>
+            <label>Length Up <input id="haco-lenUp" value="34" type="number"></label>
+            <label>Length Down <input id="haco-lenDown" value="34" type="number"></label>
+            <label>Alert Lookback <input id="haco-alertLookback" value="1" type="number"></label>
+            <label>Lookback <input id="haco-lookback" value="200" type="number"></label>
+            <label><input type="checkbox" id="haco-toggleHa"> Show Heikin-Ashi</label>
+            <button id="haco-run">Run</button>
+        </div>
+        <div id="haco-chart" style="height:400px; position:relative;"></div>
+        <div id="haco-signal-chart" style="height:100px;"></div>
+        <div id="haco-explain"></div>
+      </section>
+
+      <!-- 4) HACO Table (renamed from Scan; full width) -->
+      <section class="signal-section span-2" id="haco-table">
+        <h3>HACO Table</h3>
+        <form id="scan-form" class="row" style="display:flex;gap:.5rem;align-items:center;">
+          <label for="scan-symbols"><strong>Symbols</strong> (comma-separated):</label>
+          <input id="scan-symbols" type="text" value="SPY, GLD, AAPL, MSFT, GOOG, AMZN, TSLA, TPIC, XPON, OPEN, ONMD, WULF, TRIB, INTC, TLRY, AERT, NVDA, AMCR, TSLA, DNN, BBAI, BMNR, SNOA, AMD, RGTI, DFLI, NU" style="min-width:260px;">
+          <button id="scan-run" type="submit">Scan</button>
+        </form>
+        <div id="scan-status" class="muted" style="margin:.5rem 0;"></div>
+        <table id="scan-table" class="table">
+          <thead>
+            <tr>
+              <th>Symbol</th><th>Up</th><th>Down</th><th>State</th><th>Changed</th><th>Reason</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+
+      <!-- 5) Macro Outlook (full width; last) -->
+      <section class="signal-section span-2">
+        <h3>Macro Outlook</h3>
+        <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
+        <br><button id="run-macro">Analyze</button>
+        <div id="macro-output"></div>
+        <small>LLM interpretation of the provided text.</small>
+      </section>
+
+    </div> <!-- /.signals-grid -->
+</main>
+<script>
+function setStatus(message) {
+  const el = document.getElementById('status');
+  if (el) {
+    el.textContent = message;
+  } else {
+    console.warn('Status element not found:', message);
+  }
+}
+if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
+
+function sma(values, period){
+    const res = [];
+    let sum = 0;
+    for(let i=0;i<values.length;i++){
+        sum += values[i];
+        if(i >= period) sum -= values[i-period];
+        res.push(i >= period-1 ? sum/period : null);
+    }
+    return res;
+}
+
+function findLastCross(shortArr, longArr){
+    for(let i=shortArr.length-1;i>0;i--){
+        if(shortArr[i]==null || longArr[i]==null || shortArr[i-1]==null || longArr[i-1]==null) continue;
+        if(shortArr[i-1] < longArr[i-1] && shortArr[i] > longArr[i]) return {index:i, dir:'up'};
+        if(shortArr[i-1] > longArr[i-1] && shortArr[i] < longArr[i]) return {index:i, dir:'down'};
+    }
+    return null;
+}
+
+async function renderTechChart(sym){
+    try{
+        const res = await fetch(`/api/history?symbol=${sym}&period=6mo&interval=1d`);
+        if(!res.ok) return;
+        const hist = await res.json();
+        const dates = hist.dates;
+        const closes = hist.close;
+        const ma20 = sma(closes,20);
+        const ma50 = sma(closes,50);
+        const chartEl = document.getElementById('tech-chart');
+        chartEl.innerHTML = '';
+        const chart = LightweightCharts.createChart(chartEl,{height:300});
+        const priceSeries = chart.addLineSeries({color:'#4c78ff'});
+        const ma20Series = chart.addLineSeries({color:'green'});
+        const ma50Series = chart.addLineSeries({color:'red'});
+        const priceData = dates.map((d,i)=>({time:d,value:closes[i]}));
+        priceSeries.setData(priceData);
+        ma20Series.setData(dates.map((d,i)=>ma20[i]?{time:d,value:ma20[i]}:null).filter(Boolean));
+        ma50Series.setData(dates.map((d,i)=>ma50[i]?{time:d,value:ma50[i]}:null).filter(Boolean));
+        const cross = findLastCross(ma20,ma50);
+        if(cross){
+            priceSeries.setMarkers([{time:dates[cross.index], position: cross.dir==='up'? 'belowBar':'aboveBar', color: cross.dir==='up'? 'green':'red', shape: cross.dir==='up'? 'arrowUp':'arrowDown', text:'20/50'}]);
+        }
+    }catch(e){console.error(e);}
+}
+
+async function fetchSignal(){
+    const sym = document.getElementById('symbol').value.trim().toUpperCase();
+    if(!sym) return;
+    setStatus('Loading signal...', 'loading');
+    const res = await fetch(`/api/signals/${sym}`);
+    if(!res.ok){ setStatus('Failed to load signal', 'error'); return; }
+    const data = await res.json();
+    const newsEl = document.getElementById('news-output');
+    newsEl.className = '';
+    let score = data.news.score;
+    newsEl.textContent = `Score: ${score}`;
+    if(score > 0){
+        newsEl.classList.add('bullish');
+        newsEl.textContent += ' \u2197';
+    }else if(score < 0){
+        newsEl.classList.add('bearish');
+        newsEl.textContent += ' \u2198';
+    }
+    const techEl = document.getElementById('tech-output');
+    techEl.className = '';
+    techEl.textContent = data.technical.signal;
+    if(data.technical.signal === 'bullish'){
+        techEl.classList.add('bullish');
+        techEl.textContent += ' \u2197';
+    }else if(data.technical.signal === 'bearish'){
+        techEl.classList.add('bearish');
+        techEl.textContent += ' \u2198';
+    }
+    renderTechChart(sym);
+}
+
+async function fetchMacro(){
+    const text = document.getElementById('macro-text').value;
+    setStatus('Analyzing...', 'loading');
+    const res = await fetch('/api/macro-signal', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text})});
+    if(!res.ok){ setStatus('Failed', 'error'); return; }
+    const data = await res.json();
+    document.getElementById('macro-output').textContent = data.outlook;
+    setStatus('Done', 'ok');
+}
+
+async function fetchRecs(){
+    const userId = localStorage.getItem('userId');
+    if(!userId) return;
+    setStatus('Loading recommendations...', 'loading');
+    const res = await fetch(`/api/users/${userId}/recommendations`);
+    if(!res.ok){ setStatus('Failed to load', 'error'); return; }
+    const data = await res.json();
+    const body = document.querySelector('#recs-table tbody');
+    body.innerHTML='';
+    data.recommendations.forEach(r => {
+        const tr = document.createElement('tr');
+        const exit = r.exit ? r.exit.toFixed(2) : '';
+        const prob = Math.round(r.probability * 100) + '%';
+        tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
+        body.appendChild(tr);
+    });
+    setStatus('Done', 'ok');
+}
+
+async function fetchSingle(){
+    // Use the same input as Symbol Signal
+    const sym = document.getElementById('symbol').value.trim().toUpperCase();
+    if(!sym) return;
+    setStatus('Loading...', 'loading');
+    const res = await fetch(`/api/recommendation/${sym}`);
+    if(!res.ok){ setStatus('Failed', 'error'); return; }
+    const data = await res.json();
+    const body = document.querySelector('#single-rec tbody');
+    body.innerHTML='';
+    const r = data.recommendation;
+    const exit = r.exit ? r.exit.toFixed(2) : '';
+    const prob = Math.round(r.probability * 100) + '%';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
+    body.appendChild(tr);
+    setStatus('Done', 'ok');
+}
+
+// One click runs both: signals + single recommendation (shared input #symbol)
+document.getElementById('get-signal').addEventListener('click', async () => {
+    await Promise.allSettled([ fetchSignal(), fetchSingle() ]);
+});
+document.getElementById('run-macro').addEventListener('click', fetchMacro);
+document.getElementById('get-recs').addEventListener('click', fetchRecs);
+document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
+</script>
+<!-- Official TradingView Lightweight Charts (UMD/standalone) -->
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+    (function(){
+      const scripts = Array.from(document.scripts);
+      const lw = scripts.find(s => s.src.includes('lightweight-charts'));
+      console.log('[HACO] Loaded Lightweight Charts:', lw?.src || '(inline)');
+      // Some builds expose version; if not, the pinned URL is our source of truth
+      console.log('[HACO] LW Charts version (from URL):', (lw?.src.match(/@([\d.]+)/)||[])[1] || 'unknown');
+    })();
+  </script>
+<script src="/static/js/haco-ui.js?v=9"></script>
+<script src="/static/js/haco-scan.js"></script>
+<script src="help.js"></script>
+<script>initHelp("signals");</script>
+</body>
+</html> 
