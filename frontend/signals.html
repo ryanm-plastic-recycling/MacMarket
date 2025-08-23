@@ -108,13 +108,11 @@
           <input id="scan-symbols" type="text" value="SPY, GLD, AAPL, MSFT, GOOG, AMZN, TSLA, TPIC, XPON, OPEN, ONMD, WULF, TRIB, INTC, TLRY, AERT, NVDA, AMCR, TSLA, DNN, BBAI, BMNR, SNOA, AMD, RGTI, DFLI, NU" style="min-width:260px;">
           <button id="scan-run" type="button">Scan</button>
         </form>
-        <div id="scan-status" class="muted" style="margin:.5rem 0;"></div>
+        <div id="scan-status" class="muted" aria-live="polite" style="margin:.5rem 0;"></div>
         <table id="scan-table" class="table">
           <thead>
             <tr>
               <th>Symbol</th><th>Up</th><th>Down</th><th>State</th><th>Changed</th><th>Reason</th>
-                if (r.changed) tr.style.background = 'rgba(255,215,0,.12)';
-                <div id="scan-status" class="muted" aria-live="polite"></div>
             </tr>
           </thead>
           <tbody></tbody>
