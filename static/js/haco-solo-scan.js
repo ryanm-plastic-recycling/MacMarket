@@ -8,12 +8,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const raw = (input.value || '').toUpperCase();
+    const raw  = (input.value || '').toUpperCase();
     const syms = raw.split(',').map(s => s.trim()).filter(Boolean);
-    if (syms.length === 0) {
-      status.textContent = 'Enter at least one symbol.';
-      return;
-    }
+    if (syms.length === 0) { status.textContent = 'Enter at least one symbol.'; return; }
+
     status.textContent = 'Scanning…';
     tbody.innerHTML = '';
     try {
@@ -45,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Auto-run once on load
-  form.dispatchEvent(new Event('submit'));
+  // Gate autorun behind a query param (no surprise API calls):
+  // Use /haco.html?autorun=1 if you want it to run immediately.
+  const params = new URLSearchParams(location.search);
+  if (params.get('autorun') === '1') form.dispatchEvent(new Event('submit'));
 });
