@@ -6,6 +6,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const statusEl = document.getElementById('scan-status');
   const btn = document.getElementById('scan-run');
 
+  const legendId = 'scan-legend';
+
+  function ensureLegend() {
+    // Minimal, no-CSS legend explaining the symbols
+    let el = document.getElementById(legendId);
+    if (!el) {
+      el = document.createElement('div');
+      el.id = legendId;
+      el.className = 'muted';
+      statusEl?.parentNode?.insertBefore(el, statusEl.nextSibling);
+    }
+    el.textContent = 'Legend: ✅ Up trigger, ❌ Down trigger, ★ Changed on this bar, ' +
+                     'UP/DOWN = current HACO state, 1 = true, 0 = false';
+  }
+  
   async function runTableScan() {
     const list = (input?.value || '')
       .split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
@@ -19,20 +34,24 @@ document.addEventListener('DOMContentLoaded', () => {
       const url = `/api/signals/haco/scan?symbols=${encodeURIComponent(list.join(','))}&timeframe=${encodeURIComponent(timeframe)}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const rows = await res.json(); // [{symbol,upw,dnw,state,changed,reason}]
+      const rows = await res.json(); // [{symbol, upw, dnw, state, changed, reason}]
       if (tbody) tbody.innerHTML = '';
       for (const r of rows) {
         const tr = document.createElement('tr');
+        const upCell = r.upw ? '✅ 1' : '0';
+        const dnCell = r.dnw ? '❌ 1' : '0';
+        const chCell = r.changed ? '★ 1' : '0';
         tr.innerHTML = `
           <td>${r.symbol}</td>
-          <td>${r.upw ? '✅' : ''}</td>
-          <td>${r.dnw ? '❌' : ''}</td>
+          <td>${upCell}</td>
+          <td>${dnCell}</td>
           <td>${r.state ? 'UP' : 'DOWN'}</td>
-          <td>${r.changed ? '★' : ''}</td>
+          <td>${chCell}</td>
           <td>${r.reason || ''}</td>`;
         tbody?.appendChild(tr);
       }
       if (statusEl) statusEl.textContent = `Done • ${rows.length} symbols`;
+      ensureLegend();
       document.getElementById('haco-table')?.scrollIntoView({behavior:'smooth', block:'start'});
     } catch (e) {
       console.error('HACO table scan failed', e);
