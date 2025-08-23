@@ -49,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${chCell}</td>
           <td>${r.reason || ''}</td>`;
         tbody?.appendChild(tr);
+        if (r.changed) tr.style.background = 'rgba(255,215,0,.12)';
       }
       if (statusEl) statusEl.textContent = `Done • ${rows.length} symbols`;
       ensureLegend();
