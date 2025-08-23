@@ -4,6 +4,8 @@ import time
 import math
 import pandas as pd
 import yfinance as yf
+import inspect
+from indicators.haco import compute_haco
 
 
 router = APIRouter(prefix="/api/signals/haco", tags=["haco"])
@@ -39,7 +41,7 @@ def _heikin_ashi(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _consecutive(arr: pd.Series) -> pd.Series:
-    """Length of current consecutive True (1) run at each index."""
+    """(Unused now) Length of current consecutive True (1) run at each index."""
     out = []
     run = 0
     for v in arr.astype(bool).tolist():
@@ -53,9 +55,15 @@ def _build_series(
     timeframe: str,
     len_up: int,
     len_dn: int,
+    alert_lb: int,
     lookback: int,
     show_ha: bool,
 ):
+    """
+    New: delegate HACO math to indicators.haco.compute_haco (MetaStock-faithful).
+    Preserve response shape {"series":[...], "last": {...}}.
+    Honor show_ha by overriding OHLC for charting only.
+    """
     interval, period = _parse_timeframe(timeframe)
     try:
         df = yf.download(
@@ -67,85 +75,46 @@ def _build_series(
         raise HTTPException(status_code=404, detail="no_data")
 
     df = df.dropna().tail(max(lookback, 200))
-    ha = _heikin_ashi(df)
-    up_run = _consecutive(ha["upbar"])
-    dn_run = _consecutive(1 - ha["upbar"])
-
-    # Up/Down warnings: raised when a consecutive-run hits threshold on this bar
-    upw = (up_run >= max(1, len_up)) & (
-        up_run.shift(1, fill_value=0) < max(1, len_up)
-    )
-    dnw = (dn_run >= max(1, len_dn)) & (
-        dn_run.shift(1, fill_value=0) < max(1, len_dn)
-    )
-
-    # Optional "ZL" lines (very lightweight proxies)
-    zl_ha_u = ha["close"].where(ha["upbar"] == 1)
-    zl_cl_u = df["Close"].where(ha["upbar"] == 1)
-    zl_ha_d = ha["close"].where(ha["upbar"] == 0)
-    zl_cl_d = df["Close"].where(ha["upbar"] == 0)
-
-    out: List[dict] = []
+    # Build raw candles for compute_haco
+    candles: List[Dict[str, Any]] = []
     for ts, row in df.iterrows():
-        sec = int(ts.to_pydatetime().timestamp())
-        i = df.index.get_loc(ts)
-        # choose price source based on HA toggle (UI asks "Show Heikin-Ashi")
-        if show_ha:
-            o, h, l, c = (
-                float(ha["open"].iloc[i]),
-                float(ha["high"].iloc[i]),
-                float(ha["low"].iloc[i]),
-                float(ha["close"].iloc[i]),
-            )
-        else:
-            o, h, l, c = (
-                float(row["Open"]),
-                float(row["High"]),
-                float(row["Low"]),
-                float(row["Close"]),
-            )
-        out.append(
+        candles.append(
             {
-                "time": sec,
-                "o": o,
-                "h": h,
-                "l": l,
-                "c": c,
-                "state": bool(ha["upbar"].iloc[i]),
-                "upw": bool(upw.iloc[i]),
-                "dnw": bool(dnw.iloc[i]),
-                "ZlHaU": float(zl_ha_u.iloc[i])
-                if not math.isnan(zl_ha_u.iloc[i])
-                else None,
-                "ZlClU": float(zl_cl_u.iloc[i])
-                if not math.isnan(zl_cl_u.iloc[i])
-                else None,
-                "ZlHaD": float(zl_ha_d.iloc[i])
-                if not math.isnan(zl_ha_d.iloc[i])
-                else None,
-                "ZlClD": float(zl_cl_d.iloc[i])
-                if not math.isnan(zl_cl_d.iloc[i])
-                else None,
+                "time": int(ts.to_pydatetime().timestamp()),
+                "o": float(row["Open"]),
+                "h": float(row["High"]),
+                "l": float(row["Low"]),
+                "c": float(row["Close"]),
             }
         )
+    # MetaStock logic (already implemented in indicators.haco)
+    out = compute_haco(
+        candles=candles, length_up=len_up, length_down=len_dn, alert_lookback=alert_lb
+    )
+    series: List[Dict[str, Any]] = out["series"]
+    last: Dict[str, Any] = out["last"]
+    # Keep UI semantics: state as bool
+    if series:
+        for i in range(len(series)):
+            series[i]["state"] = bool(series[i].get("state", 0))
+    last["state"] = bool(last.get("state", 0))
 
-    last = out[-1]
-    # crude "reasons" string; good enough for UI
-    reasons: List[str] = []
-    reasons.append("HA up" if last["state"] else "HA down")
-    if last["upw"]:
-        reasons.append(f"run≥{len_up}")
-    if last["dnw"]:
-        reasons.append(f"run≥{len_dn}")
-    return {
-        "series": out,
-        "last": {
-            "state": last["state"],
-            "upw": last["upw"],
-            "dnw": last["dnw"],
-            "reasons": ", ".join(reasons),
-        },
-    }
+    # Optional: override OHLC with Heikin-Ashi bars for chart display (no math changes)
+    if show_ha and len(series) > 0:
+        ha = _heikin_ashi(df)
+        # Align on the same tail length used for series
+        ha = ha.tail(len(series))
+        ha_o = ha["open"].tolist()
+        ha_h = ha["high"].tolist()
+        ha_l = ha["low"].tolist()
+        ha_c = ha["close"].tolist()
+        for i in range(len(series)):
+            series[i]["o"] = float(ha_o[i])
+            series[i]["h"] = float(ha_h[i])
+            series[i]["l"] = float(ha_l[i])
+            series[i]["c"] = float(ha_c[i])
+
+    return {"series": series, "last": last}
 
 
 def _series_to_candles(series: List[Dict[str, Any]]):
@@ -196,14 +165,17 @@ def haco(
     showHa: Optional[bool] = Query(False, alias="showHa"),
 ):
     """Return HACO bars for a single symbol."""
-    return _build_series(
-        symbol.strip().upper(),
-        timeframe,
-        lengthUp,
-        lengthDown,
-        lookback,
-        bool(showHa),
-    )
+    params = {
+        "symbol": symbol.strip().upper(),
+        "timeframe": timeframe,
+        "len_up": lengthUp,
+        "len_dn": lengthDown,
+        "lookback": lookback,
+        "show_ha": bool(showHa),
+    }
+    if "alert_lb" in inspect.signature(_build_series).parameters:
+        params["alert_lb"] = alertLookback
+    return _build_series(**params)
 
 
 @router.get("/scan")
@@ -215,7 +187,17 @@ def haco_scan(
     """Return HACO scan results: table or chart-friendly output."""
     # If single 'symbol' provided and no 'symbols', return chart data
     if symbol and not symbols:
-        data = _build_series(symbol.strip().upper(), timeframe, 34, 34, 200, False)
+        params = {
+            "symbol": symbol.strip().upper(),
+            "timeframe": timeframe,
+            "len_up": 34,
+            "len_dn": 34,
+            "lookback": 200,
+            "show_ha": False,
+        }
+        if "alert_lb" in inspect.signature(_build_series).parameters:
+            params["alert_lb"] = 1
+        data = _build_series(**params)
         candles, markers = _series_to_candles(data["series"])
         return {"candles": candles, "markers": markers}
 
@@ -225,7 +207,17 @@ def haco_scan(
     out = []
     for s in syms:
         try:
-            data = _build_series(s, timeframe, 34, 34, 200, False)
+            params = {
+                "symbol": s,
+                "timeframe": timeframe,
+                "len_up": 34,
+                "len_dn": 34,
+                "lookback": 200,
+                "show_ha": False,
+            }
+            if "alert_lb" in inspect.signature(_build_series).parameters:
+                params["alert_lb"] = 1
+            data = _build_series(**params)
             ser = data["series"]
             if not ser:
                 out.append({"symbol": s, "error": "no_data"})
@@ -258,7 +250,17 @@ def haco_scan_post(payload: Dict[str, Any] = Body(...)):
     sym = str(payload.get("symbol", "")).strip().upper()
     if not sym:
         raise HTTPException(status_code=400, detail="symbol_required")
-    data = _build_series(sym, "Day", 34, 34, 200, False)
+    params = {
+        "symbol": sym,
+        "timeframe": "Day",
+        "len_up": 34,
+        "len_dn": 34,
+        "lookback": 200,
+        "show_ha": False,
+    }
+    if "alert_lb" in inspect.signature(_build_series).parameters:
+        params["alert_lb"] = 1
+    data = _build_series(**params)
     candles, markers = _series_to_candles(data["series"])
     return {"candles": candles, "markers": markers}
 
