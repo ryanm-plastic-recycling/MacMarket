@@ -1,40 +1,42 @@
-// HACO scan client – tries POST, falls back to GET, loud on errors, renders chart
-window.HACO = window.HACO || {};
-window.HACO.runScan = async function runScan(symbol) {
-  console.log('[HACO:SCAN] start', { symbol });
-  let res;
-  try {
-    res = await fetch('/api/signals/haco/scan', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ symbol })
-    });
-    console.log('[HACO:SCAN] POST status', res.status);
-    if (res.status === 404 || res.status === 405) throw new Error('fallback');
-  } catch (e) {
-    const url = `/api/signals/haco/scan?symbol=${encodeURIComponent(symbol)}`;
-    console.log('[HACO:SCAN] fallback GET', url);
-    res = await fetch(url);
-  }
-  const text = await res.text();
-  let data;
-  try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
-  if (!res.ok) {
-    console.error('[HACO:SCAN] server error', res.status, data || text);
-    throw new Error(`scan failed: ${res.status}`);
-  }
-  console.log('[HACO:SCAN] payload', data);
+// /js/haco-scan.js
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('scan-form');
+  const input = document.getElementById('scan-symbols');
+  const tbody = document.querySelector('#scan-table tbody');
+  const statusEl = document.getElementById('scan-status');
 
-  const el = document.getElementById('haco-chart');
-  if (!el) { console.warn('[HACO:SCAN] #haco-chart missing'); return; }
-  el.innerHTML = '';
+  async function runTableScan() {
+    const list = (input.value || '')
+      .split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+    if (!list.length) { statusEl.textContent = 'Enter 1+ symbols.'; return; }
 
-  if (!window.LightweightCharts) {
-    throw new Error('LightweightCharts not loaded');
+    const tfEl = document.getElementById('haco-timeframe');
+    const timeframe = tfEl ? tfEl.value.trim() : 'Day';
+
+    statusEl.textContent = 'Scanning…';
+    try {
+      const url = `/api/signals/haco/scan?symbols=${encodeURIComponent(list.join(','))}&timeframe=${encodeURIComponent(timeframe)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json(); // [{symbol,upw,dnw,state,changed,reason}]
+      tbody.innerHTML = '';
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.symbol}</td>
+          <td>${r.upw ? '✅' : ''}</td>
+          <td>${r.dnw ? '❌' : ''}</td>
+          <td>${r.state ? 'UP' : 'DOWN'}</td>
+          <td>${r.changed ? '★' : ''}</td>
+          <td>${r.reason || ''}</td>`;
+        tbody.appendChild(tr);
+      }
+      statusEl.textContent = `Done • ${rows.length} symbols`;
+    } catch (e) {
+      console.error('HACO table scan failed', e);
+      statusEl.textContent = 'Scan failed.';
+    }
   }
-  const chart = LightweightCharts.createChart(el, { height: el.clientHeight || 420 });
-  const series = chart.addCandlestickSeries();
-  if (Array.isArray(data.candles)) series.setData(data.candles);
-  if (Array.isArray(data.markers) && data.markers.length) series.setMarkers(data.markers);
-  console.log('[HACO:SCAN] chart rendered');
-};
+
+  if (form) form.addEventListener('submit', (e) => { e.preventDefault(); runTableScan(); });
+});
