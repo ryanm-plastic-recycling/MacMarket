@@ -308,6 +308,33 @@ function renderChart(bars) {
 
   chartApi.timeScale().fitContent();
 
+  // ---- HACO legend (non-interactive, minimal CSS inline) ----
+  (function ensureLegend(container){
+    if (!container) return;
+    let box = container.querySelector('.haco-legend');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'haco-legend';
+      Object.assign(box.style, {
+        position:'absolute', bottom:'8px', left:'8px',
+        padding:'6px 8px', borderRadius:'6px',
+        background:'rgba(0,0,0,.55)', color:'#fff',
+        fontSize:'12px', display:'flex', gap:'12px',
+        alignItems:'center', pointerEvents:'none', zIndex:3
+      });
+      container.appendChild(box);
+    }
+    const dot = (color, label) =>
+      `<span style="display:inline-flex;align-items:center;gap:6px;">
+         <i style="display:inline-block;width:10px;height:10px;background:${color};border-radius:2px;"></i>${label}
+       </span>`;
+    box.innerHTML =
+      dot('blue',   'ZL HA (Up)')   +
+      dot('orange', 'ZL Close (Up)')+
+      dot('purple', 'ZL HA (Down)')+
+      dot('gray',   'ZL Close (Down)');
+  })(document.getElementById('haco-chart'));
+
   // ===== Keep signal chart aligned with main chart =====
   if (typeof window.__getSignalChart === 'function' && window.HACOSync) {
     const sub = window.__getSignalChart();
