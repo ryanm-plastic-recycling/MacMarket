@@ -38,9 +38,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tbody) tbody.innerHTML = '';
       for (const r of rows) {
         const tr = document.createElement('tr');
-        const upCell = r.upw ? '✅ 1' : '– 0';
-        const dnCell = r.dnw ? '❌ 1' : '– 0';
-        const chCell = r.changed ? '★ 1' : '– 0';
+        const upCell = r.upw ? '✅ 1' : '–';
+        const dnCell = r.dnw ? '❌ 1' : '–';
+        const chCell = r.changed ? '★ 1' : '–';
         tr.innerHTML = `
           <td>${r.symbol}</td>
           <td>${upCell}</td>
