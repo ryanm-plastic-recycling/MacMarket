@@ -78,15 +78,13 @@ def _build_series(
     # Build raw candles for compute_haco
     candles: List[Dict[str, Any]] = []
     for ts, row in df.iterrows():
-        candles.append(
-            {
-                "time": int(ts.to_pydatetime().timestamp()),
-                "o": float(row["Open"]),
-                "h": float(row["High"]),
-                "l": float(row["Low"]),
-                "c": float(row["Close"]),
-            }
-        )
+        candles.append({
+            "time": int(ts.to_pydatetime().timestamp()),
+            "o": float(row.at["Open"]),
+            "h": float(row.at["High"]),
+            "l": float(row.at["Low"]),
+            "c": float(row.at["Close"]),
+        })
     # MetaStock logic (already implemented in indicators.haco)
     out = compute_haco(
         candles=candles, length_up=len_up, length_down=len_dn, alert_lookback=alert_lb
