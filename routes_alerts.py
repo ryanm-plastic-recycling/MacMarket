@@ -73,7 +73,7 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
                     }
                     for ts, row in df.iterrows()
                 ]
-                # compute strategy state (HACO for now; MACD path stub)
+                # compute strategy state (HACO or MACD)
                 if (a["strategy"] or "HACO") == "HACO":
                     out = compute_haco(candles)
                     ser = out.get("series") or []
@@ -83,9 +83,40 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
                     state_now = "UP" if bool(last.get("state")) else "DOWN"
                     reason = last.get("reason", "") if isinstance(last, dict) else ""
                     px = float(last.get("c", 0.0))
+                    extra = {}
                 else:
-                    # TODO: implement MACD; for now behave like no-change
-                    state_now, reason, px = st["last_state"], "MACD not implemented", 0.0
+                    # ---- MACD implementation (12,26,9) on closes — ALERT ONLY ON CROSSOVER ----
+                    closes = [float(row.at["Close"]) for _, row in df.iterrows()]
+                    if len(closes) < 35:
+                        cur.execute("REPLACE INTO alert_state (alert_id,last_state,last_checked) VALUES (%s,%s,UTC_TIMESTAMP())",
+                                    (alert_id, st["last_state"]))
+                        conn.commit(); continue
+                    def ema_series(vals, length):
+                        alpha = 2.0/(length+1.0)
+                        out=[vals[0]]
+                        for v in vals[1:]:
+                            out.append(alpha*v + (1.0-alpha)*out[-1])
+                        return out
+                    ema12  = ema_series(closes, 12)
+                    ema26  = ema_series(closes, 26)
+                    macd   = [ema12[i] - ema26[i] for i in range(len(closes))]
+                    signal = ema_series(macd, 9)
+                    hist   = [macd[i] - signal[i] for i in range(len(macd))]
+                    m_prev, s_prev = macd[-2], signal[-2]
+                    m, s, h        = macd[-1],  signal[-1], hist[-1]
+                    cross_up   = (m_prev <= s_prev) and (m > s)
+                    cross_down = (m_prev >= s_prev) and (m < s)
+                    if not (cross_up or cross_down):
+                        # No crossover: just advance throttle window; do NOT send, do NOT flip last_state.
+                        cur.execute("REPLACE INTO alert_state (alert_id,last_state,last_checked) VALUES (%s,%s,UTC_TIMESTAMP())",
+                                    (alert_id, st["last_state"]))
+                        conn.commit(); continue
+                    # Crossover happened on this bar -> send
+                    state_now = "UP" if cross_up else "DOWN"
+                    cross_lbl = "BULLISH_CROSS" if cross_up else "BEARISH_CROSS"
+                    reason = f"MACD {('▲' if cross_up else '▼')} cross: {m:.2f} vs {s:.2f} (hist {h:.2f})"
+                    px = closes[-1]
+                    extra = {"macd": f"{m:.2f}", "signal": f"{s:.2f}", "hist": f"{h:.2f}", "cross": cross_lbl}
                 # on change -> notify
                 if state_now is not None and state_now != st["last_state"]:
                     ctx = {
@@ -97,6 +128,7 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
                         "ts": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
                         "price": f"{px:.2f}",
                     }
+                    ctx.update(extra)
                     def render(tpl: str | None, ctx: dict) -> str:
                         if not tpl:
                             return f"{sym} {state_now} ({a['strategy']} {a['frequency']})"
@@ -111,11 +143,9 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
                         mm_alerts.send_email(a["email"], subj, body)
                     if a.get("sms"):
                         mm_alerts.send_sms(a["sms"], sms)
-                # upsert state
-                cur.execute(
-                    "REPLACE INTO alert_state (alert_id,last_state,last_checked) VALUES (%s,%s,UTC_TIMESTAMP())",
-                    (alert_id, state_now),
-                )
+                # upsert state (HACO on flip, MACD on crossover)
+                cur.execute("REPLACE INTO alert_state (alert_id,last_state,last_checked) VALUES (%s,%s,UTC_TIMESTAMP())",
+                            (alert_id, state_now))
                 conn.commit()
             cur.close()
             conn.close()
