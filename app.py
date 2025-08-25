@@ -34,6 +34,10 @@ from cachetools import TTLCache
 from dotenv import load_dotenv
 from api.haco import router as haco_router
 from routes_alerts import router as alerts_router
+from api import qq_routes
+from apscheduler.schedulers.background import BackgroundScheduler
+from zoneinfo import ZoneInfo
+from api import portfolio_engine
 
 load_dotenv()
 
@@ -51,10 +55,18 @@ political_cache = TTLCache(maxsize=1, ttl=POLITICAL_CACHE_TTL) if POLITICAL_CACH
 news_cache = TTLCache(maxsize=2, ttl=NEWS_CACHE_TTL) if NEWS_CACHE_TTL > 0 else None
 quiver_cache = TTLCache(maxsize=10, ttl=300)
 
+# Scheduler for QuiverQuant tasks
+scheduler = BackgroundScheduler(timezone=ZoneInfo("America/Indiana/Indianapolis"))
+scheduler.add_job(qq_routes.ingest_latest, "cron", day_of_week="mon", hour=9, minute=10)
+scheduler.add_job(portfolio_engine.run_rebalances_for_unprocessed, "cron", day_of_week="mon", hour=9, minute=15)
+scheduler.add_job(portfolio_engine.materialize_nav_positions, "cron", hour=18, minute=30)
+scheduler.start()
+
 # Include HACO routes EARLY to avoid shadowing
 app.include_router(haco_router)
 # Other dynamic routes
 app.include_router(alerts_router)
+app.include_router(qq_routes.router, prefix="")
 
 # Directories for static assets
 FRONTEND_DIR = Path(__file__).resolve().parent / "frontend"

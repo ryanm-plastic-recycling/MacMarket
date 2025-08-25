@@ -17,3 +17,10 @@ vaderSentiment
 
 matplotlib
 tweepy
+beautifulsoup4
+lxml
+google-api-python-client
+google-auth
+google-auth-oauthlib
+apscheduler
+python-dateutil
