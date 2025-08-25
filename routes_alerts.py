@@ -1,15 +1,27 @@
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, List
 
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, Request, HTTPException, Query, Body
 from indicators.haco import compute_haco
 from backend.app import alerts as mm_alerts
 from backend.app.database import connect_to_db
 
 router = APIRouter()
+
+#
+# --- UTC helpers (normalize MySQL TIMESTAMP to aware UTC, and get now in UTC) ---
+#
+def _utc_now():
+    return datetime.now(timezone.utc)
+
+
+def _to_utc(dt):
+    if dt is None:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 async def _alerts_worker() -> None:  # pragma: no cover - background task
@@ -33,10 +45,11 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
                 )
                 st = cur.fetchone() or {"last_state": None, "last_checked": None}
                 secs = {"5m": 300, "15m": 900, "1h": 3600, "1d": 86400}.get(freq, 900)
-                if st["last_checked"]:
-                    dt = st["last_checked"]
-                    if (datetime.now(timezone.utc) - dt).total_seconds() < secs:
-                        continue
+                if st["last_checked"] is not None:
+                    dt = _to_utc(st["last_checked"])
+                    if dt is not None:
+                        if (_utc_now() - dt).total_seconds() < secs:
+                            continue
                 # pull candles for freq
                 interval, period = (
                     ("5m", "7d")
@@ -152,6 +165,85 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
         except Exception as exc:  # pragma: no cover - logging only
             logging.error("alerts worker error: %s", exc)
         await asyncio.sleep(60)
+
+#
+# --- Back-compat alias routes for legacy frontends calling /api/alerts/me ---
+#     GET  /api/alerts/me     -> list alerts for a user
+#     POST /api/alerts/me     -> update if 'id' present; else bulk-create via 'symbols' or single create
+#
+@router.get("/api/alerts/me")
+def list_alerts_me(userId: int | None = Query(None, alias="userId")):
+    uid = userId or 1  # TODO: replace with real auth/user context when available
+    conn = connect_to_db(); cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM user_alerts WHERE user_id=%s ORDER BY symbol,id", (uid,))
+    rows = cur.fetchall() or []
+    cur.close(); conn.close()
+    return rows
+
+
+@router.post("/api/alerts/me")
+def upsert_alerts_me(payload: dict = Body(...), userId: int | None = Query(None, alias="userId")):
+    uid = int(payload.get("user_id") or userId or 1)
+    conn = connect_to_db(); cur = conn.cursor(dictionary=True)
+    # Update path when an 'id' is provided
+    if "id" in payload:
+        fields = ["symbol","strategy","frequency","email","sms","email_template","sms_template","is_enabled"]
+        sets, vals = [], []
+        for f in fields:
+            if f in payload:
+                sets.append(f"{f}=%s"); vals.append(payload[f])
+        if sets:
+            vals.append(int(payload["id"]))
+            cur2 = conn.cursor()
+            cur2.execute(f"UPDATE user_alerts SET {', '.join(sets)}, updated_at=UTC_TIMESTAMP() WHERE id=%s", tuple(vals))
+            conn.commit(); cur2.close()
+        cur.close(); conn.close()
+        return {"ok": True, "updated": payload["id"]}
+    # Bulk create path with 'symbols'
+    symbols = payload.get("symbols")
+    if isinstance(symbols, str):
+        symbols = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    if isinstance(symbols, list) and symbols:
+        created: List[int] = []
+        for sym in symbols:
+            cur2 = conn.cursor()
+            cur2.execute(
+                """
+              INSERT INTO user_alerts (user_id,symbol,strategy,frequency,email,sms,is_enabled)
+              VALUES (%s,%s,%s,%s,%s,%s,1)
+            """,
+                (
+                    uid,
+                    sym,
+                    (payload.get("strategy") or "HACO"),
+                    (payload.get("frequency") or "1h"),
+                    payload.get("email"),
+                    payload.get("sms"),
+                ),
+            )
+            created.append(cur2.lastrowid); conn.commit(); cur2.close()
+        cur.close(); conn.close()
+        return {"ok": True, "created": created}
+    # Single create path
+    cur2 = conn.cursor()
+    cur2.execute(
+        """
+      INSERT INTO user_alerts (user_id,symbol,strategy,frequency,email,sms,is_enabled,email_template,sms_template)
+      VALUES (%s,%s,%s,%s,%s,%s,1,%s,%s)
+    """,
+        (
+            uid,
+            str(payload.get("symbol", "")).strip().toUpper() if hasattr(str, 'toUpper') else str(payload.get("symbol", "")).strip().upper(),
+            (payload.get("strategy") or "HACO"),
+            (payload.get("frequency") or "1h"),
+            payload.get("email"),
+            payload.get("sms"),
+            payload.get("email_template"),
+            payload.get("sms_template"),
+        ),
+    )
+    new_id = cur2.lastrowid; conn.commit(); cur2.close(); cur.close(); conn.close()
+    return {"ok": True, "created": [new_id]}
 
 
 @router.on_event("startup")
