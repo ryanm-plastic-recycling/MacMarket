@@ -2,10 +2,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const $ = (s)=>document.querySelector(s);
   const statusEl = $('#alert-status');
   const tableBody = $('#alerts-table tbody');
+  const getUserId = () => {
+    const v = localStorage.getItem('userId');
+    const n = v ? Number(v) : NaN;
+    return Number.isFinite(n) && n>0 ? n : 1; // TODO: replace with real auth context
+  };
 
   async function load() {
     status('Loading…');
-    const r = await fetch('/api/alerts?userId=1');
+    const r = await fetch(`/api/alerts?userId=${getUserId()}`);
     const rows = r.ok ? await r.json() : [];
     tableBody.innerHTML = '';
     for (const a of rows) {
@@ -69,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function create(){
     const payload = {
-      user_id: Number(document.getElementById('a-user').value||1),
+      user_id: getUserId(),
       symbol: document.getElementById('a-symbol').value.trim().toUpperCase(),
       strategy: document.getElementById('a-strategy').value,
       frequency: document.getElementById('a-freq').value,
