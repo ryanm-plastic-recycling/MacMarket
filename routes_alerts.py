@@ -11,6 +11,21 @@ from backend.app.database import connect_to_db
 
 router = APIRouter()
 
+# --- user resolver (derive the request user id) ---
+def _req_user_id(request: Request, explicit: Optional[int] = None) -> int:
+    if explicit:
+        try:
+            return int(explicit)
+        except:
+            pass
+    hdr = request.headers.get("X-User-Id")
+    if hdr:
+        try:
+            return int(hdr)
+        except:
+            pass
+    # TODO: wire real auth; for now default to 1
+    return 1
 #
 # --- UTC helpers (normalize MySQL TIMESTAMP to aware UTC, and get now in UTC) ---
 #
@@ -172,8 +187,8 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
 #     POST /api/alerts/me     -> update if 'id' present; else bulk-create via 'symbols' or single create
 #
 @router.get("/api/alerts/me")
-def list_alerts_me(userId: int | None = Query(None, alias="userId")):
-    uid = userId or 1  # TODO: replace with real auth/user context when available
+def list_alerts_me(request: Request, userId: int | None = Query(None, alias="userId")):
+    uid = _req_user_id(request, userId)
     conn = connect_to_db(); cur = conn.cursor(dictionary=True)
     cur.execute("SELECT * FROM user_alerts WHERE user_id=%s ORDER BY symbol,id", (uid,))
     rows = cur.fetchall() or []
@@ -182,8 +197,9 @@ def list_alerts_me(userId: int | None = Query(None, alias="userId")):
 
 
 @router.post("/api/alerts/me")
-def upsert_alerts_me(payload: dict = Body(...), userId: int | None = Query(None, alias="userId")):
-    uid = int(payload.get("user_id") or userId or 1)
+def upsert_alerts_me(request: Request, payload: dict = Body(...), userId: int | None = Query(None, alias="userId")):
+    """Back-compat: create/update alerts using the old /me endpoint."""
+    uid = _req_user_id(request, payload.get("user_id") or userId)
     conn = connect_to_db(); cur = conn.cursor(dictionary=True)
     # Update path when an 'id' is provided
     if "id" in payload:
@@ -233,7 +249,7 @@ def upsert_alerts_me(payload: dict = Body(...), userId: int | None = Query(None,
     """,
         (
             uid,
-            str(payload.get("symbol", "")).strip().toUpper() if hasattr(str, 'toUpper') else str(payload.get("symbol", "")).strip().upper(),
+      str(payload.get("symbol", "")).strip().upper(),
             (payload.get("strategy") or "HACO"),
             (payload.get("frequency") or "1h"),
             payload.get("email"),
@@ -253,105 +269,77 @@ async def _startup() -> None:  # pragma: no cover
 
 # --------- CRUD: per-alert rows -------------
 @router.get("/api/alerts")
-def list_alerts(userId: Optional[int] = Query(None, alias="userId")):
-    conn = connect_to_db()
-    cur = conn.cursor(dictionary=True)
-    if userId:
-        cur.execute(
-            "SELECT * FROM user_alerts WHERE user_id=%s ORDER BY symbol,id",
-            (userId,),
-        )
-    else:
-        cur.execute("SELECT * FROM user_alerts ORDER BY user_id,symbol,id")
+def list_alerts(request: Request, userId: Optional[int] = Query(None, alias="userId")):
+    uid = _req_user_id(request, userId)
+    conn = connect_to_db(); cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT * FROM user_alerts WHERE user_id=%s ORDER BY symbol,id", (uid,))
     rows = cur.fetchall() or []
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return rows
 
 
 @router.post("/api/alerts")
-def create_alert(payload: dict = Body(...)):
-    req = {
-        k: payload.get(k)
-        for k in [
-            "user_id",
-            "symbol",
-            "strategy",
-            "frequency",
-            "email",
-            "sms",
-            "email_template",
-            "sms_template",
-            "is_enabled",
-        ]
-    }
-    if not req["user_id"] or not req["symbol"]:
+def create_alert(request: Request, payload: dict = Body(...)):
+    uid = _req_user_id(request, payload.get("user_id"))
+    req = {k: payload.get(k) for k in ["symbol","strategy","frequency","email","sms","email_template","sms_template","is_enabled"]}
+    if not req["symbol"]:
         raise HTTPException(status_code=400, detail="user_id and symbol required")
-    conn = connect_to_db()
-    cur = conn.cursor()
+    conn = connect_to_db(); cur = conn.cursor()
     cur.execute(
         """
         INSERT INTO user_alerts (user_id,symbol,strategy,frequency,email,sms,email_template,sms_template,is_enabled)
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s,1))
     """,
-        (
-            req["user_id"],
-            req["symbol"],
-            req.get("strategy", "HACO"),
-            req.get("frequency", "1h"),
-            req.get("email"),
-            req.get("sms"),
-            req.get("email_template"),
-            req.get("sms_template"),
-            req.get("is_enabled"),
-        ),
+        (uid, req["symbol"], req.get("strategy","HACO"), req.get("frequency","1h"),
+         req.get("email"), req.get("sms"), req.get("email_template"), req.get("sms_template"), req.get("is_enabled"))
     )
     alert_id = cur.lastrowid
-    conn.commit()
-    cur.close()
-    conn.close()
+    conn.commit(); cur.close(); conn.close()
     return {"id": alert_id}
 
 
 @router.put("/api/alerts/{alert_id}")
-def update_alert(alert_id: int, payload: dict = Body(...)):
-    fields = [
-        "symbol",
-        "strategy",
-        "frequency",
-        "email",
-        "sms",
-        "email_template",
-        "sms_template",
-        "is_enabled",
-    ]
-    sets: list[str] = []
-    vals: list = []
+def update_alert(request: Request, alert_id: int, payload: dict = Body(...)):
+    uid = _req_user_id(request, payload.get("user_id"))
+    # verify ownership
+    conn = connect_to_db(); cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT user_id FROM user_alerts WHERE id=%s", (alert_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="alert_not_found")
+    if int(row["user_id"]) != int(uid):
+        cur.close(); conn.close()
+        raise HTTPException(status_code=403, detail="forbidden")
+    fields = ["symbol","strategy","frequency","email","sms","email_template","sms_template","is_enabled"]
+    sets = []; vals = []
     for f in fields:
         if f in payload:
-            sets.append(f"{f}=%s")
-            vals.append(payload[f])
+            sets.append(f"{f}=%s"); vals.append(payload[f])
     if not sets:
         raise HTTPException(status_code=400, detail="no fields")
     vals.append(alert_id)
-    conn = connect_to_db()
-    cur = conn.cursor()
-    cur.execute(
-        f"UPDATE user_alerts SET {', '.join(sets)}, updated_at=UTC_TIMESTAMP() WHERE id=%s",
-        tuple(vals),
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
+    cur2 = conn.cursor()
+    cur2.execute(f"UPDATE user_alerts SET {', '.join(sets)}, updated_at=UTC_TIMESTAMP() WHERE id=%s", tuple(vals))
+    conn.commit(); cur2.close(); cur.close(); conn.close()
     return {"ok": True}
 
 
 @router.delete("/api/alerts/{alert_id}")
-def delete_alert(alert_id: int):
-    conn = connect_to_db()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM user_alerts WHERE id=%s", (alert_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
+def delete_alert(request: Request, alert_id: int):
+    uid = _req_user_id(request)
+    conn = connect_to_db(); cur = conn.cursor(dictionary=True)
+    # verify ownership
+    cur.execute("SELECT user_id FROM user_alerts WHERE id=%s", (alert_id,))
+    row = cur.fetchone()
+    if not row:
+        cur.close(); conn.close()
+        raise HTTPException(status_code=404, detail="alert_not_found")
+    if int(row["user_id"]) != int(uid):
+        cur.close(); conn.close()
+        raise HTTPException(status_code=403, detail="forbidden")
+    cur2 = conn.cursor()
+    cur2.execute("DELETE FROM user_alerts WHERE id=%s", (alert_id,))
+    conn.commit(); 
+    cur2.close(); cur.close(); conn.close()
     return {"ok": True}
