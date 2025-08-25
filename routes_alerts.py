@@ -1,97 +1,124 @@
 import asyncio
 import logging
-from typing import Any, Dict, List
+from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter, Request
+import yfinance as yf
+from fastapi import APIRouter, HTTPException, Query, Body
+from indicators.haco import compute_haco
+from backend.app import alerts as mm_alerts
 from backend.app.database import connect_to_db
 
-router = APIRouter(prefix="/api/alerts", tags=["alerts"])
+router = APIRouter()
 
-# In lieu of real auth, always use user 1
-
-def _user_id(request: Request) -> int:  # pragma: no cover - simple stub
-    return 1
-
-
-@router.get("/me")
-async def get_me(request: Request) -> Dict[str, Any]:
-    uid = _user_id(request)
-    conn = connect_to_db()
-    cur = conn.cursor(dictionary=True)
-    cur.execute(
-        "SELECT email, sms, frequency, strategy FROM user_alert_settings WHERE user_id=%s LIMIT 1",
-        (uid,),
-    )
-    pref = cur.fetchone()
-    cur.execute(
-        "SELECT symbol FROM user_alert_symbols WHERE user_id=%s ORDER BY symbol",
-        (uid,),
-    )
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return {
-        "strategy": (pref["strategy"] if pref else "HACO"),
-        "email": (pref["email"] if pref else ""),
-        "sms": (pref["sms"] if pref else ""),
-        "frequency": (pref["frequency"] if pref else "15m"),
-        "symbols": [r["symbol"] for r in rows] if rows else [],
-    }
-
-
-@router.post("/me")
-async def set_me(request: Request) -> Dict[str, Any]:
-    uid = _user_id(request)
-    body = await request.json()
-    strategy = body.get("strategy") or "HACO"
-    email = (body.get("email") or "").strip()
-    sms = (body.get("sms") or "").strip()
-    freq = body.get("frequency") or "15m"
-    symbols: List[str] = [str(s).upper().strip() for s in (body.get("symbols") or []) if s]
-
-    conn = connect_to_db()
-    cur = conn.cursor()
-    cur.execute(
-        """INSERT INTO user_alert_settings (user_id,email,sms,frequency,strategy)
-           VALUES (%s,%s,%s,%s,%s)
-           ON DUPLICATE KEY UPDATE email=VALUES(email), sms=VALUES(sms),
-                                   frequency=VALUES(frequency), strategy=VALUES(strategy)""",
-        (uid, email, sms, freq, strategy),
-    )
-    cur.execute("DELETE FROM user_alert_symbols WHERE user_id=%s", (uid,))
-    if symbols:
-        cur.executemany(
-            "INSERT INTO user_alert_symbols (user_id,symbol) VALUES (%s,%s)",
-            [(uid, s) for s in symbols],
-        )
-    conn.commit()
-    cur.close()
-    conn.close()
-    return {"ok": True}
-
-
-@router.post("/test")
-async def test_alerts() -> Dict[str, Any]:
-    return {"ok": True}
-
-
-# --- Background worker ----------------------------------------------------
 
 async def _alerts_worker() -> None:  # pragma: no cover - background task
     while True:
         try:
             conn = connect_to_db()
             cur = conn.cursor(dictionary=True)
+            # Iterate per-alert rows
             cur.execute(
-                "SELECT user_id, strategy, frequency FROM user_alert_settings"
+                "SELECT id, user_id, symbol, strategy, frequency, email, sms, is_enabled, email_template, sms_template FROM user_alerts WHERE is_enabled=1"
             )
-            rows = cur.fetchall() or []
+            alerts = cur.fetchall() or []
+            for a in alerts:
+                alert_id = a["id"]
+                sym = a["symbol"]
+                freq = (a["frequency"] or "15m").lower()
+                # throttle by alert_state
+                cur.execute(
+                    "SELECT last_state, last_checked FROM alert_state WHERE alert_id=%s",
+                    (alert_id,),
+                )
+                st = cur.fetchone() or {"last_state": None, "last_checked": None}
+                secs = {"5m": 300, "15m": 900, "1h": 3600, "1d": 86400}.get(freq, 900)
+                if st["last_checked"]:
+                    dt = st["last_checked"]
+                    if (datetime.now(timezone.utc) - dt).total_seconds() < secs:
+                        continue
+                # pull candles for freq
+                interval, period = (
+                    ("5m", "7d")
+                    if freq == "5m"
+                    else ("15m", "60d")
+                    if freq == "15m"
+                    else ("1h", "730d")
+                    if freq == "1h"
+                    else ("1d", "3y")
+                )
+                df = (
+                    yf.download(
+                        sym,
+                        period=period,
+                        interval=interval,
+                        auto_adjust=False,
+                        progress=False,
+                    ).dropna()
+                )
+                if df.empty:
+                    cur.execute(
+                        "REPLACE INTO alert_state (alert_id,last_state,last_checked) VALUES (%s,%s,UTC_TIMESTAMP())",
+                        (alert_id, st["last_state"]),
+                    )
+                    conn.commit()
+                    continue
+                candles = [
+                    {
+                        "time": int(ts.to_pydatetime().timestamp()),
+                        "o": float(row.at["Open"]),
+                        "h": float(row.at["High"]),
+                        "l": float(row.at["Low"]),
+                        "c": float(row.at["Close"]),
+                    }
+                    for ts, row in df.iterrows()
+                ]
+                # compute strategy state (HACO for now; MACD path stub)
+                if (a["strategy"] or "HACO") == "HACO":
+                    out = compute_haco(candles)
+                    ser = out.get("series") or []
+                    if not ser:
+                        continue
+                    last = ser[-1]
+                    state_now = "UP" if bool(last.get("state")) else "DOWN"
+                    reason = last.get("reason", "") if isinstance(last, dict) else ""
+                    px = float(last.get("c", 0.0))
+                else:
+                    # TODO: implement MACD; for now behave like no-change
+                    state_now, reason, px = st["last_state"], "MACD not implemented", 0.0
+                # on change -> notify
+                if state_now is not None and state_now != st["last_state"]:
+                    ctx = {
+                        "symbol": sym,
+                        "strategy": a["strategy"],
+                        "frequency": a["frequency"],
+                        "state": state_now,
+                        "reason": reason,
+                        "ts": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        "price": f"{px:.2f}",
+                    }
+                    def render(tpl: str | None, ctx: dict) -> str:
+                        if not tpl:
+                            return f"{sym} {state_now} ({a['strategy']} {a['frequency']})"
+                        msg = tpl
+                        for k, v in ctx.items():
+                            msg = msg.replace("{{" + k + "}}", str(v))
+                        return msg
+                    subj = f"{sym} {state_now} • {a['strategy']} {a['frequency']}"
+                    body = render(a.get("email_template"), ctx)
+                    sms = render(a.get("sms_template"), ctx)
+                    if a.get("email"):
+                        mm_alerts.send_email(a["email"], subj, body)
+                    if a.get("sms"):
+                        mm_alerts.send_sms(a["sms"], sms)
+                # upsert state
+                cur.execute(
+                    "REPLACE INTO alert_state (alert_id,last_state,last_checked) VALUES (%s,%s,UTC_TIMESTAMP())",
+                    (alert_id, state_now),
+                )
+                conn.commit()
             cur.close()
             conn.close()
-            for r in rows:
-                logging.info(
-                    "[alerts] would run %s for user %s at %s", r["strategy"], r["user_id"], r["frequency"]
-                )
         except Exception as exc:  # pragma: no cover - logging only
             logging.error("alerts worker error: %s", exc)
         await asyncio.sleep(60)
@@ -100,3 +127,109 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
 @router.on_event("startup")
 async def _startup() -> None:  # pragma: no cover
     asyncio.create_task(_alerts_worker())
+
+
+# --------- CRUD: per-alert rows -------------
+@router.get("/api/alerts")
+def list_alerts(userId: Optional[int] = Query(None, alias="userId")):
+    conn = connect_to_db()
+    cur = conn.cursor(dictionary=True)
+    if userId:
+        cur.execute(
+            "SELECT * FROM user_alerts WHERE user_id=%s ORDER BY symbol,id",
+            (userId,),
+        )
+    else:
+        cur.execute("SELECT * FROM user_alerts ORDER BY user_id,symbol,id")
+    rows = cur.fetchall() or []
+    cur.close()
+    conn.close()
+    return rows
+
+
+@router.post("/api/alerts")
+def create_alert(payload: dict = Body(...)):
+    req = {
+        k: payload.get(k)
+        for k in [
+            "user_id",
+            "symbol",
+            "strategy",
+            "frequency",
+            "email",
+            "sms",
+            "email_template",
+            "sms_template",
+            "is_enabled",
+        ]
+    }
+    if not req["user_id"] or not req["symbol"]:
+        raise HTTPException(status_code=400, detail="user_id and symbol required")
+    conn = connect_to_db()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO user_alerts (user_id,symbol,strategy,frequency,email,sms,email_template,sms_template,is_enabled)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s,1))
+    """,
+        (
+            req["user_id"],
+            req["symbol"],
+            req.get("strategy", "HACO"),
+            req.get("frequency", "1h"),
+            req.get("email"),
+            req.get("sms"),
+            req.get("email_template"),
+            req.get("sms_template"),
+            req.get("is_enabled"),
+        ),
+    )
+    alert_id = cur.lastrowid
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"id": alert_id}
+
+
+@router.put("/api/alerts/{alert_id}")
+def update_alert(alert_id: int, payload: dict = Body(...)):
+    fields = [
+        "symbol",
+        "strategy",
+        "frequency",
+        "email",
+        "sms",
+        "email_template",
+        "sms_template",
+        "is_enabled",
+    ]
+    sets: list[str] = []
+    vals: list = []
+    for f in fields:
+        if f in payload:
+            sets.append(f"{f}=%s")
+            vals.append(payload[f])
+    if not sets:
+        raise HTTPException(status_code=400, detail="no fields")
+    vals.append(alert_id)
+    conn = connect_to_db()
+    cur = conn.cursor()
+    cur.execute(
+        f"UPDATE user_alerts SET {', '.join(sets)}, updated_at=UTC_TIMESTAMP() WHERE id=%s",
+        tuple(vals),
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"ok": True}
+
+
+@router.delete("/api/alerts/{alert_id}")
+def delete_alert(alert_id: int):
+    conn = connect_to_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM user_alerts WHERE id=%s", (alert_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"ok": True}
