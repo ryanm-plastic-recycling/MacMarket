@@ -331,3 +331,24 @@ The API exposes simple endpoints, including `/health` and `/db-check`.
 - Data providers impose request quotas that can throttle or limit real-time updates.
 - Quotes and historical data may be delayed or contain inaccuracies.
 
+## QuiverQuant Email Ingestion & Paper Trading
+
+This project can ingest strategy alerts emailed by QuiverQuant and simulate paper trading based on those rebalances.
+
+### Gmail OAuth Setup
+- Place your Gmail OAuth client in `./config/gmail_credentials.json` (ignored by git).
+- On first run the app creates `./config/gmail_token.json` after authorization.
+
+### Gmail Search
+- The default search looks for messages within label `"Quiver Quantitative"` with subject `"Strategies in Your Watchlist are Trading Today"` from `alerts@quiverquant.com`.
+
+### Price Fill & Fractional Shares
+- Rebalances fill on the next market open by default; alternatively the previous close may be used.
+- Fractional shares are supported; when disabled quantities are rounded (floor by default).
+
+### Target Weight Tolerance
+- Strategy weights may deviate by ±1 % before rescaling to exactly 100 %.
+
+### Usage
+- Manage strategies and run rebalances from `/qq.html` or programmatically via the `/api/qq/*` endpoints.
+
