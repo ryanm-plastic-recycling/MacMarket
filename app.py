@@ -33,7 +33,6 @@ import httpx
 from cachetools import TTLCache
 from dotenv import load_dotenv
 from api.haco import router as haco_router
-from routes_alerts import router as alerts_router
 from api import qq_routes
 from apscheduler.schedulers.background import BackgroundScheduler
 from zoneinfo import ZoneInfo
@@ -46,6 +45,14 @@ NEWS_CACHE_TTL = int(os.getenv("NEWS_CACHE_TTL", "300"))
 POLITICAL_CACHE_TTL = int(os.getenv("POLITICAL_CACHE_TTL", "300"))
 
 app = FastAPI()
+
+# include alerts routes (per-alert CRUD & worker)
+try:
+    from routes_alerts import router as alerts_router
+    app.include_router(alerts_router)
+except Exception as e:
+    import logging
+    logging.error("Failed to include alerts router: %s", e)
 
 # Jinja2 template setup
 templates = Jinja2Templates(directory="templates")
@@ -65,7 +72,6 @@ scheduler.start()
 # Include HACO routes EARLY to avoid shadowing
 app.include_router(haco_router)
 # Other dynamic routes
-app.include_router(alerts_router)
 app.include_router(qq_routes.router, prefix="")
 
 # Directories for static assets

@@ -7,12 +7,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const n = v ? Number(v) : NaN;
     return Number.isFinite(n) && n>0 ? n : 1; // TODO: replace with real auth context
   };
+  const authHeaders = () => ({ 'X-User-Id': String(getUserId()) });
 
   async function load() {
     status('Loading…');
-    const r = await fetch(`/api/alerts?userId=${getUserId()}`);
+    const r = await fetch(`/api/alerts?userId=${getUserId()}`, { headers: authHeaders() });
     const rows = r.ok ? await r.json() : [];
     tableBody.innerHTML = '';
+    if (!rows.length) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td colspan="7" class="muted">No alerts found for user ${getUserId()}.</td>`;
+      tableBody.appendChild(tr);
+      status('No alerts yet');
+      return;
+    }
     for (const a of rows) {
       tableBody.appendChild(rowEl(a));
     }
@@ -61,14 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
       sms: tr.querySelector('.inp-sms').value.trim() || null,
       is_enabled: tr.querySelector('.inp-enabled').checked ? 1 : 0
     };
-    const r = await fetch(`/api/alerts/${id}`, {method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const r = await fetch(`/api/alerts/${id}`, {method:'PUT', headers:{'Content-Type':'application/json', ...authHeaders()}, body: JSON.stringify(payload)});
     status(r.ok ? 'Saved' : 'Save failed');
   }
 
   async function del(tr){
     const id = tr.dataset.id;
     if(!confirm('Delete this alert?')) return;
-    const r = await fetch(`/api/alerts/${id}`, {method:'DELETE'});
+    const r = await fetch(`/api/alerts/${id}`, {method:'DELETE', headers: authHeaders()});
     if(r.ok){ tr.remove(); status('Deleted'); } else { status('Delete failed'); }
   }
 
@@ -82,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
       sms: document.getElementById('a-sms').value.trim() || null,
       is_enabled: 1
     };
-    const r = await fetch('/api/alerts', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const r = await fetch('/api/alerts', {method:'POST', headers:{'Content-Type':'application/json', ...authHeaders()}, body: JSON.stringify(payload)});
     if(r.ok){ await load(); status('Created'); } else { status('Create failed'); }
   }
 
