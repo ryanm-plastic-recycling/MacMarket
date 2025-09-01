@@ -1,6 +1,6 @@
 """Gmail helpers for QuiverQuant ingestion."""
 from __future__ import annotations
-import os
+import os, json
 from datetime import datetime
 from typing import List, Dict, Optional
 
@@ -10,8 +10,8 @@ from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
-TOKEN_PATH = os.path.join("config", "gmail_token.json")
-CREDS_PATH = os.path.join("config", "gmail_credentials.json")
+TOKEN_PATH = os.environ.get("GMAIL_TOKEN_PATH", os.path.join("config", "gmail_token.json"))
+CREDS_PATH = os.environ.get("GMAIL_CREDENTIALS_PATH", os.path.join("config", "gmail_credentials.json"))
 
 
 def get_service():
@@ -26,6 +26,8 @@ def get_service():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
+            if not os.path.exists(CREDS_PATH):
+                raise FileNotFoundError(f"gmail_credentials_missing:{CREDS_PATH}")
             flow = InstalledAppFlow.from_client_secrets_file(CREDS_PATH, SCOPES)
             creds = flow.run_local_server(port=0)
         os.makedirs(os.path.dirname(TOKEN_PATH), exist_ok=True)

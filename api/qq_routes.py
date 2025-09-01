@@ -16,24 +16,33 @@ DEFAULT_QUERY = os.getenv(
 
 @router.post("/ingest/latest")
 def ingest_latest():
-    service = qq_gmail.get_service()
-    ids = qq_gmail.search_messages(service, DEFAULT_QUERY, DEFAULT_LABEL)
-    ingested = 0
-    strategies = []
-    for mid in ids:
-        if qq_dal.email_exists(mid):
-            continue
-        msg = qq_gmail.fetch_message_html(service, mid)
-        email_id = qq_dal.upsert_email_ingest(msg)
-        parsed = qq_parser.parse_email_html(msg["html"])
-        for name, rdate, rows in parsed:
-            sid = qq_dal.find_or_create_strategy(name)
-            rid = qq_dal.upsert_rebalance(sid, rdate, email_id)
-            for row in rows:
-                qq_dal.upsert_allocation(rid, row)
-            strategies.append(name)
-        ingested += 1
-    return {"emails": ingested, "strategies": list(set(strategies))}
+    try:
+        service = qq_gmail.get_service()
+        ids = qq_gmail.search_messages(service, DEFAULT_QUERY, DEFAULT_LABEL)
+        ingested = 0
+        strategies = []
+        for mid in ids:
+            if qq_dal.email_exists(mid):
+                continue
+            msg = qq_gmail.fetch_message_html(service, mid)
+            email_id = qq_dal.upsert_email_ingest(msg)
+            parsed = qq_parser.parse_email_html(msg["html"])
+            for name, rdate, rows in parsed:
+                sid = qq_dal.find_or_create_strategy(name)
+                rid = qq_dal.upsert_rebalance(sid, rdate, email_id)
+                for row in rows:
+                    qq_dal.upsert_allocation(rid, row)
+                strategies.append(name)
+            ingested += 1
+        return {"emails": ingested, "strategies": list(set(strategies))}
+    except FileNotFoundError as e:
+        msg = str(e)
+        if msg.startswith("gmail_credentials_missing:"):
+            path = msg.split(":",1)[1]
+            raise HTTPException(status_code=400, detail=f"Gmail not configured. Put OAuth client JSON at {path} or set GMAIL_CREDENTIALS_PATH.")
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/run-rebalances")
