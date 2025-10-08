@@ -248,7 +248,7 @@
 
 /* The big left column should really be big */
 .signals-page .signals-grid {
-  grid-template-columns: minmax(800px, 2fr) minmax(360px, 1fr); /* widen left */
+  grid-template-columns: minmax(800px, 1fr) minmax(360px, 1fr); /* widen left */
 }
 
 /* If anything still squeezes right via old flex rules, neutralize */
