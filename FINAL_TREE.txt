@@ -1,0 +1,54 @@
+MacMarket/
+├── app.py  # canonical FastAPI application
+├── backend/
+│   └── app/
+│       ├── __init__.py
+│       ├── alerts.py
+│       ├── backtest.py
+│       ├── crud.py
+│       ├── database.py
+│       ├── models.py
+│       ├── quotes.py
+│       ├── risk.py
+│       ├── schemas.py
+│       └── signals.py
+├── api/
+│   ├── __init__.py
+│   ├── haco.py
+│   ├── portfolio_engine.py
+│   └── qq_routes.py
+├── routes_alerts.py
+├── indicators/
+│   ├── __init__.py
+│   └── haco.py
+├── frontend/
+│   ├── index.html
+│   ├── signals.html
+│   ├── alerts.html
+│   ├── js/
+│   │   ├── haco.js
+│   │   ├── haco-scan.js
+│   │   ├── alerts.js
+│   │   └── journal.js
+│   ├── style.css
+│   └── ... (other legacy HTML pages)
+├── static/
+│   ├── style.css
+│   └── js/
+│       ├── lightweight-charts.standalone.production.js
+│       └── haco-ui.js
+├── src/
+│   ├── App.jsx
+│   ├── components/
+│   └── pages/
+├── tests/
+│   ├── test_haco.py
+│   ├── test_signals.py
+│   ├── test_panorama.py
+│   └── ...
+├── requirements.txt
+├── package.json (retain if Discord bot/React tooling still needed)
+├── ARCHITECTURE.json
+├── ARCHITECTURE.md
+├── CONSOLIDATION_PLAN.md
+└── IMPLEMENTATION_CHECKLIST.md

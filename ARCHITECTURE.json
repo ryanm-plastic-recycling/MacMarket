@@ -1,0 +1,793 @@
+{
+  "backend": {
+    "frameworks": [
+      {
+        "name": "FastAPI",
+        "language": "python",
+        "apps": [
+          "app.py",
+          "backend/app/main.py",
+          "backend/main.py"
+        ]
+      },
+      {
+        "name": "Express",
+        "language": "nodejs",
+        "apps": [
+          "server.js"
+        ]
+      }
+    ],
+    "main_apps": [
+      {
+        "file": "app.py",
+        "description": "Primary FastAPI application exposing health, auth, HACO, portfolio, and static routes."
+      },
+      {
+        "file": "backend/app/main.py",
+        "description": "Standalone FastAPI microservice for alert preferences duplicating parts of app.py."
+      },
+      {
+        "file": "backend/main.py",
+        "description": "Minimal FastAPI entry point exposing /market-data for MySQL connectivity demo."
+      },
+      {
+        "file": "server.js",
+        "description": "Express server for panorama dashboard, tickers CRUD, HACO scan, and alerts API."
+      }
+    ],
+    "routers": [
+      {
+        "file": "routes_alerts.py",
+        "mount": "included via app.include_router in app.py",
+        "summary": "Alert CRUD, HACO worker, legacy /api/alerts.* compatibility."
+      },
+      {
+        "file": "api/haco.py",
+        "mount": "/api/signals/haco",
+        "summary": "HACO indicator endpoints and scan output."
+      },
+      {
+        "file": "api/qq_routes.py",
+        "mount": "/api/qq",
+        "summary": "QuiverQuant ingestion + portfolio APIs."
+      }
+    ],
+    "services": {
+      "python": [
+        {
+          "file": "backend/app/alerts.py",
+          "summary": "Email/SMS helpers using Twilio-like stubs."
+        },
+        {
+          "file": "backend/app/backtest.py",
+          "summary": "Backtesting utilities invoked by /api/backtest routes."
+        },
+        {
+          "file": "backend/app/crud.py",
+          "summary": "SQLAlchemy CRUD helpers for users, tickers, journal, backtests."
+        },
+        {
+          "file": "backend/app/database.py",
+          "summary": "MySQL connection helpers + SQLAlchemy engine."
+        },
+        {
+          "file": "backend/app/risk.py",
+          "summary": "Risk calculations for portfolio endpoints."
+        },
+        {
+          "file": "backend/app/signals.py",
+          "summary": "Signals aggregations calling news, Quiver, Unusual Whales."
+        },
+        {
+          "file": "backend/app/quotes.py",
+          "summary": "Latest price lookup via yfinance."
+        }
+      ],
+      "node": [
+        {
+          "dir": "services",
+          "files": [
+            "alertData.js",
+            "cryptoData.js",
+            "discordData.js",
+            "macroData.js",
+            "marketData.js",
+            "newsData.js",
+            "politicalData.js",
+            "riskData.js",
+            "validateDiscussion.js",
+            "whalesData.js"
+          ],
+          "summary": "Express data fetchers for alerts, political, risk, whales, macro, crypto."
+        }
+      ]
+    },
+    "indicator_libs": [
+      {
+        "file": "indicators/haco.py",
+        "summary": "HACO indicator implementation shared by FastAPI routes."
+      },
+      {
+        "file": "backend/app/signals.py",
+        "summary": "Combines sentiment, technical indicators, and third-party alerts."
+      },
+      {
+        "file": "backend/app/risk.py",
+        "summary": "Computes risk metrics for user portfolios."
+      }
+    ],
+    "datafeeds": [
+      {
+        "file": "backend/app/signals.py",
+        "sources": [
+          "NewsAPI",
+          "QuiverQuant",
+          "UnusualWhales",
+          "yfinance"
+        ]
+      },
+      {
+        "file": "backend/app/quotes.py",
+        "sources": [
+          "yfinance"
+        ]
+      },
+      {
+        "dir": "services",
+        "sources": [
+          "Axios HTTP to Quiver, UnusualWhales, NewsAPI, Macro sources"
+        ]
+      }
+    ],
+    "tests": [
+      "tests/conftest.py",
+      "tests/test_api.py",
+      "tests/test_db.py",
+      "tests/test_haco.py",
+      "tests/test_haco_api.py",
+      "tests/test_journal.py",
+      "tests/test_panorama.py",
+      "tests/test_quiver_backtest.py",
+      "tests/test_signals.py",
+      "tests/test_user.py"
+    ],
+    "requirements": [
+      "requirements.txt",
+      "package.json"
+    ]
+  },
+  "frontend": {
+    "static_html": [
+      "frontend/account.html",
+      "frontend/admin.html",
+      "frontend/alerts.html",
+      "frontend/backtests.html",
+      "frontend/github.html",
+      "frontend/haco-originalarchive.html",
+      "frontend/help.html",
+      "frontend/index.html",
+      "frontend/journal.html",
+      "frontend/login.html",
+      "frontend/qq.html",
+      "frontend/signals.html",
+      "frontend/tickers.html"
+    ],
+    "js": [
+      "frontend/js/alerts.js",
+      "frontend/js/haco-debug.js",
+      "frontend/js/haco-scan.js",
+      "frontend/js/haco-ui.js",
+      "frontend/js/haco.js",
+      "frontend/js/journal.js",
+      "frontend/js/qq.js",
+      "public/js/journal.js",
+      "static/js/alerts.js",
+      "static/js/haco-scan.js",
+      "static/js/haco-solo-scan.js",
+      "static/js/haco-solo-ui.js",
+      "static/js/haco-ui.js",
+      "static/js/lightweight-charts.standalone.production.js"
+    ],
+    "css": [
+      "frontend/TopCongressBuysWidget.css",
+      "frontend/style.css",
+      "static/style.css"
+    ],
+    "pages": {
+      "react": [
+        "src/App.jsx",
+        "src/components/BacktestPage.jsx",
+        "src/components/Dashboard.jsx",
+        "src/components/StrategyTester.jsx",
+        "src/components/TickerBar.jsx",
+        "src/pages/TickersPage.jsx"
+      ],
+      "next_or_mdx": [
+        "pages/newsletter/[date].mdx"
+      ]
+    },
+    "chart_libs": [
+      "static/js/lightweight-charts.standalone.production.js",
+      "package.json::chart.js"
+    ],
+    "routing": {
+      "fastapi_mount": "app.py mounts StaticFiles(frontend) at / and exposes /{full_path:path}",
+      "react_router": "src/App.jsx uses react-router-dom for /, /backtest, /tickers, /strategy-tester"
+    },
+    "static_files_served": {
+      "fastapi": {
+        "static": "/static -> static/",
+        "js": "/js -> frontend/js",
+        "catch_all": "app.mount(\"/\", StaticFiles(directory=frontend))"
+      },
+      "express": {
+        "static": "express.static(frontend), /static alias"
+      }
+    }
+  },
+  "config": {
+    "env_files": [],
+    "dotenv_usage": [
+      "app.py uses dotenv.load_dotenv()"
+    ],
+    "settings_modules": [
+      "backend/app/database.py",
+      "config.yaml"
+    ],
+    "deployment": {
+      "scripts": [
+        "start-macmarket.bat",
+        "start-macmarket.bat - Shortcut.lnk"
+      ],
+      "uvicorn_dir": "uvicorn/ (appears to contain Windows runner scripts)",
+      "no_dockerfiles": true
+    }
+  },
+  "duplicates_or_overlaps": [
+    {
+      "area": "backend FastAPI apps",
+      "new_path": "backend/app/main.py",
+      "existing": "app.py",
+      "note": "Both expose alerts CRUD and HACO endpoints against same database."
+    },
+    {
+      "area": "alerts routers",
+      "new_path": "backend/app/routers/* (planned)",
+      "existing": "routes_alerts.py",
+      "note": "Router already lives at repo root and is included in app.py."
+    },
+    {
+      "area": "services",
+      "new_path": "backend/app/services/* (planned)",
+      "existing": "backend/app/* modules & services/*.js",
+      "note": "Alert/news data providers already implemented in Python and Node services directories."
+    },
+    {
+      "area": "indicator libs",
+      "new_path": "backend/app/indicators/* (planned)",
+      "existing": "indicators/haco.py",
+      "note": "Indicator logic already centralized under indicators/."
+    },
+    {
+      "area": "frontend web",
+      "new_path": "web/signals.html etc.",
+      "existing": "frontend/signals.html and static/js assets",
+      "note": "Signals page already lives under frontend/ and is mounted via FastAPI/Express."
+    }
+  ],
+  "endpoints": [
+    {
+      "file": "api/haco.py",
+      "method": "GET",
+      "path": "/scan"
+    },
+    {
+      "file": "api/haco.py",
+      "method": "POST",
+      "path": "/scan"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "POST",
+      "path": "/ingest/latest"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "GET",
+      "path": "/metrics"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "GET",
+      "path": "/nav"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "GET",
+      "path": "/positions"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "POST",
+      "path": "/run-rebalances"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "GET",
+      "path": "/strategies"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "POST",
+      "path": "/strategies"
+    },
+    {
+      "file": "api/qq_routes.py",
+      "method": "GET",
+      "path": "/trades"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/Dashboard.jsx"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/TopCongressBuysWidget.css"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/TopCongressBuysWidget.jsx"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/alerts"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/admin/users"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/admin/users/{user_id}/admin"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/admin/users/{user_id}/email"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/admin/users/{user_id}/otp"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/admin/users/{user_id}/password"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/admin/users/{user_id}/username"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/backtest/{symbol}"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/api/backtest/{symbol}"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/backtests"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/crypto"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/history"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/api/login"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/api/logout"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/macro"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/api/macro-signal"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/news"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/panorama"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/political"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/price/{symbol}"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/quiver/lobby"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/quiver/political"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/quiver/risk"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/quiver/whales"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/quote/{symbol}"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/recommendation/{symbol}"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/api/register"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/signals/alert"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/api/signals/alert"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/signals/rankings"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/signals/{symbol}"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/ticker"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/users/{user_id}/email"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/users/{user_id}/journal"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/api/users/{user_id}/journal"
+    },
+    {
+      "file": "app.py",
+      "method": "DELETE",
+      "path": "/api/users/{user_id}/journal/{entry_id}"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/users/{user_id}/journal/{entry_id}"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/users/{user_id}/otp"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/users/{user_id}/password"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/users/{user_id}/positions"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/users/{user_id}/recommendations"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/users/{user_id}/risk"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/api/users/{user_id}/tickers"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/users/{user_id}/tickers"
+    },
+    {
+      "file": "app.py",
+      "method": "PUT",
+      "path": "/api/users/{user_id}/username"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/db-check"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/health"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/help.js"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/readme"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/strategy-test/history"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/strategy-test/list"
+    },
+    {
+      "file": "app.py",
+      "method": "POST",
+      "path": "/strategy-test/run"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/style.css"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/theme.js"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/ticker.js"
+    },
+    {
+      "file": "app.py",
+      "method": "GET",
+      "path": "/{full_path:path}"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "GET",
+      "path": "/users/{user_id}/alerts"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "POST",
+      "path": "/users/{user_id}/alerts"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "DELETE",
+      "path": "/users/{user_id}/alerts/{alert_id}"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "PUT",
+      "path": "/users/{user_id}/alerts/{alert_id}"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "GET",
+      "path": "/users/{user_id}/haco-alerts"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "POST",
+      "path": "/users/{user_id}/haco-alerts"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "DELETE",
+      "path": "/users/{user_id}/haco-alerts/{alert_id}"
+    },
+    {
+      "file": "backend/app/main.py",
+      "method": "PUT",
+      "path": "/users/{user_id}/haco-alerts/{alert_id}"
+    },
+    {
+      "file": "backend/main.py",
+      "method": "GET",
+      "path": "/market-data"
+    },
+    {
+      "file": "routes_alerts.py",
+      "method": "GET",
+      "path": "/api/alerts"
+    },
+    {
+      "file": "routes_alerts.py",
+      "method": "POST",
+      "path": "/api/alerts"
+    },
+    {
+      "file": "routes_alerts.py",
+      "method": "GET",
+      "path": "/api/alerts/me"
+    },
+    {
+      "file": "routes_alerts.py",
+      "method": "POST",
+      "path": "/api/alerts/me"
+    },
+    {
+      "file": "routes_alerts.py",
+      "method": "DELETE",
+      "path": "/api/alerts/{alert_id}"
+    },
+    {
+      "file": "routes_alerts.py",
+      "method": "PUT",
+      "path": "/api/alerts/{alert_id}"
+    },
+    {
+      "file": "server.js",
+      "method": "GET",
+      "path": "/api/alerts/me"
+    },
+    {
+      "file": "server.js",
+      "method": "POST",
+      "path": "/api/alerts/me"
+    },
+    {
+      "file": "server.js",
+      "method": "POST",
+      "path": "/api/alerts/test"
+    },
+    {
+      "file": "server.js",
+      "method": "POST",
+      "path": "/api/backtest"
+    },
+    {
+      "file": "server.js",
+      "method": "GET",
+      "path": "/api/panorama"
+    },
+    {
+      "file": "server.js",
+      "method": "GET",
+      "path": "/api/quote/:symbol"
+    },
+    {
+      "file": "server.js",
+      "method": "GET",
+      "path": "/api/scenarios"
+    },
+    {
+      "file": "server.js",
+      "method": "POST",
+      "path": "/api/scenarios"
+    },
+    {
+      "file": "server.js",
+      "method": "POST",
+      "path": "/api/signals/haco/scan"
+    },
+    {
+      "file": "server.js",
+      "method": "GET",
+      "path": "/api/tickers"
+    },
+    {
+      "file": "server.js",
+      "method": "DELETE",
+      "path": "/api/tickers/:id"
+    },
+    {
+      "file": "server.js",
+      "method": "PUT",
+      "path": "/api/tickers/order"
+    },
+    {
+      "file": "server.js",
+      "method": "GET",
+      "path": "/api/users/:userId/haco-alerts"
+    },
+    {
+      "file": "server.js",
+      "method": "POST",
+      "path": "/api/users/:userId/haco-alerts"
+    },
+    {
+      "file": "server.js",
+      "method": "DELETE",
+      "path": "/api/users/:userId/haco-alerts/:id"
+    }
+  ],
+  "static_serving": {
+    "current": {
+      "fastapi": "app.py mounts frontend/ at root and static/ at /static, with additional /js mount for frontend/js.",
+      "express": "server.js serves frontend/ via express.static and /static alias."
+    },
+    "web_prefix": "No explicit /web/ mount today; new /web assets would not be served without additional routing."
+  }
+}
