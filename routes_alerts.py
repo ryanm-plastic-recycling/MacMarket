@@ -78,6 +78,13 @@ def _build_signal_preview(
         "meets_momentum": passes_momentum,
         "passes": passes_total and passes_trend and passes_momentum,
         "panels": data.get("panels", []),
+        panel_by_id = {p.get("id"): p for p in panels}
+        trend_ok    = (panel_by_id.get("trend", {}).get("status") == "PASS")
+        momentum_ok = (panel_by_id.get("momentum", {}).get("status") == "PASS")
+        
+        passes_total    = score >= float(min_total_score)
+        passes_trend    = (not require_trend_pass) or trend_ok
+        passes_momentum = (not require_momentum_pass) or momentum_ok
         "entries": data.get("entries", []),
         "exits": data.get("exits", {}),
         "criteria": {
@@ -357,11 +364,21 @@ def create_alert(request: Request, payload: dict = Body(...)):
     conn = connect_to_db(); cur = conn.cursor()
     cur.execute(
         """
-        INSERT INTO user_alerts (user_id,symbol,strategy,frequency,email,sms,email_template,sms_template,is_enabled)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s,1))
-    """,
-        (uid, symbol, req.get("strategy","HACO"), req.get("frequency","1h"),
-         req.get("email"), req.get("sms"), req.get("email_template"), req.get("sms_template"), req.get("is_enabled"))
+        INSERT INTO user_alerts
+            (user_id, symbol, strategy, frequency, email, sms, email_template, sms_template, is_enabled)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s, COALESCE(%s,1))
+        """,
+        (
+            uid,
+            symbol,
+            req.get("strategy", "HACO"),
+            req.get("frequency", "1h"),
+            req.get("email"),
+            req.get("sms"),
+            req.get("email_template"),
+            req.get("sms_template"),
+            req.get("is_enabled"),
+        ),
     )
     alert_id = cur.lastrowid
     conn.commit(); cur.close(); conn.close()
