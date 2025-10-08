@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Body
 from typing import List, Optional, Dict, Any
 import time
 import math
-import pandas as pd
+import pandas as pd, numpy as np
 import yfinance as yf
 import inspect
 from indicators.haco import compute_haco
