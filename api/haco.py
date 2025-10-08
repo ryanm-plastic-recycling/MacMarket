@@ -80,10 +80,10 @@ def _build_series(
     for ts, row in df.iterrows():
         candles.append({
             "time": int(ts.to_pydatetime().timestamp()),
-            "o": float(row.at["Open"]),
-            "h": float(row.at["High"]),
-            "l": float(row.at["Low"]),
-            "c": float(row.at["Close"]),
+            "o": _scalar(row.get("Open", row.get("open", 0.0))),
+            "h": _scalar(row.get("High", row.get("high", 0.0))),
+            "l": _scalar(row.get("Low",  row.get("low",  0.0))),
+            "c": _scalar(row.get("Close",row.get("close", 0.0))),
         })
     # MetaStock logic (already implemented in indicators.haco)
     out = compute_haco(
