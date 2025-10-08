@@ -283,3 +283,16 @@
   .signals-page .signals-grid { grid-template-columns: 1fr; }
   .signals-page .symbol-signal .overview-grid { grid-template-columns: 1fr; }
 }
+/* internal grid for the TOP section only */
+#signals-top .top-grid{
+  display:grid;
+  grid-template-columns: minmax(720px, 2fr) minmax(360px, 1fr);
+  gap:20px;
+  align-items:start;
+}
+#signals-top .chart-col { min-width: 0; }   /* allow chart to shrink without overflow */
+#signals-top .confirm-col { min-width: 0; }
+
+@media (max-width: 1200px){
+  #signals-top .top-grid{ grid-template-columns: 1fr; }
+}
