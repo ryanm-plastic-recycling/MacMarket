@@ -76,6 +76,31 @@ MODE_PROFILES: dict[str, dict] = {
             "Rotate when readiness diverges for 3 sessions",
         ],
     },
+    "crypto": {
+        "label": "Crypto",
+        "period": "4h",
+        "interval": "1d",
+        "lookback_days": 504,
+        "chart": {
+            "trend_window": 55,
+            "momentum_window": 21,
+            "volume_window": 40,
+        },
+        "mindset": {
+            "tagline": "Crypto is crytpo...good luck and HODL.",
+            "holding_period": "HODL",
+            "focus": [
+                "Confirm trend with macro backdrop",
+                "Scale adds on pullbacks into rising averages",
+                "Trail stops under weekly structure",
+            ],
+        },
+        "playbook": [
+            "Start with 1/2 size until trend proves itself",
+            "Review macro regime each weekend",
+            "Rotate when readiness diverges for 3 sessions",
+        ],
+    },
 }
 
 
