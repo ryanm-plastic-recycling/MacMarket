@@ -9,9 +9,17 @@ from indicators.haco import compute_haco
 from backend.app import alerts as mm_alerts
 from backend.app import signals as signal_engine
 from backend.app.database import connect_to_db
+import pandas as pd, numpy as np
 
 router = APIRouter()
 
+def _scalar(x, default=0.0):
+    if isinstance(x, pd.Series):
+        x = x.iloc[0] if len(x) else default
+    elif isinstance(x, np.ndarray):
+        x = x.item() if x.size else default
+    return float(x) if pd.notna(x) else float(default)
+    
 # --- user resolver (derive the request user id) ---
 def _req_user_id(request: Request, explicit: Optional[int] = None) -> int:
     if explicit:
@@ -140,10 +148,10 @@ async def _alerts_worker() -> None:  # pragma: no cover - background task
                 candles = [
                     {
                         "time": int(ts.to_pydatetime().timestamp()),
-                        "o": float(row.at["Open"]),
-                        "h": float(row.at["High"]),
-                        "l": float(row.at["Low"]),
-                        "c": float(row.at["Close"]),
+                        "o": _scalar(row.get("Open", row.get("open", 0.0))),
+                         "h": _scalar(row.get("High", row.get("high", 0.0))),
+                         "l": _scalar(row.get("Low",  row.get("low",  0.0))),
+                         "c": _scalar(row.get("Close",row.get("close", 0.0))),
                     }
                     for ts, row in df.iterrows()
                 ]
