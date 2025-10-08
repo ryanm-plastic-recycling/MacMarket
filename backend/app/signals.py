@@ -64,6 +64,19 @@ def _get_mode_profile(mode: str) -> tuple[str, dict]:
     return canonical, profile
 
 
+def _to_float(x, default: float = 0.0) -> float:
+    """Coerce pandas/ndarray/scalar to a plain float, mapping NaN/None to default."""
+    try:
+        if isinstance(x, pd.Series):
+            x = x.iloc[0] if len(x) else default
+        elif isinstance(x, np.ndarray):
+            x = x.item() if x.size else default
+        x = float(x)
+        return x if not math.isnan(x) else default
+    except Exception:
+        return default
+
+
 def _fallback_history() -> pd.DataFrame:
     """Return a deterministic synthetic price series for offline operation."""
 
@@ -160,10 +173,10 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     else:
         raw_ref = closes.iloc[0] if len(closes) else 0.0
     
-    # force scalar float, handle NaN safely
-    ref = float(raw_ref) if pd.notna(raw_ref) else 0.0
-    last_close = float(closes.iloc[-1]) if len(closes) else 0.0
-    momentum = ((last_close / ref) - 1.0) if ref not in (0.0, -0.0) else 0.0
+    # force scalar float, handle NaN safely (avoid pandas truthiness)
+    ref = _to_float(raw_ref, 0.0)
+    last_close = _to_float(closes.iloc[-1] if len(closes) else 0.0, 0.0)
+    momentum = ((last_close / ref) - 1.0) if ref != 0.0 else 0.0
     
     momentum_score = indicator_common.normalise_score(momentum, lower=-0.08, upper=0.08)
     momentum_status = "accelerating" if momentum > 0 else "fading" if momentum < 0 else "flat"
