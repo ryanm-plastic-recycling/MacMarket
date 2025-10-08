@@ -6,6 +6,7 @@ SQLAlchemy
 pydantic
 email-validator
 yfinance
+jinja2
 requests
 pyotp
 pandas

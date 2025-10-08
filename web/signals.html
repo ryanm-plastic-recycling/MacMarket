@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Signals – MacMarket</title>
+  <link rel="stylesheet" href="css/indicators.css" />
+  <script src="https://unpkg.com/lightweight-charts@4.0.0/dist/lightweight-charts.standalone.production.js" defer></script>
+  <script src="js/signals.js" type="module" defer></script>
+</head>
+<body class="app-shell">
+  <header class="top-nav">
+    <div class="brand">MacMarket</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="signals.html" class="active">Signals</a>
+    </nav>
+  </header>
+  <main class="signals-main">
+    <section class="top-controls">
+      <div class="mode-switcher" id="mode-switcher" aria-label="Trading modes"></div>
+      <div class="watchlist" id="watchlist"></div>
+      <div class="mindset" id="mode-mindset"></div>
+    </section>
+
+    <section class="core-grid">
+      <div class="chart-column">
+        <header class="section-header">
+          <h2 id="chart-title">Heikin-Ashi Stack</h2>
+          <span id="chart-subtitle"></span>
+        </header>
+        <div id="chart-area"></div>
+        <div class="subpanels">
+          <div class="subpanel" id="haco-panel">
+            <header>HACO</header>
+            <canvas></canvas>
+          </div>
+          <div class="subpanel" id="rsi-panel">
+            <header>RSI (14)</header>
+            <canvas></canvas>
+          </div>
+          <div class="subpanel" id="adx-panel">
+            <header>ADX (14)</header>
+            <canvas></canvas>
+          </div>
+        </div>
+      </div>
+      <aside class="indicator-panel" id="indicator-panel">
+        <header>
+          <h2>Indicator Confirmation</h2>
+          <div class="readiness">
+            <div class="readiness-ring">
+              <svg viewBox="0 0 120 120">
+                <circle class="ring-bg" cx="60" cy="60" r="54"></circle>
+                <circle class="ring-progress" cx="60" cy="60" r="54"></circle>
+              </svg>
+              <div class="ring-value" id="readiness-value">0%</div>
+            </div>
+            <div class="readiness-text">
+              <p><strong id="readiness-label">Not Ready</strong></p>
+              <p id="readiness-detail">Waiting for mode alignment.</p>
+            </div>
+          </div>
+        </header>
+        <div class="panel-cards" id="panel-cards"></div>
+        <footer>
+          <button id="open-alert-drawer">Create Alert</button>
+        </footer>
+      </aside>
+    </section>
+
+    <section class="advanced-tabs">
+      <header>
+        <h2>Advanced Confirmation</h2>
+      </header>
+      <div class="tabs" id="advanced-tabs"></div>
+      <div class="tab-body" id="tab-body"></div>
+    </section>
+  </main>
+
+  <aside class="alert-drawer" id="alert-drawer" aria-hidden="true">
+    <div class="drawer-content">
+      <header>
+        <h3>Create Alert</h3>
+        <button class="close" id="close-alert-drawer" aria-label="Close">×</button>
+      </header>
+      <form id="alert-form">
+        <label>Symbol
+          <input type="text" id="alert-symbol" value="SPY" />
+        </label>
+        <label>Mode
+          <select id="alert-mode">
+            <option value="day">Day</option>
+            <option value="swing" selected>Swing</option>
+            <option value="position">Position</option>
+            <option value="crypto">Crypto</option>
+          </select>
+        </label>
+        <label>Timeframe
+          <input type="text" id="alert-tf" value="1h" />
+        </label>
+        <fieldset>
+          <legend>Channels</legend>
+          <label>Email <input type="email" id="alert-email" placeholder="you@example.com" /></label>
+          <label>SMS <input type="tel" id="alert-sms" placeholder="+1" /></label>
+        </fieldset>
+        <fieldset>
+          <legend>Rules</legend>
+          <label><input type="checkbox" id="rule-trend" checked /> Require trend pass</label>
+          <label><input type="checkbox" id="rule-momentum" checked /> Require momentum pass</label>
+          <label>Minimum readiness <input type="number" id="rule-score" value="75" min="0" max="100" /></label>
+        </fieldset>
+        <div class="drawer-actions">
+          <button type="submit">Test Now</button>
+        </div>
+      </form>
+      <pre class="preview" id="alert-preview"></pre>
+    </div>
+  </aside>
+</body>
+</html>

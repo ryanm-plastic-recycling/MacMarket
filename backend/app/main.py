@@ -5,6 +5,9 @@ from . import models, schemas, crud
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pathlib import Path
+from .routers import signals as signals_router
+from .routers import alerts as alerts_router
+from .routers import watchlist as watchlist_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -17,6 +20,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(signals_router.router)
+app.include_router(alerts_router.router)
+app.include_router(watchlist_router.router)
 
 # Dependency
 

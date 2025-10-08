@@ -71,6 +71,34 @@ Planned support for:
 - HACO strategy with zero-lag Heikin-Ashi trend detection, interactive chart, and ticker scanner
 - Optional Discord bot integration for realtime alerts
 
+## 🚦 Signals Workspace (HACO/HACOLT)
+
+The `/web/signals.html` experience introduces a mode-aware confirmation panel. It consumes the new FastAPI endpoints:
+
+- `GET /api/signals/{symbol}?mode=swing` – returns trend/momentum/volatility/volume/stops scoring, HACO/HACOLT data and chart presets.
+- `GET /api/watchlist` – exposes the default cross-asset watchlist (SPY, QQQ, DIA, IWM, sector ETFs, futures and crypto majors).
+- `POST /api/alerts` – validates alert rules against the latest signal snapshot and returns a preview message.
+
+Each mode profile (Day, Swing, Position, Crypto) defines its own timeframe focus, EMA presets and ATR stop multiples. Trend scoring checks EMA alignment, momentum maps RSI(14) 40–70 into a 0–100 score, and volatility maps ADX(14) across the 20/25/40 regimes. Volume confirmation uses OBV slope and the Stops panel displays ATR × K trails plus HACOLT state.
+
+**Example curl**
+
+```bash
+curl "http://localhost:8000/api/signals/SPY?mode=swing" | jq '.panels'
+
+curl -X POST http://localhost:8000/api/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+        "symbol":"SPY",
+        "mode":"swing",
+        "tf":"1h",
+        "channels":{"email":"you@example.com"},
+        "rules":{"require_trend_pass":true,"require_momentum_pass":true,"min_total_score":75}
+      }'
+```
+
+The alert preview responds with a readiness percentage, PASS/FAIL breakdown and the current ATR stop derived from HACOLT.
+
 ## 🛠️ To Do
 - [ ] Decide on broker(s) to integrate
 - [ ] Set up modular API wrapper framework
