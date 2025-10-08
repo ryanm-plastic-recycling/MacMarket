@@ -370,6 +370,8 @@ def format_price(value: float | None) -> float | None:
     """Return value rounded to 5 decimals when under $1, otherwise 2 decimals."""
     if value is None:
         return None
+    if isinstance(value, float) and math.isnan(value):
+        return None
     return round(value, 5) if abs(value) < 1 else round(value, 2)
 
 
@@ -635,44 +637,49 @@ def _exit_levels(symbol: str, action: str, price: float) -> tuple[dict | None, s
     """Return low/medium/high risk exit levels and an explanation."""
     try:
         data = yf.download(
-            symbol,
-            period="2mo",
-            interval="1d",
-            auto_adjust=False,
-            progress=False,
-            threads=True,
+            symbol, period="2mo", interval="1d",
+            auto_adjust=False, progress=False, threads=True,
         )
-        if data.empty:
+        if data is None or data.empty:
             return None, "No historical data for exits"
-        high = data["High"]
-        low = data["Low"]
-        close = data["Close"]
+
+        high = data["High"].astype(float)
+        low  = data["Low"].astype(float)
+        close = data["Close"].astype(float)
+
+        # Need enough bars; otherwise, bail early with a friendly reason.
+        n = len(close)
+        if n < 20:
+            return None, "Not enough history for exits"
+
         tr = pd.concat([
             high - low,
             (high - close.shift()).abs(),
-            (low - close.shift()).abs(),
+            (low  - close.shift()).abs(),
         ], axis=1).max(axis=1)
-        atr = tr.rolling(14).mean().iloc[-1]
-        support = low.rolling(20).min().iloc[-1]
-        resistance = high.rolling(20).max().iloc[-1]
+
+        atr_val = float(tr.rolling(14, min_periods=14).mean().iloc[-1])
+        sup_val = float(low.rolling(20,  min_periods=20).min().iloc[-1])
+        res_val = float(high.rolling(20, min_periods=20).max().iloc[-1])
+
+        # Guard NaNs
+        if any(math.isnan(v) for v in (atr_val, sup_val, res_val)):
+            return None, "Insufficient data quality for exits"
 
         if action == "buy":
             exits = {
-                "low": format_price(price + atr),
-                "medium": format_price(price + 2 * atr),
-                "high": format_price(max(resistance, price + 3 * atr)),
+                "low":    format_price(price + atr_val),
+                "medium": format_price(price + 2 * atr_val),
+                "high":   format_price(max(res_val, price + 3 * atr_val)),
             }
         else:
             exits = {
-                "low": format_price(price - atr),
-                "medium": format_price(price - 2 * atr),
-                "high": format_price(min(support, price - 3 * atr)),
+                "low":    format_price(price - atr_val),
+                "medium": format_price(price - 2 * atr_val),
+                "high":   format_price(min(sup_val, price - 3 * atr_val)),
             }
 
-        reason = (
-            f"ATR {atr:.2f}, support {support:.2f}, resistance {resistance:.2f}."
-            " Exits adjust for risk tolerance."
-        )
+        reason = f"ATR {atr_val:.2f}, support {sup_val:.2f}, resistance {res_val:.2f}."
         return exits, reason
     except Exception:
         return None, "Exit calculation failed"
