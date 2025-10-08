@@ -49,6 +49,12 @@ def _consecutive(arr: pd.Series) -> pd.Series:
         out.append(run)
     return pd.Series(out, index=arr.index)
 
+def _scalar(x, default=0.0):
+    if isinstance(x, pd.Series):
+        x = x.iloc[0] if len(x) else default
+    elif isinstance(x, np.ndarray):
+        x = x.item() if x.size else default
+    return float(x) if pd.notna(x) else float(default)
 
 def _build_series(
     symbol: str,
