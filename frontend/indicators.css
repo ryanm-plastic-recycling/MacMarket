@@ -1,56 +1,285 @@
-/* --- base blocks used by the Signals page --- */
-.overview-grid{display:grid;gap:1.25rem;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin:1rem 0 2rem}
-.panels-grid{display:grid;gap:.75rem}
-.panel-card{background:rgba(15,23,42,.6);border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:.75rem;height:100%}
-.panel-card header{display:flex;justify-content:space-between;align-items:center}
-.panel-card .badge{background:rgba(76,120,255,.2);border-radius:999px;color:#4c78ff;font-weight:600;padding:.25rem .65rem}
-.chart-frame{background:rgba(15,23,42,.4);border:1px solid rgba(148,163,184,.15);border-radius:12px;height:320px}
-.entries-list,.mindset-focus,.watchlist-list{list-style:none;margin:0;padding:0}
-.entries-list li,.mindset-focus li,.watchlist-list li{background:rgba(15,23,42,.35);border:1px solid rgba(148,163,184,.12);border-radius:10px;margin-bottom:.6rem;padding:.6rem .8rem;display:flex;flex-direction:column;gap:.25rem}
-.tabs-shell{background:rgba(15,23,42,.35);border:1px solid rgba(148,163,184,.2);border-radius:12px;display:flex;flex-direction:column;gap:.75rem;padding:.75rem}
-.tabs-nav{display:flex;flex-wrap:wrap;gap:.5rem}
-.tabs-nav button{background:rgba(148,163,184,.12);border:1px solid transparent;border-radius:6px;color:inherit;cursor:pointer;font:inherit;padding:.35rem .75rem}
-.tabs-nav button.active{background:rgba(76,120,255,.18);border-color:rgba(76,120,255,.4);color:#dbeafe}
-.levels-table{border-collapse:collapse;width:100%;margin-bottom:.5rem}
-.levels-table th,.levels-table td{border:1px solid rgba(148,163,184,.2);padding:.4rem .6rem;text-align:left}
-.levels-table th{background:rgba(148,163,184,.15)}
+.overview-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 1rem 0 2rem;
+}
 
-/* ===== Signals page hard overrides (page-scoped) ===== */
-#sidebar{position:fixed;top:0;left:0;width:230px}
-.signals-page, .signals-page *{float:none!important;max-width:none!important}
-.signals-page, .signals-page header{margin-left:250px!important}
-.signals-page{padding:0 20px 48px}
+.readiness-score {
+  --score: 0;
+  --ready-color: #4caf50;
+  align-items: center;
+  background: conic-gradient(var(--ready-color) calc(var(--score) * 1%), rgba(255, 255, 255, 0.08) 0);
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  font-size: 2.75rem;
+  font-weight: 600;
+  height: 140px;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  position: relative;
+  width: 140px;
+}
 
-/* top layout: wide left, slim right */
-.signals-page .signals-grid{display:grid!important;grid-template-columns:minmax(800px,2fr) minmax(360px,1fr);gap:20px;align-items:start;width:100%}
+.readiness-score::after {
+  background: var(--page-bg, #0f172a);
+  border-radius: 50%;
+  bottom: 12px;
+  content: '';
+  left: 12px;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: -1;
+}
 
-/* card shell */
-.signals-page .signal-section{background:rgba(15,23,42,.35);border:1px solid rgba(148,163,184,.2);border-radius:12px;padding:14px;box-sizing:border-box}
-.signals-page .signal-section.span-2{grid-column:1/-1}
+.readiness-score.is-weak {
+  --ready-color: #ef5350;
+}
 
-/* inner grid of the first section */
-.signals-page .symbol-signal .overview-grid{display:grid!important;grid-template-columns:1.4fr 1fr;grid-auto-rows:min-content;gap:14px}
-.signals-page .symbol-signal .overview-chart{grid-column:1}
-.signals-page .symbol-signal .overview-readiness,
-.signals-page .symbol-signal .overview-panels{grid-column:2}
-.signals-page .symbol-signal .overview-entries,
-.signals-page .symbol-signal .overview-exits,
-.signals-page .symbol-signal .overview-tabs,
-.signals-page .symbol-signal .overview-mindset,
-.signals-page .symbol-signal .overview-watchlist{grid-column:1/-1}
+.readiness-score.is-neutral {
+  --ready-color: #ffb300;
+}
 
-/* chart must expand */
-#signals-chart{width:100%!important;min-height:360px!important}
+.readiness-score.is-strong {
+  --ready-color: #26a69a;
+}
 
-/* controls row */
-.signals-page .row-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.signals-page .row-controls label{display:inline-flex;gap:6px;align-items:center}
+.readiness-components {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 
-/* responsive collapse */
-@media (max-width:1280px){.signals-page .signals-grid{grid-template-columns:1.2fr 1fr}}
-@media (max-width:1100px){
-  #sidebar{position:static;width:auto}
-  .signals-page, .signals-page header{margin-left:0!important}
-  .signals-page .signals-grid{grid-template-columns:1fr}
-  .signals-page .symbol-signal .overview-grid{grid-template-columns:1fr}
+.readiness-components li {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.readiness-components li strong {
+  font-size: 1.1rem;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.readiness-components li small {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+.panels-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.panel-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+}
+
+.panel-card header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.panel-card .badge {
+  background: rgba(76, 120, 255, 0.2);
+  border-radius: 999px;
+  color: #4c78ff;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+}
+
+.panel-card footer {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+  margin-top: auto;
+}
+
+.chart-frame {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  height: 320px;
+}
+
+.entries-list,
+.mindset-focus,
+.watchlist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entries-list li,
+.mindset-focus li,
+.watchlist-list li {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  margin-bottom: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.entries-list li strong {
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.entries-list li em {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+}
+
+.watchlist-list li button {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  transition: background 0.2s ease;
+}
+
+.watchlist-list li button:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.tabs-shell {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.tabs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tabs-nav button {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.35rem 0.75rem;
+}
+
+.tabs-nav button.active {
+  background: rgba(76, 120, 255, 0.18);
+  border-color: rgba(76, 120, 255, 0.4);
+  color: #dbeafe;
+}
+
+.tabs-content ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.levels-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.levels-table th,
+.levels-table td {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.levels-table th {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+/* ==== Signals page: kill legacy wrappers that force narrow/right float ==== */
+.signals-page #content,
+.signals-page .content,
+.signals-page .container,
+.signals-page .wrapper,
+.signals-page .main,
+.signals-page .col,
+.signals-page .column {
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  float: none !important;
+  display: block !important;
+  clear: none !important;
+  position: static !important;
+  text-align: left !important;
+}
+
+/* Make sure our grid actually stretches */
+.signals-page .signals-grid {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+/* Chart container must own width/height so LightweightCharts renders */
+#signals-chart {
+  width: 100% !important;
+  min-height: 360px !important;
+}
+
+/* The big left column should really be big */
+.signals-page .signals-grid {
+  grid-template-columns: minmax(800px, 2fr) minmax(360px, 1fr); /* widen left */
+}
+
+/* If anything still squeezes right via old flex rules, neutralize */
+.signals-page,
+.signals-page header,
+.signals-page .signals-grid,
+.signals-page .symbol-signal .overview-grid {
+  display: block; /* start clean */
+}
+.signals-page .signals-grid { display: grid !important; }
+.signals-page .symbol-signal .overview-grid { display: grid !important; }
+
+/* Give the first section a clear visual container */
+.signals-page .signal-section {
+  box-sizing: border-box;
+}
+
+/* Ensure no inherited text-align messes with layout */
+.signals-page * { text-align: initial; }
+
+/* As a safety net, keep the sidebar push */
+#sidebar { position: fixed; top: 0; left: 0; width: 230px; }
+.signals-page, .signals-page header { margin-left: 250px !important; }
+
+/* Responsive collapse */
+@media (max-width: 1280px) {
+  .signals-page .signals-grid { grid-template-columns: 1.2fr 1fr; }
+}
+@media (max-width: 1100px) {
+  #sidebar { position: static; width: auto; }
+  .signals-page, .signals-page header { margin-left: 0 !important; }
+  .signals-page .signals-grid { grid-template-columns: 1fr; }
+  .signals-page .symbol-signal .overview-grid { grid-template-columns: 1fr; }
 }
