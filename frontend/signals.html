@@ -81,6 +81,34 @@
         </div>
       </aside>
     </div>
+      
+    <!-- 3) HACO Strategy (full width, includes charts) -->
+    <section class="signal-section span-2" id="haco-section">
+      <h3>HACO Strategy</h3>
+      <form id="haco-form" class="row" onsubmit="return false" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+        <label>Symbol <input id="haco-symbol" value="SPY"></label>
+        <label>Timeframe
+          <select id="haco-timeframe">
+            <option>Day</option>
+            <option>Hour</option>
+            <option>4h</option>
+            <option>Week</option>
+            <option>Month</option>
+          </select>
+        </label>
+        <label>Length Up <input id="haco-lenUp" value="34" type="number" min="1"></label>
+        <label>Length Down <input id="haco-lenDown" value="34" type="number" min="1"></label>
+        <label>Alert Lookback <input id="haco-alertLookback" value="1" type="number" min="1"></label>
+        <label>Lookback <input id="haco-lookback" value="200" type="number" min="50"></label>
+        <label><input type="checkbox" id="haco-toggleHa"> Show Heikin-Ashi</label>
+        <button id="haco-run" type="submit">Run</button>
+      </form>
+    
+      <div id="haco-chart" style="height:420px; position:relative;"></div>
+      <div id="haco-toast" class="toast" style="display:none;"></div>
+      <div id="haco-signal-chart" style="height:100px;"></div>
+      <div id="haco-explain"></div>
+    </section>
 
     <!-- full-width rows under the grid -->
     <section class="overview-entries">
