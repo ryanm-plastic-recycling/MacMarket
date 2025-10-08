@@ -1,0 +1,462 @@
+(() => {
+  const state = {
+    chart: null,
+    candleSeries: null,
+    sma20Series: null,
+    sma50Series: null,
+    trendSeries: null,
+    tabs: [],
+    activeTab: null,
+    lastMode: 'swing',
+  };
+
+  const el = (id) => document.getElementById(id);
+
+  function setStatus(message, tone = 'info') {
+    const node = el('status');
+    if (!node) return;
+    node.textContent = message;
+    node.dataset.tone = tone;
+  }
+
+  function ensureChart() {
+    const container = el('signals-chart');
+    if (!container || typeof LightweightCharts === 'undefined') {
+      return null;
+    }
+    if (!state.chart) {
+      state.chart = LightweightCharts.createChart(container, {
+        height: 360,
+        layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
+        rightPriceScale: { borderVisible: false },
+        timeScale: { borderVisible: false },
+        grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
+      });
+      state.candleSeries = state.chart.addCandlestickSeries({
+        upColor: '#26a69a',
+        downColor: '#ef5350',
+        borderVisible: false,
+        wickUpColor: '#26a69a',
+        wickDownColor: '#ef5350',
+      });
+      state.sma20Series = state.chart.addLineSeries({ color: '#4c78ff', lineWidth: 2 });
+      state.sma50Series = state.chart.addLineSeries({ color: '#ffa600', lineWidth: 2 });
+      state.trendSeries = state.chart.addLineSeries({
+        color: '#ab47bc',
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dotted,
+      });
+    }
+    return state.chart;
+  }
+
+  function renderChart(chartPayload) {
+    const chart = ensureChart();
+    if (!chart || !chartPayload) return;
+
+    const candles = (chartPayload.candles || []).map((c) => ({
+      time: Number(c.time),
+      open: c.o,
+      high: c.h,
+      low: c.l,
+      close: c.c,
+    }));
+    state.candleSeries.setData(candles);
+
+    const indicators = chartPayload.indicators || {};
+    state.sma20Series.setData((indicators.sma20 || []).map((p) => ({ time: Number(p.time), value: p.value })));
+    state.sma50Series.setData((indicators.sma50 || []).map((p) => ({ time: Number(p.time), value: p.value })));
+    state.trendSeries.setData((indicators.trend || []).map((p) => ({ time: Number(p.time), value: p.value })));
+  }
+
+  function renderReadiness(readiness) {
+    const scoreEl = el('readiness-score');
+    const componentsEl = el('readiness-components');
+    if (!scoreEl || !componentsEl) return;
+    const score = readiness?.score ?? 0;
+    scoreEl.textContent = Math.round(score);
+    scoreEl.style.setProperty('--score', score);
+    scoreEl.classList.remove('is-weak', 'is-neutral', 'is-strong');
+    if (score >= 60) scoreEl.classList.add('is-strong');
+    else if (score >= 40) scoreEl.classList.add('is-neutral');
+    else scoreEl.classList.add('is-weak');
+
+    componentsEl.innerHTML = '';
+    (readiness?.components || []).forEach((comp) => {
+      const item = document.createElement('li');
+      item.innerHTML = `<span>${comp.title}</span><strong>${Math.round(comp.score)}</strong><small>${comp.status}</small>`;
+      componentsEl.appendChild(item);
+    });
+  }
+
+  function renderPanels(panels) {
+    const grid = el('panels-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    (panels || []).forEach((panel) => {
+      const card = document.createElement('article');
+      card.className = 'panel-card';
+      card.innerHTML = `
+        <header>
+          <h4>${panel.title}</h4>
+          <span class="badge">${Math.round(panel.score)}</span>
+        </header>
+        <p>${panel.summary || ''}</p>
+        <footer>${panel.status || ''}</footer>`;
+      grid.appendChild(card);
+    });
+  }
+
+  function renderEntries(entries) {
+    const list = el('entries-list');
+    if (!list) return;
+    list.innerHTML = '';
+    (entries || []).forEach((entry) => {
+      const li = document.createElement('li');
+      const confidence = entry.confidence != null ? `${Math.round(entry.confidence)}%` : '—';
+      li.innerHTML = `
+        <strong>${entry.type ?? 'neutral'}</strong>
+        <span>${entry.summary ?? ''}</span>
+        <em>${confidence}</em>`;
+      list.appendChild(li);
+    });
+  }
+
+  function renderExits(exits) {
+    const container = el('exits-summary');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!exits || !exits.levels) {
+      container.textContent = exits?.reason || 'No exit data available.';
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.className = 'levels-table';
+    const header = document.createElement('tr');
+    header.innerHTML = '<th>Risk</th><th>Level</th>';
+    table.appendChild(header);
+    Object.entries(exits.levels).forEach(([risk, value]) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>${risk}</td><td>${value ?? '—'}</td>`;
+      table.appendChild(row);
+    });
+    container.appendChild(table);
+    const reason = document.createElement('p');
+    reason.className = 'muted';
+    reason.textContent = exits.reason ?? '';
+    container.appendChild(reason);
+  }
+
+  function renderAdvancedTabs(tabs) {
+    const nav = el('advanced-tabs-nav');
+    const content = el('advanced-tab-content');
+    if (!nav || !content) return;
+    nav.innerHTML = '';
+    content.innerHTML = '';
+    state.tabs = tabs || [];
+    if (!state.tabs.length) {
+      content.textContent = 'No advanced notes for this mode.';
+      return;
+    }
+    state.tabs.forEach((tab, index) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = tab.title || tab.id;
+      btn.dataset.tabId = tab.id;
+      if (index === 0) {
+        btn.classList.add('active');
+        state.activeTab = tab.id;
+      }
+      btn.addEventListener('click', () => activateTab(tab.id));
+      nav.appendChild(btn);
+    });
+    activateTab(state.tabs[0].id);
+  }
+
+  function activateTab(tabId) {
+    const content = el('advanced-tab-content');
+    const nav = el('advanced-tabs-nav');
+    if (!content || !nav) return;
+    state.activeTab = tabId;
+    [...nav.querySelectorAll('button')].forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.tabId === tabId);
+    });
+    const tab = findTab(tabId);
+    content.innerHTML = '';
+    if (!tab) return;
+    const items = Array.isArray(tab.content) ? tab.content : [tab.content];
+    const list = document.createElement('ul');
+    items.filter(Boolean).forEach((item) => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      list.appendChild(li);
+    });
+    content.appendChild(list);
+  }
+
+  function findTab(id) {
+    return state.tabs.find((tab) => tab.id === id) || state.tabs[0];
+  }
+
+  function renderMindset(mindset) {
+    const taglineEl = el('mindset-tagline');
+    const focusEl = el('mindset-focus');
+    if (taglineEl) taglineEl.textContent = mindset?.tagline || '';
+    if (focusEl) {
+      focusEl.innerHTML = '';
+      (mindset?.focus || []).forEach((point) => {
+        const li = document.createElement('li');
+        li.textContent = point;
+        focusEl.appendChild(li);
+      });
+    }
+  }
+
+  function renderWatchlist(watchlist) {
+    const list = el('watchlist-list');
+    if (!list) return;
+    list.innerHTML = '';
+    (watchlist || []).forEach((symbol) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = symbol;
+      btn.addEventListener('click', () => {
+        const symbolInput = el('symbol');
+        if (symbolInput) symbolInput.value = symbol;
+        runSignal();
+      });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+  }
+
+  function renderModes(modes, selected) {
+    const select = el('mode-select');
+    if (!select) return;
+    const normalized = (modes || []).map((mode) => mode.toLowerCase());
+    const current = new Set();
+    select.innerHTML = '';
+    normalized.forEach((mode) => {
+      const option = document.createElement('option');
+      option.value = mode;
+      option.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+      if (mode === selected) option.selected = true;
+      current.add(mode);
+      select.appendChild(option);
+    });
+    if (!current.has(selected)) {
+      const fallback = document.createElement('option');
+      fallback.value = selected;
+      fallback.textContent = selected.charAt(0).toUpperCase() + selected.slice(1);
+      fallback.selected = true;
+      select.appendChild(fallback);
+    }
+    state.lastMode = select.value;
+  }
+
+  function applyLegacySections(data) {
+    const newsEl = el('news-output');
+    const techEl = el('tech-output');
+    if (newsEl) {
+      newsEl.className = '';
+      const score = data?.news?.score ?? 0;
+      newsEl.textContent = `Score: ${score}`;
+      if (score > 0) newsEl.classList.add('bullish');
+      else if (score < 0) newsEl.classList.add('bearish');
+    }
+    if (techEl) {
+      techEl.className = '';
+      const signal = data?.technical?.signal ?? 'none';
+      techEl.textContent = signal;
+      if (signal === 'bullish') techEl.classList.add('bullish');
+      else if (signal === 'bearish') techEl.classList.add('bearish');
+    }
+  }
+
+  async function fetchSignal() {
+    const symbolInput = el('symbol');
+    const modeSelect = el('mode-select');
+    if (!symbolInput) return null;
+    const sym = symbolInput.value.trim().toUpperCase();
+    if (!sym) return null;
+    const mode = modeSelect ? modeSelect.value : state.lastMode;
+    setStatus(`Loading ${sym} (${mode}) signal...`, 'loading');
+    try {
+      const res = await fetch(`/api/signals/${encodeURIComponent(sym)}?mode=${encodeURIComponent(mode)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      renderModes(data.available_modes || [], data.mode || mode);
+      renderReadiness(data.readiness);
+      renderPanels(data.panels);
+      renderChart(data.chart);
+      renderEntries(data.entries);
+      renderExits(data.exits);
+      renderAdvancedTabs(data.advanced_tabs);
+      renderMindset(data.mindset);
+      renderWatchlist(data.watchlist);
+      applyLegacySections(data);
+      if (sym) renderTechChart(sym);
+      setStatus('Signal updated', 'ok');
+      return data;
+    } catch (err) {
+      console.error(err);
+      setStatus('Failed to load signal', 'error');
+      return null;
+    }
+  }
+
+  function sma(values, period) {
+    const res = [];
+    let sum = 0;
+    for (let i = 0; i < values.length; i += 1) {
+      sum += values[i];
+      if (i >= period) sum -= values[i - period];
+      res.push(i >= period - 1 ? sum / period : null);
+    }
+    return res;
+  }
+
+  function findLastCross(shortArr, longArr) {
+    for (let i = shortArr.length - 1; i > 0; i -= 1) {
+      if (
+        shortArr[i] == null ||
+        longArr[i] == null ||
+        shortArr[i - 1] == null ||
+        longArr[i - 1] == null
+      )
+        continue;
+      if (shortArr[i - 1] < longArr[i - 1] && shortArr[i] > longArr[i]) return { index: i, dir: 'up' };
+      if (shortArr[i - 1] > longArr[i - 1] && shortArr[i] < longArr[i]) return { index: i, dir: 'down' };
+    }
+    return null;
+  }
+
+  async function renderTechChart(sym) {
+    try {
+      const res = await fetch(`/api/history?symbol=${encodeURIComponent(sym)}&period=6mo&interval=1d`);
+      if (!res.ok) return;
+      const hist = await res.json();
+      const dates = hist.dates;
+      const closes = hist.close;
+      const ma20 = sma(closes, 20);
+      const ma50 = sma(closes, 50);
+      const chartEl = el('tech-chart');
+      if (!chartEl || typeof LightweightCharts === 'undefined') return;
+      chartEl.innerHTML = '';
+      const chart = LightweightCharts.createChart(chartEl, { height: 300 });
+      const priceSeries = chart.addLineSeries({ color: '#4c78ff' });
+      const ma20Series = chart.addLineSeries({ color: 'green' });
+      const ma50Series = chart.addLineSeries({ color: 'red' });
+      const priceData = dates.map((d, i) => ({ time: d, value: closes[i] }));
+      priceSeries.setData(priceData);
+      ma20Series.setData(dates.map((d, i) => (ma20[i] ? { time: d, value: ma20[i] } : null)).filter(Boolean));
+      ma50Series.setData(dates.map((d, i) => (ma50[i] ? { time: d, value: ma50[i] } : null)).filter(Boolean));
+      const cross = findLastCross(ma20, ma50);
+      if (cross) {
+        priceSeries.setMarkers([
+          {
+            time: dates[cross.index],
+            position: cross.dir === 'up' ? 'belowBar' : 'aboveBar',
+            color: cross.dir === 'up' ? 'green' : 'red',
+            shape: cross.dir === 'up' ? 'arrowUp' : 'arrowDown',
+            text: '20/50',
+          },
+        ]);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function fetchMacro() {
+    const text = el('macro-text')?.value;
+    if (!text) return;
+    setStatus('Analyzing macro...', 'loading');
+    const res = await fetch('/api/macro-signal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) {
+      setStatus('Macro analysis failed', 'error');
+      return;
+    }
+    const data = await res.json();
+    const output = el('macro-output');
+    if (output) output.textContent = data.outlook;
+    setStatus('Macro analysis complete', 'ok');
+  }
+
+  async function fetchRecs() {
+    const userId = localStorage.getItem('userId');
+    if (!userId) return;
+    setStatus('Loading recommendations...', 'loading');
+    const res = await fetch(`/api/users/${userId}/recommendations`);
+    if (!res.ok) {
+      setStatus('Failed to load recommendations', 'error');
+      return;
+    }
+    const data = await res.json();
+    const body = document.querySelector('#recs-table tbody');
+    if (!body) return;
+    body.innerHTML = '';
+    (data.recommendations || []).forEach((r) => {
+      const tr = document.createElement('tr');
+      const exit = r.exit ? r.exit.toFixed(2) : '';
+      const prob = `${Math.round(r.probability * 100)}%`;
+      tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
+      body.appendChild(tr);
+    });
+    setStatus('Recommendations loaded', 'ok');
+  }
+
+  async function fetchSingle() {
+    const sym = el('symbol')?.value.trim().toUpperCase();
+    if (!sym) return;
+    const res = await fetch(`/api/recommendation/${encodeURIComponent(sym)}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const body = document.querySelector('#single-rec tbody');
+    if (!body || !data.recommendation) return;
+    body.innerHTML = '';
+    const r = data.recommendation;
+    const exit = r.exit ? r.exit.toFixed(2) : '';
+    const prob = `${Math.round(r.probability * 100)}%`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
+    body.appendChild(tr);
+  }
+
+  function runSignal() {
+    Promise.allSettled([fetchSignal(), fetchSingle()]);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const getSignalBtn = el('get-signal');
+    const macroBtn = el('run-macro');
+    const recsBtn = el('get-recs');
+    const symbolInput = el('symbol');
+    const modeSelect = el('mode-select');
+    const adminLink = el('admin-link');
+
+    if (adminLink && localStorage.getItem('isAdmin') === '1') {
+      adminLink.style.display = 'block';
+    }
+
+    if (getSignalBtn) getSignalBtn.addEventListener('click', () => runSignal());
+    if (macroBtn) macroBtn.addEventListener('click', fetchMacro);
+    if (recsBtn) recsBtn.addEventListener('click', fetchRecs);
+    if (symbolInput) {
+      symbolInput.addEventListener('input', (event) => {
+        event.target.value = event.target.value.toUpperCase();
+      });
+    }
+    if (modeSelect) {
+      modeSelect.addEventListener('change', () => runSignal());
+    }
+
+    runSignal();
+  });
+})();

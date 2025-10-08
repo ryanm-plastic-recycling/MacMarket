@@ -5,10 +5,15 @@ from __future__ import annotations
 import os
 import logging
 import datetime
+import math
 import requests
 import pandas as pd
 import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+from indicators import haco as haco_indicator, haco_ha, hacolt, common as indicator_common
+
+from .mode_profiles import MODE_PROFILES
 from .quotes import fetch_latest_prices
 
 try:
@@ -23,6 +28,341 @@ NEGATIVE_WORDS = {"loss", "drop", "bear", "pessimistic", "down"}
 EXIT_PROFIT_TARGET_PCT = 0.05  # 5% profit target
 EXIT_STOP_LOSS_PCT = 0.02     # 2% stop-loss
 EXIT_MAX_HOLD_DAYS = 30       # time-based exit after 30 trading days
+
+DEFAULT_WATCHLIST = ["SPY", "QQQ", "DIA", "IWM", "AAPL", "MSFT", "NVDA"]
+DEFAULT_ADVANCED_TABS = [
+    {
+        "id": "playbook",
+        "title": "Playbook",
+        "content": [
+            "Review macro tone and sector strength before the open.",
+            "Stagger entries to avoid chasing extended moves.",
+            "Lock gains aggressively when readiness deteriorates.",
+        ],
+    },
+    {
+        "id": "checklist",
+        "title": "Checklist",
+        "content": [
+            "Is trend aligned across the chosen timeframe?",
+            "Do momentum and volume confirm the move?",
+            "Have risk parameters been staged?",
+        ],
+    },
+]
+
+
+def _get_mode_profile(mode: str) -> tuple[str, dict]:
+    """Return the canonical mode key and its profile definition."""
+
+    canonical = (mode or "swing").strip().lower()
+    profile = MODE_PROFILES.get(canonical)
+    if profile is None:
+        canonical = "swing"
+        profile = MODE_PROFILES[canonical]
+    return canonical, profile
+
+
+def _fallback_history() -> pd.DataFrame:
+    """Return a deterministic synthetic price series for offline operation."""
+
+    now = pd.Timestamp.utcnow()
+    if now.tzinfo is None:
+        now = now.tz_localize("UTC")
+    else:
+        now = now.tz_convert("UTC")
+    idx = pd.date_range(end=now, periods=90, freq="D")
+    base = 100.0
+    closes = [base + math.sin(i / 5) * 2 + i * 0.2 for i in range(len(idx))]
+    opens = [c * (1 - 0.002) for c in closes]
+    highs = [max(o, c) * 1.01 for o, c in zip(opens, closes)]
+    lows = [min(o, c) * 0.99 for o, c in zip(opens, closes)]
+    volume = [1_000_000 + (i % 5) * 50_000 for i in range(len(idx))]
+    data = {
+        "Open": opens,
+        "High": highs,
+        "Low": lows,
+        "Close": closes,
+        "Volume": volume,
+    }
+    return pd.DataFrame(data, index=idx)
+
+
+def _load_history(symbol: str, profile: dict) -> pd.DataFrame:
+    period = profile.get("period", "6mo")
+    interval = profile.get("interval", "1d")
+    try:
+        history = yf.download(
+            symbol,
+            period=period,
+            interval=interval,
+            auto_adjust=False,
+            progress=False,
+            threads=True,
+        )
+    except Exception:
+        logging.exception("Failed to download price history for %s", symbol)
+        history = pd.DataFrame()
+    if history.empty:
+        return _fallback_history()
+    history = history.dropna(how="all")
+    history.index = pd.to_datetime(history.index, utc=True)
+    if "Close" not in history and "Adj Close" in history:
+        history = history.rename(columns={"Adj Close": "Close"})
+    return history.tail(max(120, profile.get("lookback_days", 120)))
+
+
+def _prepare_candles(history: pd.DataFrame) -> list[dict]:
+    candles: list[dict] = []
+    for ts, row in history.iterrows():
+        timestamp = pd.Timestamp(ts)
+        if timestamp.tzinfo is None:
+            timestamp = timestamp.tz_localize("UTC")
+        else:
+            timestamp = timestamp.tz_convert("UTC")
+        try:
+            epoch = int(timestamp.timestamp())
+        except Exception:
+            epoch = int(pd.Timestamp.utcnow().timestamp())
+        candles.append(
+            {
+                "time": epoch,
+                "o": float(row.get("Open", row.get("open", 0.0))),
+                "h": float(row.get("High", row.get("high", 0.0))),
+                "l": float(row.get("Low", row.get("low", 0.0))),
+                "c": float(row.get("Close", row.get("close", 0.0))),
+                "v": float(row.get("Volume", row.get("volume", 0.0))),
+            }
+        )
+    return candles
+
+
+def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict]) -> tuple[list[dict], float]:
+    chart_cfg = profile.get("chart", {})
+    closes = history.get("Close", pd.Series(dtype=float)).astype(float)
+    volumes = history.get("Volume")
+    trend_window = chart_cfg.get("trend_window", 34)
+    momentum_window = chart_cfg.get("momentum_window", 14)
+    volume_window = chart_cfg.get("volume_window", 20)
+
+    core_candles = [{"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles]
+    trend_series = hacolt.compute_trend(core_candles, period=trend_window) if candles else []
+    if trend_series:
+        lookback = min(len(trend_series) - 1, max(3, trend_window // 4))
+        trend_delta = trend_series[-1] - trend_series[-lookback - 1]
+    else:
+        trend_delta = 0.0
+    trend_score = indicator_common.normalise_score(trend_delta, lower=-5.0, upper=5.0)
+    trend_status = "bullish" if trend_delta > 0 else "bearish" if trend_delta < 0 else "neutral"
+
+    if len(closes) > max(1, momentum_window):
+        reference = closes.iloc[-momentum_window] if len(closes) > momentum_window else closes.iloc[0]
+        momentum = (closes.iloc[-1] / reference) - 1 if reference else 0.0
+    elif len(closes) > 1:
+        momentum = (closes.iloc[-1] / closes.iloc[0]) - 1
+    else:
+        momentum = 0.0
+    momentum_score = indicator_common.normalise_score(momentum, lower=-0.08, upper=0.08)
+    momentum_status = "accelerating" if momentum > 0 else "fading" if momentum < 0 else "flat"
+
+    returns = closes.pct_change().dropna()
+    if not returns.empty:
+        vol_window = min(len(returns), max(5, momentum_window))
+        vol_value = returns.rolling(vol_window).std().dropna()
+        volatility = float(vol_value.iloc[-1]) if not vol_value.empty else float(returns.std())
+    else:
+        volatility = 0.0
+    volatility_score = indicator_common.normalise_score(0.06 - volatility, lower=-0.06, upper=0.06)
+    volatility_status = "calm" if volatility < 0.03 else "elevated" if volatility > 0.06 else "balanced"
+
+    if volumes is not None and not volumes.dropna().empty:
+        avg_volume = volumes.rolling(volume_window).mean().iloc[-1]
+        last_volume = volumes.iloc[-1]
+        if avg_volume and not math.isnan(avg_volume) and avg_volume != 0:
+            volume_ratio = (last_volume - avg_volume) / avg_volume
+        else:
+            volume_ratio = 0.0
+    else:
+        volume_ratio = 0.0
+    volume_score = indicator_common.normalise_score(volume_ratio, lower=-1.0, upper=1.0)
+    volume_status = "surging" if volume_ratio > 0.2 else "fading" if volume_ratio < -0.2 else "steady"
+
+    components = [
+        {
+            "id": "trend",
+            "title": "Trend",
+            "score": round(trend_score, 1),
+            "status": trend_status,
+            "value": round(trend_delta, 3),
+        },
+        {
+            "id": "momentum",
+            "title": "Momentum",
+            "score": round(momentum_score, 1),
+            "status": momentum_status,
+            "value": round(momentum, 3),
+        },
+        {
+            "id": "volatility",
+            "title": "Volatility",
+            "score": round(volatility_score, 1),
+            "status": volatility_status,
+            "value": round(volatility, 3),
+        },
+        {
+            "id": "volume",
+            "title": "Volume",
+            "score": round(volume_score, 1),
+            "status": volume_status,
+            "value": round(volume_ratio, 3),
+        },
+    ]
+
+    # Equal weight average (TODO: consider 35/35/20/10 weighting).
+    readiness_score = round(sum(c["score"] for c in components) / len(components), 1)
+    return components, readiness_score
+
+
+def _chart_payload(candles: list[dict], trend_series: list[float]) -> dict:
+    if not candles:
+        return {"candles": [], "heikin_ashi": [], "indicators": {}}
+
+    ha = haco_ha.project({"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles)
+    ha_payload = [
+        {
+            "time": candles[idx]["time"],
+            "o": round(item["o"], 4),
+            "h": round(item["h"], 4),
+            "l": round(item["l"], 4),
+            "c": round(item["c"], 4),
+        }
+        for idx, item in enumerate(ha)
+    ]
+
+    closes = [c["c"] for c in candles]
+    sma20 = indicator_common.sma(closes, 20)
+    sma50 = indicator_common.sma(closes, 50)
+
+    indicators = {
+        "sma20": [
+            {"time": candles[i]["time"], "value": round(val, 4)}
+            for i, val in enumerate(sma20)
+            if val is not None
+        ],
+        "sma50": [
+            {"time": candles[i]["time"], "value": round(val, 4)}
+            for i, val in enumerate(sma50)
+            if val is not None
+        ],
+    }
+
+    if trend_series:
+        aligned = trend_series[-len(candles) :]
+        indicators["trend"] = [
+            {"time": candles[-len(aligned) + idx]["time"], "value": round(value, 4)}
+            for idx, value in enumerate(aligned)
+        ]
+
+    return {
+        "candles": candles,
+        "heikin_ashi": ha_payload,
+        "indicators": indicators,
+    }
+
+
+def compute_signals(symbol: str, mode: str = "swing") -> dict:
+    """Return the consolidated Signals payload for ``symbol``."""
+
+    canonical_mode, profile = _get_mode_profile(mode)
+    history = _load_history(symbol, profile)
+    candles = _prepare_candles(history)
+    components, readiness_score = _component_scores(history, profile, candles)
+    trend_series = hacolt.compute_trend(
+        ({"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles),
+        period=profile.get("chart", {}).get("trend_window", 34),
+    ) if candles else []
+    chart = _chart_payload(candles, trend_series)
+
+    last_close = history["Close"].iloc[-1] if not history.empty else None
+    action_bias = "long" if readiness_score >= 55 else "short" if readiness_score <= 40 else "neutral"
+    entries = [
+        {
+            "type": action_bias,
+            "confidence": readiness_score,
+            "summary": (
+                f"Trend is {components[0]['status']} and momentum is {components[1]['status']}."
+            ),
+            "price": format_price(last_close) if last_close is not None else None,
+        }
+    ]
+
+    exits_payload, exit_reason = (None, "")
+    if last_close is not None:
+        exits_payload, exit_reason = _exit_levels(symbol, "buy" if action_bias != "short" else "sell", float(last_close))
+
+    panels = [
+        {
+            "id": comp["id"],
+            "title": comp["title"],
+            "score": comp["score"],
+            "status": comp["status"],
+            "summary": f"{comp['title']} is {comp['status']} (value {comp['value']}).",
+        }
+        for comp in components
+    ]
+
+    advanced_tabs = [
+        {
+            "id": "mindset",
+            "title": "Mindset",
+            "content": profile.get("mindset", {}).get("focus", []),
+        },
+        {
+            "id": "playbook",
+            "title": "Playbook",
+            "content": profile.get("playbook", []),
+        },
+    ]
+    used_ids = {tab["id"] for tab in advanced_tabs}
+    for tab in DEFAULT_ADVANCED_TABS:
+        if tab["id"] not in used_ids:
+            advanced_tabs.append(tab)
+
+    readiness = {
+        "score": readiness_score,
+        "components": components,
+    }
+
+    return {
+        "symbol": symbol.upper(),
+        "mode": canonical_mode,
+        "panels": panels,
+        "readiness": readiness,
+        "entries": entries,
+        "exits": {
+            "levels": exits_payload,
+            "reason": exit_reason,
+        },
+        "chart": chart,
+        "chart_preset": {
+            "interval": profile.get("interval", "1d"),
+            "period": profile.get("period", "6mo"),
+        },
+        "advanced_tabs": advanced_tabs,
+        "available_modes": sorted(MODE_PROFILES.keys()),
+        "watchlist": profile.get("watchlist", DEFAULT_WATCHLIST),
+        "mindset": profile.get("mindset", {}),
+    }
+
+
+def get_watchlist(mode: str | None = None) -> list[str]:
+    """Return the configured watchlist for ``mode`` or the default list."""
+
+    canonical_mode, profile = _get_mode_profile(mode or "swing")
+    watchlist = profile.get("watchlist")
+    if isinstance(watchlist, list) and watchlist:
+        return [str(sym).upper() for sym in watchlist]
+    return DEFAULT_WATCHLIST
 
 
 def format_price(value: float | None) -> float | None:

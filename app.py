@@ -54,8 +54,11 @@ except Exception as e:
     import logging
     logging.error("Failed to include alerts router: %s", e)
 
-# Jinja2 template setup
-templates = Jinja2Templates(directory="templates")
+# Jinja2 template setup (optional)
+try:
+    templates = Jinja2Templates(directory="templates")
+except Exception:  # pragma: no cover - optional dependency
+    templates = None
 
 # Initialize caches only if TTL > 0 so caching can be disabled via env vars
 political_cache = TTLCache(maxsize=1, ttl=POLITICAL_CACHE_TTL) if POLITICAL_CACHE_TTL > 0 else None
@@ -139,6 +142,18 @@ def db_check():
         return {"status": "connected"}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/market-data")
+def read_market_data():
+    """Return placeholder market data from MySQL."""
+    conn = connect_to_db()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT 'AAPL' AS symbol, 150.0 AS price")
+    result = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return {"data": result}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -516,6 +531,90 @@ def update_username(user_id: int, data: schemas.UsernameUpdate, db: Session = De
     return {"username": user.username}
 
 
+@app.get("/users/{user_id}/alerts", response_model=list[schemas.AlertPreference])
+@app.get("/api/users/{user_id}/alerts", response_model=list[schemas.AlertPreference])
+def read_alert_preferences(user_id: int, db: Session = Depends(get_db)):
+    return crud.get_alerts(db, user_id)
+
+
+@app.post("/users/{user_id}/alerts", response_model=schemas.AlertPreference)
+@app.post("/api/users/{user_id}/alerts", response_model=schemas.AlertPreference)
+def create_alert_preference(
+    user_id: int,
+    alert: schemas.AlertPreferenceCreate,
+    db: Session = Depends(get_db),
+):
+    if not crud.get_user(db, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    return crud.create_alert(db, user_id, alert)
+
+
+@app.put("/users/{user_id}/alerts/{alert_id}", response_model=schemas.AlertPreference)
+@app.put("/api/users/{user_id}/alerts/{alert_id}", response_model=schemas.AlertPreference)
+def update_alert_preference(
+    user_id: int,
+    alert_id: int,
+    alert: schemas.AlertPreferenceUpdate,
+    db: Session = Depends(get_db),
+):
+    alert_obj = crud.get_alert(db, user_id, alert_id)
+    if not alert_obj:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return crud.update_alert(db, alert_obj, alert)
+
+
+@app.delete("/users/{user_id}/alerts/{alert_id}")
+@app.delete("/api/users/{user_id}/alerts/{alert_id}")
+def delete_alert_preference(user_id: int, alert_id: int, db: Session = Depends(get_db)):
+    alert_obj = crud.get_alert(db, user_id, alert_id)
+    if not alert_obj:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    crud.delete_alert(db, alert_obj)
+    return {"status": "deleted"}
+
+
+@app.get("/users/{user_id}/haco-alerts", response_model=list[schemas.HacoAlert])
+@app.get("/api/users/{user_id}/haco-alerts", response_model=list[schemas.HacoAlert])
+def read_haco_alerts(user_id: int, db: Session = Depends(get_db)):
+    return crud.get_haco_alerts(db, user_id)
+
+
+@app.post("/users/{user_id}/haco-alerts", response_model=schemas.HacoAlert)
+@app.post("/api/users/{user_id}/haco-alerts", response_model=schemas.HacoAlert)
+def create_haco_alert(
+    user_id: int,
+    alert: schemas.HacoAlertCreate,
+    db: Session = Depends(get_db),
+):
+    if not crud.get_user(db, user_id):
+        raise HTTPException(status_code=404, detail="User not found")
+    return crud.create_haco_alert(db, user_id, alert)
+
+
+@app.put("/users/{user_id}/haco-alerts/{alert_id}", response_model=schemas.HacoAlert)
+@app.put("/api/users/{user_id}/haco-alerts/{alert_id}", response_model=schemas.HacoAlert)
+def update_haco_alert(
+    user_id: int,
+    alert_id: int,
+    alert: schemas.HacoAlertUpdate,
+    db: Session = Depends(get_db),
+):
+    alert_obj = crud.get_haco_alert(db, user_id, alert_id)
+    if not alert_obj:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return crud.update_haco_alert(db, alert_obj, alert)
+
+
+@app.delete("/users/{user_id}/haco-alerts/{alert_id}")
+@app.delete("/api/users/{user_id}/haco-alerts/{alert_id}")
+def delete_haco_alert(user_id: int, alert_id: int, db: Session = Depends(get_db)):
+    alert_obj = crud.get_haco_alert(db, user_id, alert_id)
+    if not alert_obj:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    crud.delete_haco_alert(db, alert_obj)
+    return {"status": "deleted"}
+
+
 @app.put("/api/users/{user_id}/otp")
 def update_otp(user_id: int, data: schemas.OtpUpdate, db: Session = Depends(get_db)):
     """Enable or disable OTP for a user. Returns the secret when enabling."""
@@ -771,14 +870,21 @@ def update_alert(alert: dict):
 
 
 @app.get("/api/signals/{symbol}")
-def get_signals(symbol: str):
+def get_signals(symbol: str, mode: str = "swing"):
     import re
 
     if not re.fullmatch(r"[A-Za-z0-9\-.]{1,15}", symbol):
         return {"error": "invalid_symbol"}
-    news = signals.news_sentiment_signal(symbol)
-    tech = signals.technical_indicator_signal(symbol)
-    return {"news": news, "technical": tech}
+    payload = signals.compute_signals(symbol, mode=mode)
+    payload["news"] = signals.news_sentiment_signal(symbol)
+    payload["technical"] = signals.technical_indicator_signal(symbol)
+    return payload
+
+
+@app.get("/api/watchlist")
+def get_watchlist(mode: str = "swing"):
+    data = signals.get_watchlist(mode)
+    return {"mode": (mode or "swing").lower(), "watchlist": data}
 
 
 @app.get("/api/crypto")
@@ -867,6 +973,13 @@ def congress_widget_jsx():
 @app.get("/TopCongressBuysWidget.css")
 def congress_widget_css():
     css_file = FRONTEND_DIR / "TopCongressBuysWidget.css"
+    if css_file.exists():
+        return Response(css_file.read_text(), media_type="text/css")
+    raise HTTPException(status_code=404, detail="Not Found")
+
+@app.get("/indicators.css")
+def indicators_css():
+    css_file = FRONTEND_DIR / "indicators.css"
     if css_file.exists():
         return Response(css_file.read_text(), media_type="text/css")
     raise HTTPException(status_code=404, detail="Not Found")
