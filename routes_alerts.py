@@ -50,41 +50,31 @@ def _build_signal_preview(
 ) -> dict:
     try:
         data = signal_engine.compute_signals(symbol, mode=mode)
-    except Exception as exc:  # pragma: no cover - defensive guard
+    except Exception as exc:  # pragma: no cover
         logging.exception("Failed to build signal preview for %s", symbol)
         return {"error": str(exc)}
 
     readiness = data.get("readiness", {})
-    score = readiness.get("score", 0.0)
-    components = {c.get("id"): c for c in readiness.get("components", []) if isinstance(c, dict)}
-    trend = components.get("trend", {})
-    momentum = components.get("momentum", {})
+    score = float(readiness.get("score", 0.0) or 0.0)
+    panels = data.get("panels", []) or []
+    panel_by_id = {p.get("id"): p for p in panels}
 
-    trend_score = float(trend.get("score", 0.0) or 0.0)
-    momentum_score = float(momentum.get("score", 0.0) or 0.0)
+    trend_ok = (panel_by_id.get("trend", {}).get("status") == "PASS")
+    momentum_ok = (panel_by_id.get("momentum", {}).get("status") == "PASS")
 
-    passes_total = score >= float(min_total_score)
-    passes_trend = (not require_trend_pass) or trend_score >= float(min_total_score)
-    passes_momentum = (not require_momentum_pass) or momentum_score >= float(min_total_score)
+    passes_total    = score >= float(min_total_score)
+    passes_trend    = (not require_trend_pass) or trend_ok
+    passes_momentum = (not require_momentum_pass) or momentum_ok
 
     return {
         "symbol": symbol.upper(),
         "mode": data.get("mode", mode),
         "readiness_score": score,
-        "trend_score": trend_score,
-        "momentum_score": momentum_score,
         "meets_total": passes_total,
         "meets_trend": passes_trend,
         "meets_momentum": passes_momentum,
         "passes": passes_total and passes_trend and passes_momentum,
-        "panels": data.get("panels", []),
-        panel_by_id = {p.get("id"): p for p in panels}
-        trend_ok    = (panel_by_id.get("trend", {}).get("status") == "PASS")
-        momentum_ok = (panel_by_id.get("momentum", {}).get("status") == "PASS")
-        
-        passes_total    = score >= float(min_total_score)
-        passes_trend    = (not require_trend_pass) or trend_ok
-        passes_momentum = (not require_momentum_pass) or momentum_ok
+        "panels": panels,
         "entries": data.get("entries", []),
         "exits": data.get("exits", {}),
         "criteria": {
