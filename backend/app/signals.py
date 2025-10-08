@@ -179,14 +179,12 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     volatility_status = "calm" if volatility < 0.03 else "elevated" if volatility > 0.06 else "balanced"
 
     if volumes is not None and not volumes.dropna().empty:
-        avg_volume = volumes.rolling(volume_window).mean().iloc[-1]
-        last_volume = volumes.iloc[-1]
-        if avg_volume and not math.isnan(avg_volume) and avg_volume != 0:
-            volume_ratio = (last_volume - avg_volume) / avg_volume
-        else:
-            volume_ratio = 0.0
+        avg_volume = float(volumes.rolling(volume_window).mean().iloc[-1])
+        last_volume = float(volumes.iloc[-1])
+        volume_ratio = (last_volume - avg_volume) / avg_volume if avg_volume != 0.0 else 0.0
     else:
         volume_ratio = 0.0
+
     volume_score = indicator_common.normalise_score(volume_ratio, lower=-1.0, upper=1.0)
     volume_status = "surging" if volume_ratio > 0.2 else "fading" if volume_ratio < -0.2 else "steady"
 
@@ -286,7 +284,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
     ) if candles else []
     chart = _chart_payload(candles, trend_series)
 
-    last_close = history["Close"].iloc[-1] if not history.empty else None
+    last_close = float(history["Close"].iloc[-1]) if not history.empty else None
     action_bias = "long" if readiness_score >= 55 else "short" if readiness_score <= 40 else "neutral"
     entries = [
         {
@@ -534,6 +532,9 @@ def technical_indicator_signal(symbol: str) -> dict:
         progress=False,
         threads=True,
     )
+    if df is None or df.empty:
+    # return a 200 with "no_data" so the UI doesn't see 500s
+    return {"series": [], "last": {}, "error": "no_data"}
     if data.empty:
         return {"type": "technical", "symbol": symbol, "signal": "none"}
     data["ma_short"] = data["Close"].rolling(20).mean()
