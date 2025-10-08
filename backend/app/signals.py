@@ -8,6 +8,7 @@ import datetime
 import math
 import requests
 import pandas as pd
+import numpy as np
 import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -124,16 +125,14 @@ def _prepare_candles(history: pd.DataFrame) -> list[dict]:
             epoch = int(timestamp.timestamp())
         except Exception:
             epoch = int(pd.Timestamp.utcnow().timestamp())
-        candles.append(
-            {
-                "time": epoch,
-                "o": float(row.get("Open", row.get("open", 0.0))),
-                "h": float(row.get("High", row.get("high", 0.0))),
-                "l": float(row.get("Low", row.get("low", 0.0))),
-                "c": float(row.get("Close", row.get("close", 0.0))),
-                "v": float(row.get("Volume", row.get("volume", 0.0))),
-            }
-        )
+        candles.append({
+            "time": epoch,
+            "o": _scalar(row.get("Open", row.get("open", 0.0))),
+            "h": _scalar(row.get("High", row.get("high", 0.0))),
+            "l": _scalar(row.get("Low",  row.get("low",  0.0))),
+            "c": _scalar(row.get("Close",row.get("close", 0.0))),
+            "v": _scalar(row.get("Volume",row.get("volume", 0.0))),
+        })
     return candles
 
 
@@ -155,13 +154,17 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     trend_score = indicator_common.normalise_score(trend_delta, lower=-5.0, upper=5.0)
     trend_status = "bullish" if trend_delta > 0 else "bearish" if trend_delta < 0 else "neutral"
 
+    # Momentum (make reference and last close explicit scalars)
     if len(closes) > max(1, momentum_window):
-        reference = closes.iloc[-momentum_window] if len(closes) > momentum_window else closes.iloc[0]
-        momentum = (closes.iloc[-1] / reference) - 1 if reference else 0.0
-    elif len(closes) > 1:
-        momentum = (closes.iloc[-1] / closes.iloc[0]) - 1
+        raw_ref = closes.iloc[-momentum_window] if len(closes) > momentum_window else closes.iloc[0]
     else:
-        momentum = 0.0
+        raw_ref = closes.iloc[0] if len(closes) else 0.0
+    
+    # force scalar float, handle NaN safely
+    ref = float(raw_ref) if pd.notna(raw_ref) else 0.0
+    last_close = float(closes.iloc[-1]) if len(closes) else 0.0
+    momentum = ((last_close / ref) - 1.0) if ref not in (0.0, -0.0) else 0.0
+    
     momentum_score = indicator_common.normalise_score(momentum, lower=-0.08, upper=0.08)
     momentum_status = "accelerating" if momentum > 0 else "fading" if momentum < 0 else "flat"
 
@@ -564,19 +567,13 @@ def macro_llm_signal(text: str) -> dict:
             pass
     return {"type": "macro_llm", "outlook": "unknown"}
 
-def _scalar(x):
-    """Return a float from either a scalar or a pandas Series/Index."""
-    try:
-        import pandas as pd
-        if hasattr(x, "iloc"):
-            xn = x.dropna().iloc[-1] if hasattr(x, "dropna") else x.iloc[-1]
-            return float(xn)
-    except Exception:  # pragma: no cover - defensive
-        pass
-    try:
-        return float(x)
-    except Exception:  # pragma: no cover - defensive
-        return None
+def _scalar(x, default=0.0):
+    # Pull a single numeric out of Series/ndarray/Scalar
+    if isinstance(x, pd.Series):
+        x = x.iloc[0] if len(x) else default
+    elif isinstance(x, np.ndarray):
+        x = x.item() if x.size else default
+    return float(x) if pd.notna(x) else float(default)
 
 
 def _calculate_exit(symbol, data, entry_price, take_profit_pct=0.02, stop_loss_pct=0.01, **kwargs):
