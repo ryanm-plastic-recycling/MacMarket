@@ -5,6 +5,7 @@
     sma20Series: null,
     sma50Series: null,
     trendSeries: null,
+    resizeObs: null,
     tabs: [],
     activeTab: null,
     lastMode: 'swing',
@@ -18,7 +19,16 @@
     node.textContent = message;
     node.dataset.tone = tone;
   }
-
+  
+  function resizeChart() {
+     const el = document.getElementById('signals-chart');
+     if (!el || !state.chart) return;
+     // use the actual rendered width of the container
+     const w = Math.max(320, el.clientWidth || el.offsetWidth || 0);
+     const h = Math.max(300, el.clientHeight || 360);
+     state.chart.resize(w, h);
+   }
+  
   function ensureChart() {
     const container = el('signals-chart');
     if (!container || typeof LightweightCharts === 'undefined') {
@@ -46,6 +56,17 @@
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Dotted,
       });
+
+    // Initial resize once it's created
+     resizeChart();
+     // Resize on window size changes
+     window.addEventListener('resize', resizeChart);
+     // Resize when the container’s box changes
+     if ('ResizeObserver' in window) {
+       state.resizeObs?.disconnect();
+       state.resizeObs = new ResizeObserver(() => resizeChart());
+       state.resizeObs.observe(container);
+     }
     }
     return state.chart;
   }
@@ -67,6 +88,9 @@
     state.sma20Series.setData((indicators.sma20 || []).map((p) => ({ time: Number(p.time), value: p.value })));
     state.sma50Series.setData((indicators.sma50 || []).map((p) => ({ time: Number(p.time), value: p.value })));
     state.trendSeries.setData((indicators.trend || []).map((p) => ({ time: Number(p.time), value: p.value })));
+
+    // Ensure the chart fits the new container width after data
+   resizeChart();
   }
 
   function renderReadiness(readiness) {
