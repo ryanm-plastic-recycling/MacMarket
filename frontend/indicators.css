@@ -1,0 +1,216 @@
+.overview-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 1rem 0 2rem;
+}
+
+.readiness-score {
+  --score: 0;
+  --ready-color: #4caf50;
+  align-items: center;
+  background: conic-gradient(var(--ready-color) calc(var(--score) * 1%), rgba(255, 255, 255, 0.08) 0);
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  font-size: 2.75rem;
+  font-weight: 600;
+  height: 140px;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  position: relative;
+  width: 140px;
+}
+
+.readiness-score::after {
+  background: var(--page-bg, #0f172a);
+  border-radius: 50%;
+  bottom: 12px;
+  content: '';
+  left: 12px;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: -1;
+}
+
+.readiness-score.is-weak {
+  --ready-color: #ef5350;
+}
+
+.readiness-score.is-neutral {
+  --ready-color: #ffb300;
+}
+
+.readiness-score.is-strong {
+  --ready-color: #26a69a;
+}
+
+.readiness-components {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.readiness-components li {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.readiness-components li strong {
+  font-size: 1.1rem;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.readiness-components li small {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+.panels-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.panel-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+}
+
+.panel-card header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.panel-card .badge {
+  background: rgba(76, 120, 255, 0.2);
+  border-radius: 999px;
+  color: #4c78ff;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+}
+
+.panel-card footer {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+  margin-top: auto;
+}
+
+.chart-frame {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  height: 320px;
+}
+
+.entries-list,
+.mindset-focus,
+.watchlist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entries-list li,
+.mindset-focus li,
+.watchlist-list li {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  margin-bottom: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.entries-list li strong {
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.entries-list li em {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+}
+
+.watchlist-list li button {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  transition: background 0.2s ease;
+}
+
+.watchlist-list li button:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.tabs-shell {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.tabs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tabs-nav button {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.35rem 0.75rem;
+}
+
+.tabs-nav button.active {
+  background: rgba(76, 120, 255, 0.18);
+  border-color: rgba(76, 120, 255, 0.4);
+  color: #dbeafe;
+}
+
+.tabs-content ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.levels-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.levels-table th,
+.levels-table td {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.levels-table th {
+  background: rgba(148, 163, 184, 0.15);
+}

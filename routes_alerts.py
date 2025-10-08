@@ -7,6 +7,7 @@ import yfinance as yf
 from fastapi import APIRouter, Request, HTTPException, Query, Body
 from indicators.haco import compute_haco
 from backend.app import alerts as mm_alerts
+from backend.app import signals as signal_engine
 from backend.app.database import connect_to_db
 
 router = APIRouter()
@@ -37,6 +38,54 @@ def _to_utc(dt):
     if dt is None:
         return None
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _build_signal_preview(
+    symbol: str,
+    mode: str,
+    *,
+    min_total_score: float,
+    require_trend_pass: bool,
+    require_momentum_pass: bool,
+) -> dict:
+    try:
+        data = signal_engine.compute_signals(symbol, mode=mode)
+    except Exception as exc:  # pragma: no cover - defensive guard
+        logging.exception("Failed to build signal preview for %s", symbol)
+        return {"error": str(exc)}
+
+    readiness = data.get("readiness", {})
+    score = readiness.get("score", 0.0)
+    components = {c.get("id"): c for c in readiness.get("components", []) if isinstance(c, dict)}
+    trend = components.get("trend", {})
+    momentum = components.get("momentum", {})
+
+    trend_score = float(trend.get("score", 0.0) or 0.0)
+    momentum_score = float(momentum.get("score", 0.0) or 0.0)
+
+    passes_total = score >= float(min_total_score)
+    passes_trend = (not require_trend_pass) or trend_score >= float(min_total_score)
+    passes_momentum = (not require_momentum_pass) or momentum_score >= float(min_total_score)
+
+    return {
+        "symbol": symbol.upper(),
+        "mode": data.get("mode", mode),
+        "readiness_score": score,
+        "trend_score": trend_score,
+        "momentum_score": momentum_score,
+        "meets_total": passes_total,
+        "meets_trend": passes_trend,
+        "meets_momentum": passes_momentum,
+        "passes": passes_total and passes_trend and passes_momentum,
+        "panels": data.get("panels", []),
+        "entries": data.get("entries", []),
+        "exits": data.get("exits", {}),
+        "criteria": {
+            "min_total_score": float(min_total_score),
+            "require_trend_pass": bool(require_trend_pass),
+            "require_momentum_pass": bool(require_momentum_pass),
+        },
+    }
 
 
 async def _alerts_worker() -> None:  # pragma: no cover - background task
@@ -284,18 +333,42 @@ def create_alert(request: Request, payload: dict = Body(...)):
     req = {k: payload.get(k) for k in ["symbol","strategy","frequency","email","sms","email_template","sms_template","is_enabled"]}
     if not req["symbol"]:
         raise HTTPException(status_code=400, detail="user_id and symbol required")
+    symbol = str(req["symbol"]).strip().upper()
+    mode = (payload.get("mode") or "swing").lower()
+    min_total_score = float(payload.get("min_total_score", 55))
+    require_trend = bool(payload.get("require_trend_pass"))
+    require_momentum = bool(payload.get("require_momentum_pass"))
+    preview_requested = bool(
+        payload.get("preview")
+        or payload.get("preview_only")
+        or request.query_params.get("preview")
+    )
+    preview = None
+    if preview_requested:
+        preview = _build_signal_preview(
+            symbol,
+            mode,
+            min_total_score=min_total_score,
+            require_trend_pass=require_trend,
+            require_momentum_pass=require_momentum,
+        )
+        if payload.get("preview_only"):
+            return {"preview": preview}
     conn = connect_to_db(); cur = conn.cursor()
     cur.execute(
         """
         INSERT INTO user_alerts (user_id,symbol,strategy,frequency,email,sms,email_template,sms_template,is_enabled)
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s,COALESCE(%s,1))
     """,
-        (uid, req["symbol"], req.get("strategy","HACO"), req.get("frequency","1h"),
+        (uid, symbol, req.get("strategy","HACO"), req.get("frequency","1h"),
          req.get("email"), req.get("sms"), req.get("email_template"), req.get("sms_template"), req.get("is_enabled"))
     )
     alert_id = cur.lastrowid
     conn.commit(); cur.close(); conn.close()
-    return {"id": alert_id}
+    response = {"id": alert_id}
+    if preview:
+        response["preview"] = preview
+    return response
 
 
 @router.put("/api/alerts/{alert_id}")

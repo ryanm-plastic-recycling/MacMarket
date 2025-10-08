@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Signals - MacMarket</title>
     <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/indicators.css">
     <script src="/theme.js" defer></script>
     <script src="/ticker.js" defer></script>
     <!-- Lightweight Charts and HACO scripts loaded at end of body -->
@@ -43,8 +44,47 @@
         <h3>Symbol Signal</h3>
         <form id="symbol-form" class="row-controls" onsubmit="return false">
           <label>Symbol <input id="symbol" type="text" value="SPY"></label>
+          <label>Mode
+            <select id="mode-select" aria-label="Trading mode"></select>
+          </label>
           <button id="get-signal" type="submit" aria-label="Run HACO">Run</button>
         </form>
+        <div class="overview-grid" aria-live="polite">
+          <section class="overview-readiness">
+            <div id="readiness-score" class="readiness-score">--</div>
+            <ul id="readiness-components" class="readiness-components"></ul>
+          </section>
+          <section class="overview-panels">
+            <div id="panels-grid" class="panels-grid"></div>
+          </section>
+          <section class="overview-chart">
+            <div id="signals-chart" class="chart-frame"></div>
+          </section>
+          <section class="overview-entries">
+            <h4>Entries</h4>
+            <ul id="entries-list" class="entries-list"></ul>
+          </section>
+          <section class="overview-exits">
+            <h4>Exits</h4>
+            <div id="exits-summary"></div>
+          </section>
+          <section class="overview-tabs">
+            <h4>Advanced Tabs</h4>
+            <div class="tabs-shell">
+              <nav id="advanced-tabs-nav" class="tabs-nav"></nav>
+              <div id="advanced-tab-content" class="tabs-content"></div>
+            </div>
+          </section>
+          <section class="overview-mindset">
+            <h4>Mindset</h4>
+            <p id="mindset-tagline" class="muted"></p>
+            <ul id="mindset-focus" class="mindset-focus"></ul>
+          </section>
+          <section class="overview-watchlist">
+            <h4>Watchlist</h4>
+            <ul id="watchlist-list" class="watchlist-list"></ul>
+          </section>
+        </div>
         <div id="signal-container">
           <div>
             <h4>News Sentiment</h4>
@@ -130,151 +170,8 @@
 
     </div> <!-- /.signals-grid -->
 </main>
-<script>
-function setStatus(message) {
-  const el = document.getElementById('status');
-  if (el) {
-    el.textContent = message;
-  } else {
-    console.warn('Status element not found:', message);
-  }
-}
-if(localStorage.getItem('isAdmin') === '1'){ document.getElementById('admin-link').style.display='block'; }
-
-function sma(values, period){
-    const res = [];
-    let sum = 0;
-    for(let i=0;i<values.length;i++){
-        sum += values[i];
-        if(i >= period) sum -= values[i-period];
-        res.push(i >= period-1 ? sum/period : null);
-    }
-    return res;
-}
-
-function findLastCross(shortArr, longArr){
-    for(let i=shortArr.length-1;i>0;i--){
-        if(shortArr[i]==null || longArr[i]==null || shortArr[i-1]==null || longArr[i-1]==null) continue;
-        if(shortArr[i-1] < longArr[i-1] && shortArr[i] > longArr[i]) return {index:i, dir:'up'};
-        if(shortArr[i-1] > longArr[i-1] && shortArr[i] < longArr[i]) return {index:i, dir:'down'};
-    }
-    return null;
-}
-
-async function renderTechChart(sym){
-    try{
-        const res = await fetch(`/api/history?symbol=${sym}&period=6mo&interval=1d`);
-        if(!res.ok) return;
-        const hist = await res.json();
-        const dates = hist.dates;
-        const closes = hist.close;
-        const ma20 = sma(closes,20);
-        const ma50 = sma(closes,50);
-        const chartEl = document.getElementById('tech-chart');
-        chartEl.innerHTML = '';
-        const chart = LightweightCharts.createChart(chartEl,{height:300});
-        const priceSeries = chart.addLineSeries({color:'#4c78ff'});
-        const ma20Series = chart.addLineSeries({color:'green'});
-        const ma50Series = chart.addLineSeries({color:'red'});
-        const priceData = dates.map((d,i)=>({time:d,value:closes[i]}));
-        priceSeries.setData(priceData);
-        ma20Series.setData(dates.map((d,i)=>ma20[i]?{time:d,value:ma20[i]}:null).filter(Boolean));
-        ma50Series.setData(dates.map((d,i)=>ma50[i]?{time:d,value:ma50[i]}:null).filter(Boolean));
-        const cross = findLastCross(ma20,ma50);
-        if(cross){
-            priceSeries.setMarkers([{time:dates[cross.index], position: cross.dir==='up'? 'belowBar':'aboveBar', color: cross.dir==='up'? 'green':'red', shape: cross.dir==='up'? 'arrowUp':'arrowDown', text:'20/50'}]);
-        }
-    }catch(e){console.error(e);}
-}
-
-async function fetchSignal(){
-    const sym = document.getElementById('symbol').value.trim().toUpperCase();
-    if(!sym) return;
-    setStatus('Loading signal...', 'loading');
-    const res = await fetch(`/api/signals/${sym}`);
-    if(!res.ok){ setStatus('Failed to load signal', 'error'); return; }
-    const data = await res.json();
-    const newsEl = document.getElementById('news-output');
-    newsEl.className = '';
-    let score = data.news.score;
-    newsEl.textContent = `Score: ${score}`;
-    if(score > 0){
-        newsEl.classList.add('bullish');
-        newsEl.textContent += ' \u2197';
-    }else if(score < 0){
-        newsEl.classList.add('bearish');
-        newsEl.textContent += ' \u2198';
-    }
-    const techEl = document.getElementById('tech-output');
-    techEl.className = '';
-    techEl.textContent = data.technical.signal;
-    if(data.technical.signal === 'bullish'){
-        techEl.classList.add('bullish');
-        techEl.textContent += ' \u2197';
-    }else if(data.technical.signal === 'bearish'){
-        techEl.classList.add('bearish');
-        techEl.textContent += ' \u2198';
-    }
-    renderTechChart(sym);
-}
-
-async function fetchMacro(){
-    const text = document.getElementById('macro-text').value;
-    setStatus('Analyzing...', 'loading');
-    const res = await fetch('/api/macro-signal', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text})});
-    if(!res.ok){ setStatus('Failed', 'error'); return; }
-    const data = await res.json();
-    document.getElementById('macro-output').textContent = data.outlook;
-    setStatus('Done', 'ok');
-}
-
-async function fetchRecs(){
-    const userId = localStorage.getItem('userId');
-    if(!userId) return;
-    setStatus('Loading recommendations...', 'loading');
-    const res = await fetch(`/api/users/${userId}/recommendations`);
-    if(!res.ok){ setStatus('Failed to load', 'error'); return; }
-    const data = await res.json();
-    const body = document.querySelector('#recs-table tbody');
-    body.innerHTML='';
-    data.recommendations.forEach(r => {
-        const tr = document.createElement('tr');
-        const exit = r.exit ? r.exit.toFixed(2) : '';
-        const prob = Math.round(r.probability * 100) + '%';
-        tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
-        body.appendChild(tr);
-    });
-    setStatus('Done', 'ok');
-}
-
-async function fetchSingle(){
-    // Use the same input as Symbol Signal
-    const sym = document.getElementById('symbol').value.trim().toUpperCase();
-    if(!sym) return;
-    setStatus('Loading...', 'loading');
-    const res = await fetch(`/api/recommendation/${sym}`);
-    if(!res.ok){ setStatus('Failed', 'error'); return; }
-    const data = await res.json();
-    const body = document.querySelector('#single-rec tbody');
-    body.innerHTML='';
-    const r = data.recommendation;
-    const exit = r.exit ? r.exit.toFixed(2) : '';
-    const prob = Math.round(r.probability * 100) + '%';
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
-    body.appendChild(tr);
-    setStatus('Done', 'ok');
-}
-
-// One click runs both: signals + single recommendation (shared input #symbol)
-document.getElementById('get-signal').addEventListener('click', async () => {
-    await Promise.allSettled([ fetchSignal(), fetchSingle() ]);
-});
-document.getElementById('run-macro').addEventListener('click', fetchMacro);
-document.getElementById('get-recs').addEventListener('click', fetchRecs);
-document.getElementById('symbol').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase(); });
-</script>
     <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="/js/signals.js?v=1"></script>
     <!-- Use frontend/js via /js mount and bust cache -->
     <script src="/js/haco-ui.js?v=15"></script>
     <script src="/js/haco-scan.js?v=18"></script>
