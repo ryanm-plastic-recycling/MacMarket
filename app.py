@@ -126,6 +126,9 @@ def get_db():
     finally:
         db.close()
 
+@app.get("/favicon.ico")
+def favicon():
+    return Response(status_code=204)
 
 @app.get("/health")
 def health():
