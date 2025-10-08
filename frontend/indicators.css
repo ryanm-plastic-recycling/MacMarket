@@ -214,3 +214,65 @@
 .levels-table th {
   background: rgba(148, 163, 184, 0.15);
 }
+
+/* === Signals layout overrides (place at END of indicators.css) === */
+
+/* push main/header right so the fixed sidebar doesn't overlap */
+#sidebar { position: fixed; left: 0; top: 0; width: 230px; }
+header, main { margin-left: 250px; }
+
+/* limit overall content width and center it */
+main { max-width: 1400px; margin-right: auto; padding: 0 20px 40px; }
+
+/* top-level grid for the new Signals sections */
+.signals-grid {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr; /* chart/confirm left, widgets right */
+  gap: 20px;
+  align-items: start;
+}
+
+/* every section is a card-like block */
+.signal-section {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148,163,184,0.2);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+/* full-width rows (recos, HACO block, HACO table, macro) */
+.signal-section.span-2 { grid-column: 1 / -1; }
+
+/* inside the left main section: readability and two sub-columns */
+.symbol-signal .overview-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr; /* chart + panels/readiness split */
+  grid-auto-rows: min-content;
+  gap: 14px;
+}
+
+.symbol-signal .overview-chart { grid-column: 1; }
+.symbol-signal .overview-panels,
+.symbol-signal .overview-readiness { grid-column: 2; }
+
+/* keep entries/exits/tabs/watchlist in full width below */
+.symbol-signal .overview-entries,
+.symbol-signal .overview-exits,
+.symbol-signal .overview-tabs,
+.symbol-signal .overview-mindset,
+.symbol-signal .overview-watchlist { grid-column: 1 / -1; }
+
+/* chart frame sizing */
+.chart-frame { height: 360px; }
+
+/* small UI niceties */
+.row-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.row-controls label { display: inline-flex; gap: 6px; align-items: center; }
+
+@media (max-width: 1100px) {
+  header, main { margin-left: 0; }      /* allow full width on smaller screens */
+  #sidebar { position: static; width: auto; }
+  .signals-grid { grid-template-columns: 1fr; }
+  .symbol-signal .overview-grid { grid-template-columns: 1fr; }
+}
+
