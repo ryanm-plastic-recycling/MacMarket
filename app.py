@@ -872,7 +872,6 @@ def update_alert(alert: dict):
 @app.get("/api/signals/{symbol}")
 def get_signals(symbol: str, mode: str = "swing"):
     import re
-
     if not re.fullmatch(r"[A-Za-z0-9\-.]{1,15}", symbol):
         return {"error": "invalid_symbol"}
     payload = signals.compute_signals(symbol, mode=mode)
