@@ -532,17 +532,13 @@ def technical_indicator_signal(symbol: str) -> dict:
         progress=False,
         threads=True,
     )
-    if df is None or df.empty:
-    # return a 200 with "no_data" so the UI doesn't see 500s
-    return {"series": [], "last": {}, "error": "no_data"}
-    if data.empty:
+    # Guard: yfinance may return None/empty
+    if data is None or data.empty:
         return {"type": "technical", "symbol": symbol, "signal": "none"}
+
     data["ma_short"] = data["Close"].rolling(20).mean()
-    data["ma_long"] = data["Close"].rolling(50).mean()
-    if data["ma_short"].iloc[-1] > data["ma_long"].iloc[-1]:
-        signal = "bullish"
-    else:
-        signal = "bearish"
+    data["ma_long"]  = data["Close"].rolling(50).mean()
+    signal = "bullish" if data["ma_short"].iloc[-1] > data["ma_long"].iloc[-1] else "bearish"
     return {"type": "technical", "symbol": symbol, "signal": signal}
 
 
