@@ -246,14 +246,14 @@
       current.add(mode);
       select.appendChild(option);
     });
-    if (!current.has(selected)) {
+    if (!current.has(selected) || !selected) {
       const fallback = document.createElement('option');
-      fallback.value = selected;
-      fallback.textContent = selected.charAt(0).toUpperCase() + selected.slice(1);
+      fallback.value = 'swing';
+      fallback.textContent = 'Swing';
       fallback.selected = true;
       select.appendChild(fallback);
     }
-    state.lastMode = select.value;
+    state.lastMode = select.value || 'swing';
   }
 
   function applyLegacySections(data) {
@@ -281,7 +281,8 @@
     if (!symbolInput) return null;
     const sym = symbolInput.value.trim().toUpperCase();
     if (!sym) return null;
-    const mode = modeSelect ? modeSelect.value : state.lastMode;
+    let mode = (modeSelect && modeSelect.value) ? modeSelect.value.trim().toLowerCase() : (state.lastMode || 'swing');
+    if (!mode) mode = 'swing';
     setStatus(`Loading ${sym} (${mode}) signal...`, 'loading');
     try {
       const res = await fetch(`/api/signals/${encodeURIComponent(sym)}?mode=${encodeURIComponent(mode)}`);
