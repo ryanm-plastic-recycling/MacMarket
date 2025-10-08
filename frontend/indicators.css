@@ -296,3 +296,7 @@
 @media (max-width: 1200px){
   #signals-top .top-grid{ grid-template-columns: 1fr; }
 }
+
+#haco-section .row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+#haco-chart { height:420px; }
+#haco-signal-chart { height:100px; }
