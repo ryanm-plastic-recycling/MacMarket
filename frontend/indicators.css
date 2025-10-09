@@ -324,3 +324,19 @@
   letter-spacing: .04em;
   white-space: nowrap;
 }
+/* Stack of labeled strips: label on its own row above the bar */
+.mini-stack { display: grid; gap: 8px; margin-top: 6px; }
+
+.mini-group { display: grid; gap: 4px; }
+
+.mini-title {
+  font-size: .78rem;
+  color: var(--muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1;
+  margin-left: 2px; /* tiny indent so it doesn’t touch the border */
+}
+
+/* Your existing mini-strip height is good */
+.mini-strip { height: 64px; border: 1px solid rgba(148,163,184,.15); border-radius: 8px; }
