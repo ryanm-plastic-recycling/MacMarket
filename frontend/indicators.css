@@ -310,3 +310,17 @@
 
 #signals-mini-strips { margin-top: 6px; display: grid; gap: 6px; }
 .mini-strip { height: 64px; border: 1px solid rgba(148,163,184,.15); border-radius: 8px; }
+
+.mini-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.mini-label {
+  font-size: .85rem;
+  color: var(--muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
