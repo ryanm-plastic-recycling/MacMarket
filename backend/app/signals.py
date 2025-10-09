@@ -233,7 +233,8 @@ def _chart_payload(candles: list[dict], trend_series: list[float]) -> dict:
     if not candles:
         return {"candles": [], "heikin_ashi": [], "indicators": {}}
 
-    ha = haco_ha.project({"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles)
+    ha_input = [{"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles]
+    ha = haco_ha.project(ha_input)
     ha_payload = [
         {
             "time": candles[idx]["time"],
@@ -309,9 +310,6 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
 
     exits_payload, exit_reason = (None, "")
     panels = []  # will fill if we can compute display stats
-    
-    trend_pass = False
-    _last_adx = 0.0
 
     if last_close is not None:
         exits_payload, exit_reason = _exit_levels(symbol, "buy" if action_bias != "short" else "sell", float(last_close))
