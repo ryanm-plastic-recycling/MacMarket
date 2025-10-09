@@ -165,7 +165,47 @@ def _prepare_candles(history: pd.DataFrame) -> list[dict]:
 
 
 def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict]) -> tuple[list[dict], float, dict]:
-    ...
+    chart_cfg = profile.get("chart", {})
+    closes = history.get("Close", pd.Series(dtype=float)).astype(float)
+    volumes = history.get("Volume")
+    trend_window = chart_cfg.get("trend_window", 34)
+    momentum_window = chart_cfg.get("momentum_window", 14)
+    volume_window = chart_cfg.get("volume_window", 20)
+
+    # Trend (HACOLT delta over a small lookback)
+    core_candles = [{"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles]
+    trend_series = hacolt.compute_trend(core_candles, period=trend_window) if candles else []
+    if trend_series:
+        lookback = min(len(trend_series) - 1, max(3, trend_window // 4))
+        trend_delta = trend_series[-1] - trend_series[-lookback - 1]
+    else:
+        trend_delta = 0.0
+    trend_score = indicator_common.normalise_score(trend_delta, lower=-5.0, upper=5.0)
+    trend_status = "bullish" if trend_delta > 0 else "bearish" if trend_delta < 0 else "neutral"
+
+    # Momentum (price vs ref)
+    if len(closes) > max(1, momentum_window):
+        raw_ref = closes.iloc[-momentum_window] if len(closes) > momentum_window else closes.iloc[0]
+    else:
+        raw_ref = closes.iloc[0] if len(closes) else 0.0
+    ref = _to_float(raw_ref, 0.0)
+    last_close = _to_float(closes.iloc[-1] if len(closes) else 0.0, 0.0)
+    momentum = ((last_close / ref) - 1.0) if ref != 0.0 else 0.0
+    momentum_score = indicator_common.normalise_score(momentum, lower=-0.08, upper=0.08)
+    momentum_status = "accelerating" if momentum > 0 else "fading" if momentum < 0 else "flat"
+
+    # “Volatility” proxy (lower realized vol => higher score)
+    returns = closes.pct_change().dropna()
+    if not returns.empty:
+        vol_window = min(len(returns), max(5, momentum_window))
+        vol_value = returns.rolling(vol_window).std().dropna()
+        volatility = float(vol_value.iloc[-1]) if not vol_value.empty else float(returns.std())
+    else:
+        volatility = 0.0
+    volatility_score = indicator_common.normalise_score(0.06 - volatility, lower=-0.06, upper=0.06)
+    volatility_status = "calm" if volatility < 0.03 else "elevated" if volatility > 0.06 else "balanced"
+
+    # Volume ratio & multiple
     if volumes is not None and not volumes.dropna().empty:
         avg_volume = float(volumes.rolling(volume_window).mean().iloc[-1])
         last_volume = float(volumes.iloc[-1])
@@ -174,7 +214,16 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     else:
         volume_ratio = 0.0
         vol_mult = 0.0
-    ...
+    volume_score = indicator_common.normalise_score(volume_ratio, lower=-1.0, upper=1.0)
+    volume_status = "surging" if volume_ratio > 0.2 else "fading" if volume_ratio < -0.2 else "steady"
+
+    components = [
+        {"id": "trend",     "title": "Trend",     "score": round(trend_score, 1),     "status": trend_status,     "value": round(trend_delta, 3)},
+        {"id": "momentum",  "title": "Momentum",  "score": round(momentum_score, 1),  "status": momentum_status,  "value": round(momentum, 3)},
+        {"id": "volatility","title": "Volatility","score": round(volatility_score, 1),"status": volatility_status,"value": round(volatility, 3)},
+        {"id": "volume",    "title": "Volume",    "score": round(volume_score, 1),    "status": volume_status,    "value": round(volume_ratio, 3)},
+    ]
+
     readiness_score = round(sum(c["score"] for c in components) / len(components), 1)
     meta = {"volume_mult": float(vol_mult)}
     return components, readiness_score, meta
@@ -235,7 +284,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
     history = _load_history(symbol, profile)
     candles = _prepare_candles(history)
 
-    # compute trend ONCE
+    # compute trend ONCE for chart & HACOLT meta
     trend_series = hacolt.compute_trend(
         ({"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles),
         period=profile.get("chart", {}).get("trend_window", 34),
@@ -254,14 +303,19 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         "price": format_price(last_close) if last_close is not None else None,
     }]
 
+    # defaults so meta never NameErrors
+    trend_pass = False
+    _last_adx = 0.0
+
     exits_payload, exit_reason = (None, "")
+    panels = []  # will fill if we can compute display stats
+
     if last_close is not None:
         exits_payload, exit_reason = _exit_levels(symbol, "buy" if action_bias != "short" else "sell", float(last_close))
 
-        # RSI helper
         closes = history.get("Close", pd.Series(dtype=float)).astype(float)
 
-        def _rsi(series: pd.Series, length: int=14) -> float:
+        def _rsi(series: pd.Series, length: int = 14) -> float:
             if series.empty: return 0.0
             delta = series.diff()
             up = delta.clip(lower=0.0)
@@ -276,25 +330,20 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         prev_rsi = _rsi(closes.iloc[:-1], 14) if len(closes) > 15 else last_rsi
         rising = last_rsi >= prev_rsi
 
-        # ADX
         from indicators.common import adx as _adx
         _last_adx = float(_adx(history["High"], history["Low"], history["Close"], 14).iloc[-1]) if not history.empty else 0.0
 
-        # EMAs & trend pass
         price  = float(history["Close"].iloc[-1]) if not history.empty else 0.0
         ema50  = float(history["Close"].ewm(span=50,  adjust=False).mean().iloc[-1]) if len(history) else 0.0
         ema200 = float(history["Close"].ewm(span=200, adjust=False).mean().iloc[-1]) if len(history) else 0.0
         trend_pass = (price > ema50 > ema200) or (ema50 > ema200)
 
-        vol_mult = float(comps_meta.get("volume_mult", 0.0))
-
         panels = [
-
             {
                 "id": "trend",
                 "title": "Trend",
                 "status": "PASS" if trend_pass else "FAIL",
-                "score": next(c["score"] for c in components if c["id"]=="trend"),
+                "score": next(c["score"] for c in components if c["id"] == "trend"),
                 "goal": "Close > EMA50 > EMA200",
                 "goal_pct": 70,
                 "reason": f"Close {price:.2f} vs EMA50 {ema50:.2f} / EMA200 {ema200:.2f}",
@@ -304,18 +353,17 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
                 "id": "momentum",
                 "title": "Momentum",
                 "status": "PASS" if (last_rsi >= goals["rsi"] and rising) else "FAIL",
-                "score": next(c["score"] for c in components if c["id"]=="momentum"),
+                "score": next(c["score"] for c in components if c["id"] == "momentum"),
                 "goal": f"RSI ≥ {goals['rsi']} & rising",
                 "goal_pct": _to_pct(goals["rsi"], 40, 70),
                 "reason": f"RSI14={last_rsi:.1f} ({'↑' if rising else '↓'})",
                 "summary": f"RSI {last_rsi:.1f} {'rising' if rising else 'falling'}; goal ≥ {goals['rsi']}.",
             },
             {
-                # Consider renaming this to “Trend Strength” since it’s ADX-based.
-                "id": "volatility/Trend Strength (ADX)”",
-                "title": "Volatility/Trend Strength (ADX)”",
+                "id": "volatility",  # keep the id stable for UI logic
+                "title": "Trend Strength (ADX)",
                 "status": "PASS" if _last_adx >= goals["adx"] else "FAIL",
-                "score": next(c["score"] for c in components if c["id"]=="volatility"),
+                "score": next(c["score"] for c in components if c["id"] == "volatility"),
                 "goal": f"ADX ≥ {goals['adx']}",
                 "goal_pct": _to_pct(goals["adx"], 10, 40),
                 "reason": f"ADX14={_last_adx:.1f}",
@@ -325,7 +373,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
                 "id": "volume",
                 "title": "Volume",
                 "status": "PASS" if (vol_mult >= goals["vol_mult"]) else "FAIL",
-                "score": next(c["score"] for c in components if c["id"]=="volume"),
+                "score": next(c["score"] for c in components if c["id"] == "volume"),
                 "goal": f"Vol ≥ {goals['vol_mult']:.2f}× avg",
                 "goal_pct": _to_pct(goals["vol_mult"], 0.8, 1.3),
                 "reason": f"Vol={vol_mult:.2f}× avg",
@@ -333,14 +381,14 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
             },
         ]
 
-    # HACOLT state proxy
+    # HACOLT mini-bars (0/50/100)
     hacolt_state_series = []
     if trend_series:
         for i in range(len(trend_series)):
             if i == 0:
                 hacolt_state_series.append(50)
             else:
-                up = trend_series[i] >= trend_series[i-1]
+                up = trend_series[i] >= trend_series[i - 1]
                 hacolt_state_series.append(100 if up else 0)
     chart["hacolt"] = (
         [{"time": c["time"], "value": int(hacolt_state_series[idx])}
@@ -353,6 +401,16 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         "adx": float(_last_adx),
         "hacolt_now": int(hacolt_state_series[-1] if hacolt_state_series else 50),
     }
+
+    # Advanced tabs (merge profile + defaults, no duplicates by id)
+    advanced_tabs = [
+        {"id": "mindset", "title": "Mindset", "content": profile.get("mindset", {}).get("focus", [])},
+        {"id": "playbook", "title": "Playbook", "content": profile.get("playbook", [])},
+    ]
+    used = {t["id"] for t in advanced_tabs}
+    for tab in DEFAULT_ADVANCED_TABS:
+        if tab["id"] not in used:
+            advanced_tabs.append(tab)
 
     readiness = {"score": readiness_score, "components": components}
 
@@ -372,9 +430,8 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         "available_modes": sorted(MODE_PROFILES.keys()),
         "watchlist": profile.get("watchlist", DEFAULT_WATCHLIST),
         "mindset": profile.get("mindset", {}),
-        "meta": payload_meta,  # ← keep this
+        "meta": payload_meta,
     }
-
 
 
 def get_watchlist(mode: str | None = None) -> list[str]:
