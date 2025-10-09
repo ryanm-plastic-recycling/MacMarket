@@ -166,7 +166,6 @@ def _prepare_candles(history: pd.DataFrame) -> list[dict]:
 
 def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict]) -> tuple[list[dict], float, dict]:
     ...
-    vol_mult = 0.0
     if volumes is not None and not volumes.dropna().empty:
         avg_volume = float(volumes.rolling(volume_window).mean().iloc[-1])
         last_volume = float(volumes.iloc[-1])
@@ -177,9 +176,7 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
         vol_mult = 0.0
     ...
     readiness_score = round(sum(c["score"] for c in components) / len(components), 1)
-    meta = {
-        "volume_mult": float(vol_mult),
-    }
+    meta = {"volume_mult": float(vol_mult)}
     return components, readiness_score, meta
 
 
@@ -245,6 +242,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
     ) if candles else []
 
     components, readiness_score, comps_meta = _component_scores(history, profile, candles)
+    vol_mult = float(comps_meta.get("volume_mult", 0.0))
     chart = _chart_payload(candles, trend_series)
 
     last_close = float(history["Close"].iloc[-1]) if not history.empty else None
@@ -291,6 +289,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         vol_mult = float(comps_meta.get("volume_mult", 0.0))
 
         panels = [
+
             {
                 "id": "trend",
                 "title": "Trend",
@@ -373,8 +372,9 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         "available_modes": sorted(MODE_PROFILES.keys()),
         "watchlist": profile.get("watchlist", DEFAULT_WATCHLIST),
         "mindset": profile.get("mindset", {}),
-        "meta": payload_meta,  # ← include meta
+        "meta": payload_meta,  # ← keep this
     }
+
 
 
 def get_watchlist(mode: str | None = None) -> list[str]:
@@ -597,11 +597,14 @@ def _scalar(x, default=0.0):
 
 
 def _calculate_exit(symbol, data, entry_price, take_profit_pct=0.02, stop_loss_pct=0.01, **kwargs):
+    """Return exit recommendation based on latest price targets."""
     close_series = None
     if isinstance(data, pd.DataFrame):
-        if "Close" in data: close_series = data["Close"]
-        elif "Adj Close" in data: close_series = data["Adj Close"]
-    if close_series is None or close_series.empty:
+        if "Close" in data:
+            close_series = data["Close"]
+        elif "Adj Close" in data:
+            close_series = data["Adj Close"]
+    if close_series is None or len(close_series) == 0:
         return {"rec": "hold", "reason": "no price"}
 
     last_close = float(close_series.iloc[-1])
