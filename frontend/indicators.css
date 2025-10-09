@@ -117,7 +117,7 @@
 .panel-card .bar{ position:relative; height:12px; background:rgba(148,163,184,.2);
   border-radius:999px; overflow:hidden; margin:.35rem 0 .25rem; }
 .panel-card .bar span{ display:block; height:100%; width:0%;
-  background:linear-gradient(90deg,#38bdf8,#22c55e); transition: width .3s ease; }
+  background:linear-gradient(90deg,#F83838,#22C525); transition: width .3s ease; }
 .panel-card .bar::after{ content:""; position:absolute; top:-3px; width:5px; height:16px;
   left: calc(var(--goal-pct, 60%) - 1px); background:#fff; opacity:1.0; border-radius:1px; }
 
