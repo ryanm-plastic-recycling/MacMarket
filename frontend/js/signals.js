@@ -5,6 +5,7 @@
     sma20Series: null,
     sma50Series: null,
     trendSeries: null,
+    mini: { haco: null, hacolt: null },
     resizeObs: null,
     tabs: [],
     activeTab: null,
@@ -21,14 +22,54 @@
   }
   
   function resizeChart() {
-     const el = document.getElementById('signals-chart');
-     if (!el || !state.chart) return;
-     // use the actual rendered width of the container
-     const w = Math.max(320, el.clientWidth || el.offsetWidth || 0);
-     const h = Math.max(300, el.clientHeight || 360);
-     state.chart.resize(w, h);
-   }
+    const el = document.getElementById('signals-chart');
+    if (el && state.chart) {
+      const w = Math.max(320, el.clientWidth || el.offsetWidth || 0);
+      const h = Math.max(300, el.clientHeight || 360);
+      state.chart.resize(w, h);
+    }
+    // minis follow width
+    ['mini-haco','mini-hacolt'].forEach(id => {
+      const host = document.getElementById(id);
+      const obj = id === 'mini-haco' ? state.mini.haco : state.mini.hacolt;
+      if (host && obj?.chart) obj.chart.resize(host.clientWidth || 0, host.clientHeight || 64);
+    });
+  }
   
+  function ensureMini(id) {
+    const host = document.getElementById(id);
+    if (!host || typeof LightweightCharts === 'undefined') return null;
+    // Create a compact chart with hidden price scale and shared time axis style
+    const chart = LightweightCharts.createChart(host, {
+      height: host.clientHeight || 64,
+      layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
+      rightPriceScale: { visible: false },
+      leftPriceScale: { visible: false },
+      timeScale: { borderVisible: false, fixLeftEdge: false, fixRightEdge: false },
+      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+    });
+    // Use a histogram so we can color per-bar (0=red,50=gray,100=green)
+    const series = chart.addHistogramSeries({ priceScaleId: '' });
+    return { chart, series };
+  }
+  
+  function syncTime(scopedCharts) {
+    // keep all charts in lockstep on logical range changes
+    const [main, ...others] = scopedCharts;
+    if (!main) return;
+    const syncTo = (src, dst) => {
+      src.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        if (!range) return;
+        // avoid feedback loops by try/catch; LC dedupes internally
+        try { dst.timeScale().setVisibleLogicalRange(range); } catch {}
+      });
+    };
+    others.forEach(o => {
+      syncTo(main, o);
+      syncTo(o, main); // allow dragging minis to move main too
+    });
+  }
+
   function ensureChart() {
     const container = el('signals-chart');
     if (!container || typeof LightweightCharts === 'undefined') {
@@ -56,6 +97,17 @@
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Dotted,
       });
+    // after state.chart is created:
+    if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
+    if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
+    
+    // keep them in sync with the main chart
+    const chartsToSync = [
+      state.chart,
+      state.mini.haco?.chart,
+      state.mini.hacolt?.chart,
+    ].filter(Boolean);
+    syncTime(chartsToSync);
 
     // Initial resize once it's created
      resizeChart();
@@ -83,6 +135,23 @@
       close: c.c,
     }));
     state.candleSeries.setData(candles);
+    // Build HACO and HACOLT bar points: [{ time, value, color }]
+    function toMiniBars(series) {
+      // series is expected like [{time, value: 0|50|100}]
+      return (series || []).map(p => {
+        let color = '#64748b'; // 50 = neutral
+        if (p.value === 100) color = '#16a34a'; // up
+        else if (p.value === 0) color = '#ef4444'; // down
+        return { time: Number(p.time), value: p.value || 0, color };
+      });
+    }
+    
+    // Set minis if present
+    const hacoBars   = toMiniBars(chartPayload.haco);
+    const hacoltBars = toMiniBars(chartPayload.hacolt);
+    
+    if (state.mini.haco?.series && hacoBars.length)   state.mini.haco.series.setData(hacoBars);
+    if (state.mini.hacolt?.series && hacoltBars.length) state.mini.hacolt.series.setData(hacoltBars);
 
     const indicators = chartPayload.indicators || {};
     state.sma20Series.setData((indicators.sma20 || []).map((p) => ({ time: Number(p.time), value: p.value })));
