@@ -113,26 +113,39 @@
     });
   }
 
-  function renderPanels(panels) {
+    function renderPanels(panels) {
     const grid = el('panels-grid');
     if (!grid) return;
     grid.innerHTML = '';
     (panels || []).forEach((panel) => {
       const card = document.createElement('article');
       card.className = 'panel-card';
+      const bar = document.createElement('div');
+      bar.className = 'bar';
+      const span = document.createElement('span');
+  
+      bar.appendChild(span);
+  
       card.innerHTML = `
         <header>
           <h4>${panel.title}</h4>
           <span class="badge">${Math.round(panel.score)}</span>
         </header>
-        <p>${panel.summary || ''}</p>
-        <footer>${panel.status || ''}</footer>`;
+        <p>${panel.summary || panel.reason || ''}</p>
+        <small>${panel.goal || ''}</small>
+        <footer>${panel.status || ''}</footer>
+      `;
+      // insert bar between <p> and <small>
+      card.querySelector('p').after(bar);
+  
+      // width & tick
+      span.style.width = `${Math.max(0, Math.min(100, panel.score || 0))}%`;
+      bar.style.setProperty('--goal-pct', `${Math.max(0, Math.min(100, panel.goal_pct || 60))}%`);
+  
       grid.appendChild(card);
-      // panel.score is 0..100; panel.goal_pct is 0..100
-    span.style.width = `${Math.max(0, Math.min(100, panel.score))}%`;
-    card.querySelector('.bar').style.setProperty('--goal-pct', `${panel.goal_pct || 60}%`);
     });
   }
+
 
   function renderEntries(entries) {
     const list = el('entries-list');
@@ -319,6 +332,30 @@
       renderReadiness(data.readiness);
       renderPanels(data.panels);
       renderChart(data.chart);
+      renderChecklist(data.panels, data.readiness, data.meta);
+      renderHacoltBars(data.chart?.hacolt || []);
+      // chart subtitle cues
+      const subtitle = document.getElementById('chart-subtitle') || document.createElement('span');
+      subtitle.id = 'chart-subtitle';
+      const meta = data.meta || {};
+      const trendChip = meta.trend_pass ? 'Trend: PASS' : 'Trend: FAIL';
+      const adxChip   = (meta.adx != null && meta.adx < 25) ? `Chop (ADX ${meta.adx.toFixed(1)})` : `ADX ${meta.adx?.toFixed?.(1) ?? ''}`;
+      let hacoltChip = '';
+      if (meta.hacolt_now === 100) hacoltChip = 'LT Up';
+      else if (meta.hacolt_now === 0) hacoltChip = 'LT Down';
+      subtitle.textContent = [trendChip, adxChip, hacoltChip].filter(Boolean).join(' • ');
+      
+      // Put the subtitle near the chart title if you have one
+      const chartCol = document.querySelector('#signals-top .chart-col') || document.querySelector('.overview-chart');
+      if (chartCol && !document.getElementById('chart-subtitle')) {
+        const h = document.createElement('div');
+        h.style.margin = '6px 0 8px';
+        h.id = 'chart-subtitle';
+        h.textContent = subtitle.textContent;
+        chartCol.prepend(h);
+      } else if (document.getElementById('chart-subtitle')) {
+        document.getElementById('chart-subtitle').textContent = subtitle.textContent;
+      }
       renderEntries(data.entries);
       renderExits(data.exits);
       renderAdvancedTabs(data.advanced_tabs);
@@ -333,6 +370,50 @@
       setStatus('Failed to load signal', 'error');
       return null;
     }
+  }
+
+  function renderHacoltBars(series) {
+    // expects [{time, value: 0|50|100}]
+    const host = document.getElementById('haco-signal-chart');
+    if (!host) return;
+    // simple 1D canvas bars
+    const width = host.clientWidth || 600;
+    const height = host.clientHeight || 100;
+    host.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    canvas.width = width; canvas.height = height;
+    host.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    const n = series.length || 0;
+    if (!n) return;
+    const w = width / n;
+    for (let i=0;i<n;i++){
+      const v = series[i].value; // 0/50/100
+      ctx.fillStyle = v === 100 ? '#16a34a' : v === 0 ? '#ef4444' : '#64748b';
+      ctx.fillRect(i*w, 0, Math.ceil(w), height);
+    }
+  }
+
+  function renderChecklist(panels, readiness, meta) {
+    const container = document.getElementById('advanced-tab-content'); // or create a new div near readiness
+    if (!container) return;
+    const byId = Object.fromEntries((panels||[]).map(p => [p.id, p]));
+    const pass = id => (byId[id]?.status === 'PASS');
+    const ready = Math.round(readiness?.score || 0);
+  
+    const items = [
+      {label:'Trend PASS', ok: pass('trend')},
+      {label:'Momentum PASS', ok: pass('momentum')},
+      {label:'Volatility PASS', ok: pass('volatility')},
+      {label:'Volume PASS or improving', ok: pass('volume')},
+      {label:'HACOLT = 100 (optional long bias)', ok: (meta?.hacolt_now === 100)},
+      {label:`Readiness ≥ 75 (now ${ready})`, ok: ready >= 75},
+    ];
+    const html = items.map(i => `<li>${i.ok ? '✅' : '⬜'} ${i.label}</li>`).join('');
+    const wrap = document.createElement('div');
+    wrap.style.marginTop = '10px';
+    wrap.innerHTML = `<h4>Checklist</h4><ul>${html}</ul>`;
+    container.appendChild(wrap);
   }
 
   function sma(values, period) {
