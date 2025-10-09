@@ -443,6 +443,26 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
                 "summary": f"Volume {vol_mult:.2f}× avg; goal {goals['vol_mult']:.2f}×.",
             },
         ]
+    # HACO state series (0/50/100), analogous to hacolt
+    try:
+        # If your haco module exposes a state/projection on OHLC:
+        core_candles = [{"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles]
+        haco_state_series = []
+        # Example: if haco_indicator has a function to produce state per bar, adapt this:
+        # states = haco_indicator.compute_states(core_candles, up=..., down=...)
+        # for s in states: haco_state_series.append(0/50/100 based on s)
+    
+        # If not available, you can re-use your existing HACO endpoint json here (but best is local):
+        # Fallback neutral if unknown
+        if not haco_state_series:
+            haco_state_series = [50] * len(candles)
+    
+        chart["haco"] = [
+            {"time": candles[i]["time"], "value": int(haco_state_series[i])}
+            for i in range(len(haco_state_series))
+        ]
+    except Exception:
+        chart["haco"] = []
 
     # HACOLT mini-bars (0/50/100)
     hacolt_state_series = []
