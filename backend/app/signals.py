@@ -164,48 +164,9 @@ def _prepare_candles(history: pd.DataFrame) -> list[dict]:
     return candles
 
 
-def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict]) -> tuple[list[dict], float]:
-    chart_cfg = profile.get("chart", {})
-    closes = history.get("Close", pd.Series(dtype=float)).astype(float)
-    volumes = history.get("Volume")
-    trend_window = chart_cfg.get("trend_window", 34)
-    momentum_window = chart_cfg.get("momentum_window", 14)
-    volume_window = chart_cfg.get("volume_window", 20)
-
-    core_candles = [{"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles]
-    trend_series = hacolt.compute_trend(core_candles, period=trend_window) if candles else []
-    if trend_series:
-        lookback = min(len(trend_series) - 1, max(3, trend_window // 4))
-        trend_delta = trend_series[-1] - trend_series[-lookback - 1]
-    else:
-        trend_delta = 0.0
-    trend_score = indicator_common.normalise_score(trend_delta, lower=-5.0, upper=5.0)
-    trend_status = "bullish" if trend_delta > 0 else "bearish" if trend_delta < 0 else "neutral"
-
-    # Momentum (make reference and last close explicit scalars)
-    if len(closes) > max(1, momentum_window):
-        raw_ref = closes.iloc[-momentum_window] if len(closes) > momentum_window else closes.iloc[0]
-    else:
-        raw_ref = closes.iloc[0] if len(closes) else 0.0
-    
-    # force scalar float, handle NaN safely (avoid pandas truthiness)
-    ref = _to_float(raw_ref, 0.0)
-    last_close = _to_float(closes.iloc[-1] if len(closes) else 0.0, 0.0)
-    momentum = ((last_close / ref) - 1.0) if ref != 0.0 else 0.0
-    
-    momentum_score = indicator_common.normalise_score(momentum, lower=-0.08, upper=0.08)
-    momentum_status = "accelerating" if momentum > 0 else "fading" if momentum < 0 else "flat"
-
-    returns = closes.pct_change().dropna()
-    if not returns.empty:
-        vol_window = min(len(returns), max(5, momentum_window))
-        vol_value = returns.rolling(vol_window).std().dropna()
-        volatility = float(vol_value.iloc[-1]) if not vol_value.empty else float(returns.std())
-    else:
-        volatility = 0.0
-    volatility_score = indicator_common.normalise_score(0.06 - volatility, lower=-0.06, upper=0.06)
-    volatility_status = "calm" if volatility < 0.03 else "elevated" if volatility > 0.06 else "balanced"
-
+def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict]) -> tuple[list[dict], float, dict]:
+    ...
+    vol_mult = 0.0
     if volumes is not None and not volumes.dropna().empty:
         avg_volume = float(volumes.rolling(volume_window).mean().iloc[-1])
         last_volume = float(volumes.iloc[-1])
@@ -213,44 +174,13 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
         vol_mult = (last_volume / avg_volume) if avg_volume != 0.0 else 0.0
     else:
         volume_ratio = 0.0
-
-    volume_score = indicator_common.normalise_score(volume_ratio, lower=-1.0, upper=1.0)
-    volume_status = "surging" if volume_ratio > 0.2 else "fading" if volume_ratio < -0.2 else "steady"
-
-    components = [
-        {
-            "id": "trend",
-            "title": "Trend",
-            "score": round(trend_score, 1),
-            "status": trend_status,
-            "value": round(trend_delta, 3),
-        },
-        {
-            "id": "momentum",
-            "title": "Momentum",
-            "score": round(momentum_score, 1),
-            "status": momentum_status,
-            "value": round(momentum, 3),
-        },
-        {
-            "id": "volatility",
-            "title": "Volatility",
-            "score": round(volatility_score, 1),
-            "status": volatility_status,
-            "value": round(volatility, 3),
-        },
-        {
-            "id": "volume",
-            "title": "Volume",
-            "score": round(volume_score, 1),
-            "status": volume_status,
-            "value": round(volume_ratio, 3),
-        },
-    ]
-
-    # Equal weight average (TODO: consider 35/35/20/10 weighting).
+        vol_mult = 0.0
+    ...
     readiness_score = round(sum(c["score"] for c in components) / len(components), 1)
-    return components, readiness_score
+    meta = {
+        "volume_mult": float(vol_mult),
+    }
+    return components, readiness_score, meta
 
 
 def _chart_payload(candles: list[dict], trend_series: list[float]) -> dict:
@@ -301,41 +231,38 @@ def _chart_payload(candles: list[dict], trend_series: list[float]) -> dict:
 
 
 def compute_signals(symbol: str, mode: str = "swing") -> dict:
-    """Return the consolidated Signals payload for ``symbol``."""
-
     canonical_mode, profile = _get_mode_profile(mode)
-    mode_key = canonical_mode  # already lower-cased in _get_mode_profile
+    mode_key = canonical_mode
     goals = _goal_lines_for_mode(mode_key)
+
     history = _load_history(symbol, profile)
     candles = _prepare_candles(history)
-    components, readiness_score = _component_scores(history, profile, candles)
+
+    # compute trend ONCE
     trend_series = hacolt.compute_trend(
         ({"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles),
         period=profile.get("chart", {}).get("trend_window", 34),
     ) if candles else []
+
+    components, readiness_score, comps_meta = _component_scores(history, profile, candles)
     chart = _chart_payload(candles, trend_series)
 
     last_close = float(history["Close"].iloc[-1]) if not history.empty else None
     action_bias = "long" if readiness_score >= 55 else "short" if readiness_score <= 40 else "neutral"
-    entries = [
-        {
-            "type": action_bias,
-            "confidence": readiness_score,
-            "summary": (
-                f"Trend is {components[0]['status']} and momentum is {components[1]['status']}."
-            ),
-            "price": format_price(last_close) if last_close is not None else None,
-        }
-    ]
+    entries = [{
+        "type": action_bias,
+        "confidence": readiness_score,
+        "summary": f"Trend is {components[0]['status']} and momentum is {components[1]['status']}.",
+        "price": format_price(last_close) if last_close is not None else None,
+    }]
 
     exits_payload, exit_reason = (None, "")
     if last_close is not None:
         exits_payload, exit_reason = _exit_levels(symbol, "buy" if action_bias != "short" else "sell", float(last_close))
-        # quick recomputes for panel display (consistent with _component_scores)
+
+        # RSI helper
         closes = history.get("Close", pd.Series(dtype=float)).astype(float)
-        last_rsi = float(closes.rolling(14).apply(lambda s: 0, raw=False))  # placeholder; you already computed RSI in _component_scores
-        # Better: compute RSI again using your same helper so values match:
-        from indicators.common import ema as _ema  # or your rsi helper if exposed here
+
         def _rsi(series: pd.Series, length: int=14) -> float:
             if series.empty: return 0.0
             delta = series.diff()
@@ -346,110 +273,89 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
             rs = roll_up / roll_down.replace(0, np.nan)
             r = (100 - (100 / (1 + rs))).iloc[-1]
             return float(r if pd.notna(r) else 0.0)
-        
+
         last_rsi = _rsi(closes, 14)
         prev_rsi = _rsi(closes.iloc[:-1], 14) if len(closes) > 15 else last_rsi
         rising = last_rsi >= prev_rsi
-        
-        # ADX for goal display (you already compute for score; reuse or recompute quickly)
-        from indicators.common import adx as _adx  # if not available here, you can pass last_adx from _component_scores
-        _last_adx = float(_adx(history["High"], history["Low"], history["Close"], 14).iloc[-1]) if not history.empty else 0.0
-        
-        # Trend EMAs and price (for display + PASS)
-        price = float(history["Close"].iloc[-1]) if not history.empty else 0.0
-        ema50 = float(history["Close"].ewm(span=50, adjust=False).mean().iloc[-1]) if len(history) else 0.0
-        ema200= float(history["Close"].ewm(span=200,adjust=False).mean().iloc[-1]) if len(history) else 0.0
-        trend_pass = (price > ema50 > ema200) or (ema50 > ema200)
-    
-     panels = [
-        {
-            "id": "trend",
-            "title": "Trend",
-            "status": "PASS" if trend_pass else "FAIL",
-            "score": next(c["score"] for c in components if c["id"]=="trend"),
-            "goal": "Close > EMA50 > EMA200",
-            "goal_pct": 70,  # static tick hint
-            "reason": f"Close {price:.2f} vs EMA50 {ema50:.2f} / EMA200 {ema200:.2f}",
-            "summary": f"Trend is {'aligned' if trend_pass else 'mixed'}."
-        },
-        {
-            "id": "momentum",
-            "title": "Momentum",
-            "status": "PASS" if (last_rsi >= goals["rsi"] and rising) else "FAIL",
-            "score": next(c["score"] for c in components if c["id"]=="momentum"),
-            "goal": f"RSI ≥ {goals['rsi']} & rising",
-            "goal_pct": _to_pct(goals["rsi"], 40, 70),
-            "reason": f"RSI14={last_rsi:.1f} ({'↑' if rising else '↓'})",
-            "summary": f"RSI {last_rsi:.1f} {'rising' if rising else 'falling'}; goal ≥ {goals['rsi']}."
-        },
-        {
-            "id": "volatility",
-            "title": "Volatility",
-            "status": "PASS" if _last_adx >= goals["adx"] else "FAIL",
-            "score": next(c["score"] for c in components if c["id"]=="volatility"),
-            "goal": f"ADX ≥ {goals['adx']}",
-            "goal_pct": _to_pct(goals["adx"], 10, 40),
-            "reason": f"ADX14={_last_adx:.1f}",
-            "summary": f"ADX { _last_adx:.1f } vs {goals['adx']}."
-        },
-        {
-            "id": "volume",
-            "title": "Volume",
-            "status": "PASS" if (vol_mult >= goals["vol_mult"]) else "FAIL",
-            "score": next(c["score"] for c in components if c["id"]=="volume"),
-            "goal": f"Vol ≥ {goals['vol_mult']:.2f}× avg",
-            "goal_pct": _to_pct(goals["vol_mult"], 0.8, 1.3),
-            "reason": f"Vol={vol_mult:.2f}× avg",
-            "summary": f"Volume {vol_mult:.2f}× avg; goal {goals['vol_mult']:.2f}×."
-        },
-    ]
 
-    # simple HACOLT state proxy: sign of trend_series slope
+        # ADX
+        from indicators.common import adx as _adx
+        _last_adx = float(_adx(history["High"], history["Low"], history["Close"], 14).iloc[-1]) if not history.empty else 0.0
+
+        # EMAs & trend pass
+        price  = float(history["Close"].iloc[-1]) if not history.empty else 0.0
+        ema50  = float(history["Close"].ewm(span=50,  adjust=False).mean().iloc[-1]) if len(history) else 0.0
+        ema200 = float(history["Close"].ewm(span=200, adjust=False).mean().iloc[-1]) if len(history) else 0.0
+        trend_pass = (price > ema50 > ema200) or (ema50 > ema200)
+
+        vol_mult = float(comps_meta.get("volume_mult", 0.0))
+
+        panels = [
+            {
+                "id": "trend",
+                "title": "Trend",
+                "status": "PASS" if trend_pass else "FAIL",
+                "score": next(c["score"] for c in components if c["id"]=="trend"),
+                "goal": "Close > EMA50 > EMA200",
+                "goal_pct": 70,
+                "reason": f"Close {price:.2f} vs EMA50 {ema50:.2f} / EMA200 {ema200:.2f}",
+                "summary": f"Trend is {'aligned' if trend_pass else 'mixed'}.",
+            },
+            {
+                "id": "momentum",
+                "title": "Momentum",
+                "status": "PASS" if (last_rsi >= goals["rsi"] and rising) else "FAIL",
+                "score": next(c["score"] for c in components if c["id"]=="momentum"),
+                "goal": f"RSI ≥ {goals['rsi']} & rising",
+                "goal_pct": _to_pct(goals["rsi"], 40, 70),
+                "reason": f"RSI14={last_rsi:.1f} ({'↑' if rising else '↓'})",
+                "summary": f"RSI {last_rsi:.1f} {'rising' if rising else 'falling'}; goal ≥ {goals['rsi']}.",
+            },
+            {
+                # Consider renaming this to “Trend Strength” since it’s ADX-based.
+                "id": "volatility/Trend Strength (ADX)”",
+                "title": "Volatility/Trend Strength (ADX)”",
+                "status": "PASS" if _last_adx >= goals["adx"] else "FAIL",
+                "score": next(c["score"] for c in components if c["id"]=="volatility"),
+                "goal": f"ADX ≥ {goals['adx']}",
+                "goal_pct": _to_pct(goals["adx"], 10, 40),
+                "reason": f"ADX14={_last_adx:.1f}",
+                "summary": f"ADX { _last_adx:.1f } vs {goals['adx']}.",
+            },
+            {
+                "id": "volume",
+                "title": "Volume",
+                "status": "PASS" if (vol_mult >= goals["vol_mult"]) else "FAIL",
+                "score": next(c["score"] for c in components if c["id"]=="volume"),
+                "goal": f"Vol ≥ {goals['vol_mult']:.2f}× avg",
+                "goal_pct": _to_pct(goals["vol_mult"], 0.8, 1.3),
+                "reason": f"Vol={vol_mult:.2f}× avg",
+                "summary": f"Volume {vol_mult:.2f}× avg; goal {goals['vol_mult']:.2f}×.",
+            },
+        ]
+
+    # HACOLT state proxy
     hacolt_state_series = []
     if trend_series:
         for i in range(len(trend_series)):
-            if i==0:
+            if i == 0:
                 hacolt_state_series.append(50)
             else:
                 up = trend_series[i] >= trend_series[i-1]
                 hacolt_state_series.append(100 if up else 0)
-    else:
-        hacolt_state_series = []
-    
-    chart["hacolt"] = [{"time": c["time"], "value": int(hacolt_state_series[idx])}
-                       for idx, c in enumerate(chart["candles"][-len(hacolt_state_series):])] if chart["candles"] else []
-    
+    chart["hacolt"] = (
+        [{"time": c["time"], "value": int(hacolt_state_series[idx])}
+         for idx, c in enumerate(chart["candles"][-len(hacolt_state_series):])]
+        if chart["candles"] else []
+    )
+
     payload_meta = {
-        "trend_pass": trend_pass,
-        "adx": _last_adx,
-        "hacolt_now": (hacolt_state_series[-1] if hacolt_state_series else 50),
+        "trend_pass": bool(trend_pass),
+        "adx": float(_last_adx),
+        "hacolt_now": int(hacolt_state_series[-1] if hacolt_state_series else 50),
     }
-    
-    # include meta in return
-    ...
-    "meta": payload_meta,
 
-    advanced_tabs = [
-        {
-            "id": "mindset",
-            "title": "Mindset",
-            "content": profile.get("mindset", {}).get("focus", []),
-        },
-        {
-            "id": "playbook",
-            "title": "Playbook",
-            "content": profile.get("playbook", []),
-        },
-    ]
-    used_ids = {tab["id"] for tab in advanced_tabs}
-    for tab in DEFAULT_ADVANCED_TABS:
-        if tab["id"] not in used_ids:
-            advanced_tabs.append(tab)
-
-    readiness = {
-        "score": readiness_score,
-        "components": components,
-    }
+    readiness = {"score": readiness_score, "components": components}
 
     return {
         "symbol": symbol.upper(),
@@ -457,10 +363,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         "panels": panels,
         "readiness": readiness,
         "entries": entries,
-        "exits": {
-            "levels": exits_payload,
-            "reason": exit_reason,
-        },
+        "exits": {"levels": exits_payload, "reason": exit_reason},
         "chart": chart,
         "chart_preset": {
             "interval": profile.get("interval", "1d"),
@@ -470,6 +373,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         "available_modes": sorted(MODE_PROFILES.keys()),
         "watchlist": profile.get("watchlist", DEFAULT_WATCHLIST),
         "mindset": profile.get("mindset", {}),
+        "meta": payload_meta,  # ← include meta
     }
 
 
@@ -693,14 +597,19 @@ def _scalar(x, default=0.0):
 
 
 def _calculate_exit(symbol, data, entry_price, take_profit_pct=0.02, stop_loss_pct=0.01, **kwargs):
-    """Return exit recommendation based on latest price targets."""
-    close_series = data["Close"] if "Close" in data else (data["Adj Close"] if "Adj Close" in data else None)
-    last_close = _scalar(close_series)
-    if last_close is None:
+    close_series = None
+    if isinstance(data, pd.DataFrame):
+        if "Close" in data: close_series = data["Close"]
+        elif "Adj Close" in data: close_series = data["Adj Close"]
+    if close_series is None or close_series.empty:
+        return {"rec": "hold", "reason": "no price"}
+
+    last_close = float(close_series.iloc[-1])
+    if math.isnan(last_close):
         return {"rec": "hold", "reason": "no price"}
 
     profit_target = float(entry_price) * (1.0 + float(take_profit_pct))
-    stop_target = float(entry_price) * (1.0 - float(stop_loss_pct))
+    stop_target   = float(entry_price) * (1.0 - float(stop_loss_pct))
 
     if last_close >= profit_target:
         return {"rec": "sell", "reason": f"Target {profit_target:.2f}"}
