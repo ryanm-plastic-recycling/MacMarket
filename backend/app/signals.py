@@ -183,7 +183,7 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     trend_score = indicator_common.normalise_score(trend_delta, lower=-5.0, upper=5.0)
     trend_status = "bullish" if trend_delta > 0 else "bearish" if trend_delta < 0 else "neutral"
 
-    # Momentum (price vs ref)
+    # Momentum
     if len(closes) > max(1, momentum_window):
         raw_ref = closes.iloc[-momentum_window] if len(closes) > momentum_window else closes.iloc[0]
     else:
@@ -194,7 +194,7 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     momentum_score = indicator_common.normalise_score(momentum, lower=-0.08, upper=0.08)
     momentum_status = "accelerating" if momentum > 0 else "fading" if momentum < 0 else "flat"
 
-    # “Volatility” proxy (lower realized vol => higher score)
+    # Realized vol proxy (lower vol → higher score)
     returns = closes.pct_change().dropna()
     if not returns.empty:
         vol_window = min(len(returns), max(5, momentum_window))
@@ -218,10 +218,10 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     volume_status = "surging" if volume_ratio > 0.2 else "fading" if volume_ratio < -0.2 else "steady"
 
     components = [
-        {"id": "trend",     "title": "Trend",     "score": round(trend_score, 1),     "status": trend_status,     "value": round(trend_delta, 3)},
-        {"id": "momentum",  "title": "Momentum",  "score": round(momentum_score, 1),  "status": momentum_status,  "value": round(momentum, 3)},
-        {"id": "volatility","title": "Volatility","score": round(volatility_score, 1),"status": volatility_status,"value": round(volatility, 3)},
-        {"id": "volume",    "title": "Volume",    "score": round(volume_score, 1),    "status": volume_status,    "value": round(volume_ratio, 3)},
+        {"id": "trend",     "title": "Trend",      "score": round(trend_score, 1),     "status": trend_status,     "value": round(trend_delta, 3)},
+        {"id": "momentum",  "title": "Momentum",   "score": round(momentum_score, 1),  "status": momentum_status,  "value": round(momentum, 3)},
+        {"id": "volatility","title": "Volatility", "score": round(volatility_score, 1),"status": volatility_status,"value": round(volatility, 3)},
+        {"id": "volume",    "title": "Volume",     "score": round(volume_score, 1),    "status": volume_status,    "value": round(volume_ratio, 3)},
     ]
 
     readiness_score = round(sum(c["score"] for c in components) / len(components), 1)
@@ -309,6 +309,9 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
 
     exits_payload, exit_reason = (None, "")
     panels = []  # will fill if we can compute display stats
+    
+    trend_pass = False
+    _last_adx = 0.0
 
     if last_close is not None:
         exits_payload, exit_reason = _exit_levels(symbol, "buy" if action_bias != "short" else "sell", float(last_close))
@@ -360,8 +363,8 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
                 "summary": f"RSI {last_rsi:.1f} {'rising' if rising else 'falling'}; goal ≥ {goals['rsi']}.",
             },
             {
-                "id": "volatility",  # keep the id stable for UI logic
-                "title": "Trend Strength (ADX)",
+                "id": "volatility",
+                "title": "Volatility/Trend Strength (ADX)",
                 "status": "PASS" if _last_adx >= goals["adx"] else "FAIL",
                 "score": next(c["score"] for c in components if c["id"] == "volatility"),
                 "goal": f"ADX ≥ {goals['adx']}",
