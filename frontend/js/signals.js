@@ -51,20 +51,26 @@
   function ensureMini(id) {
     const host = document.getElementById(id);
     if (!host || typeof LightweightCharts === 'undefined') return null;
-    // Create a compact chart with hidden price scale and shared time axis style
     const chart = LightweightCharts.createChart(host, {
       height: host.clientHeight || 64,
       layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
       rightPriceScale: { visible: false },
       leftPriceScale: { visible: false },
-      timeScale: { borderVisible: false, fixLeftEdge: false, fixRightEdge: false },
+      timeScale: {
+        borderVisible: false,
+        fixLeftEdge: false,
+        fixRightEdge: false,
+        // minis are driven by master only:
+        rightBarStaysOnScroll: false,
+      },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+      handleScroll: false, // <- disable direct scroll on minis
+      handleScale:  false, // <- disable direct zoom on minis
     });
-    // Use a histogram so we can color per-bar (0=red,50=gray,100=green)
     const series = chart.addHistogramSeries({ priceScaleId: '' });
     return { chart, series };
   }
-  
+
   function syncTime(scopedCharts) {
     // keep all charts in lockstep on logical range changes
     const [main, ...others] = scopedCharts;
@@ -82,37 +88,70 @@
     });
   }
 
-  function ensureHacoCharts() {
-  const host = document.getElementById('haco-chart');
-  if (!host || typeof LightweightCharts === 'undefined') return null;
-
-  if (!state.haco.main) {
-    // main HACO candles
-    state.haco.main = LightweightCharts.createChart(host, {
-      height: host.clientHeight || 420,
-      layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
-      rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false },
-      grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
-    });
-    state.haco.candle = state.haco.main.addCandlestickSeries({
-      upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350',
-    });
-
-    // two minis under HACO candles
-    state.haco.miniHaco   = ensureMini('haco-mini-haco');
-    state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
-
-    // keep HACO minis in lockstep with HACO main
-    const chartsToSync = [
-      state.haco.main,
-      state.haco.miniHaco?.chart,
-      state.haco.miniHacolt?.chart,
-    ].filter(Boolean);
-    syncTime(chartsToSync);
+  function linkMasterToSlaves(master, slaves) {
+    if (!master || !slaves?.length) return;
+  
+    // guard to avoid loops
+    let syncing = false;
+  
+    const applyTimeRange = (range) => {
+      if (!range || syncing) return;
+      syncing = true;
+      try {
+        slaves.forEach(s => s.timeScale().setVisibleRange(range));
+      } finally {
+        syncing = false;
+      }
+    };
+  
+    const applyLogicalRange = (range) => {
+      if (!range || syncing) return;
+      syncing = true;
+      try {
+        slaves.forEach(s => s.timeScale().setVisibleLogicalRange(range));
+      } finally {
+        syncing = false;
+      }
+    };
+  
+    // Prefer time range; LC will keep bar spacing coherent. Logical is a fallback signal.
+    master.timeScale().subscribeVisibleTimeRangeChange(applyTimeRange);
+    master.timeScale().subscribeVisibleLogicalRangeChange(applyLogicalRange);
   }
-  return state.haco.main;
-}
+
+  function ensureHacoCharts() {
+    const host = document.getElementById('haco-chart');
+    if (!host || typeof LightweightCharts === 'undefined') return null;
+  
+    if (!state.haco.main) {
+      // main HACO candles
+      state.haco.main = LightweightCharts.createChart(host, {
+        height: host.clientHeight || 420,
+        layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
+        rightPriceScale: { borderVisible: false },
+        timeScale: { borderVisible: false },
+        grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
+      });
+      state.haco.candle = state.haco.main.addCandlestickSeries({
+        upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+      });
+  
+      // two minis under HACO candles
+      state.haco.miniHaco   = ensureMini('haco-mini-haco');
+      state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
+      const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
+      linkMasterToSlaves(state.haco.main, hacoSlaves);
+
+      // keep HACO minis in lockstep with HACO main
+      const chartsToSync = [
+        state.haco.main,
+        state.haco.miniHaco?.chart,
+        state.haco.miniHacolt?.chart,
+      ].filter(Boolean);
+      syncTime(chartsToSync);
+    }
+    return state.haco.main;
+  }
 
   function ensureHacoMinis() {
     // Create the two mini charts (once) under the existing HACO chart
@@ -198,6 +237,10 @@ function renderHacoSection(chartPayload) {
         lineStyle: LightweightCharts.LineStyle.Dotted,
       });
     // after state.chart is created:
+    if (state.chart) {
+      const slaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
+      linkMasterToSlaves(state.chart, slaves);
+    }
     if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
     if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
     
