@@ -114,6 +114,13 @@
   height: 320px;
 }
 
+.panel-card .bar { position: relative; height: 8px; background: rgba(148,163,184,.2);
+  border-radius: 999px; overflow: hidden; }
+.panel-card .bar span { display:block; height:100%; width: 0%; background: linear-gradient(90deg,#38bdf8,#22c55e); transition:width .3s; }
+/* goal tick */
+.panel-card .bar::after { content:""; position:absolute; top: -3px; width:2px; height:14px;
+  right: calc(100% - var(--goal-pct, 50%)); background: #fff; opacity:.8; border-radius:1px; }
+
 .entries-list,
 .mindset-focus,
 .watchlist-list {
