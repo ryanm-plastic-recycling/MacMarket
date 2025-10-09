@@ -324,6 +324,61 @@ def _adx_from_hlc(high: pd.Series, low: pd.Series, close: pd.Series, length: int
     return float(val) if pd.notna(val) else 0.0
 
 
+def _compute_haco_states(core_candles: list[dict]) -> list[int]:
+    """
+    Return a per-bar HACO state series mapped to [0,50,100] (down/flat/up).
+    We try to use the haco module if it exposes a function; otherwise fall back
+    to a simple HA-direction proxy so the strip is still meaningful.
+    """
+    # 1) Try to use indicators.haco if it has a usable function
+    for name in ("compute_states", "project_states", "states", "project"):
+        fn = getattr(haco_indicator, name, None)
+        if callable(fn):
+            try:
+                out = fn(core_candles)  # whatever your module returns
+                states: list[int] = []
+                for item in out:
+                    # normalize a variety of shapes to 0/50/100
+                    # Accept dicts with 'state'/'score' or direct ints/bools
+                    if isinstance(item, dict):
+                        s = item.get("state", item.get("score", item.get("value")))
+                    else:
+                        s = item
+                    if s is None:
+                        states.append(50)
+                        continue
+                    # common mappings
+                    if isinstance(s, (int, float)):
+                        if s > 0:   states.append(100)
+                        elif s < 0: states.append(0)
+                        else:       states.append(50)
+                    elif isinstance(s, str):
+                        ss = s.lower()
+                        if "up" in ss or "long" in ss or "bull" in ss: states.append(100)
+                        elif "down" in ss or "short" in ss or "bear" in ss: states.append(0)
+                        else: states.append(50)
+                    else:
+                        states.append(50)
+                if states:
+                    return states
+            except Exception:
+                pass  # fall through to HA proxy
+
+    # 2) Fallback: HA direction proxy (green if HA close > HA open)
+    try:
+        ha = haco_ha.project({"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in core_candles)
+        states = []
+        for bar in ha:
+            o = float(bar.get("o", 0.0))
+            c = float(bar.get("c", 0.0))
+            if c > o:   states.append(100)
+            elif c < o: states.append(0)
+            else:       states.append(50)
+        return states
+    except Exception:
+        return [50] * len(core_candles)
+
+
 def compute_signals(symbol: str, mode: str = "swing") -> dict:
     canonical_mode, profile = _get_mode_profile(mode)
     mode_key = canonical_mode
@@ -443,26 +498,13 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
                 "summary": f"Volume {vol_mult:.2f}× avg; goal {goals['vol_mult']:.2f}×.",
             },
         ]
-    # HACO state series (0/50/100), analogous to hacolt
-    try:
-        # If your haco module exposes a state/projection on OHLC:
-        core_candles = [{"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles]
-        haco_state_series = []
-        # Example: if haco_indicator has a function to produce state per bar, adapt this:
-        # states = haco_indicator.compute_states(core_candles, up=..., down=...)
-        # for s in states: haco_state_series.append(0/50/100 based on s)
-    
-        # If not available, you can re-use your existing HACO endpoint json here (but best is local):
-        # Fallback neutral if unknown
-        if not haco_state_series:
-            haco_state_series = [50] * len(candles)
-    
-        chart["haco"] = [
-            {"time": candles[i]["time"], "value": int(haco_state_series[i])}
-            for i in range(len(haco_state_series))
-        ]
-    except Exception:
-        chart["haco"] = []
+    # HACO state series (0/50/100), aligned to candles
+    core_candles = [{"o": c["o"], "h": c["h"], "l": c["l"], "c": c["c"]} for c in candles]
+    haco_state_series = _compute_haco_states(core_candles)
+    chart["haco"] = [
+        {"time": candles[i]["time"], "value": int(haco_state_series[i])}
+        for i in range(min(len(candles), len(haco_state_series)))
+    ]
 
     # HACOLT mini-bars (0/50/100)
     hacolt_state_series = []
