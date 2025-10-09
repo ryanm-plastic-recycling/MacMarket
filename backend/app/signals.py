@@ -199,7 +199,7 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
     if not returns.empty:
         vol_window = min(len(returns), max(5, momentum_window))
         vol_value = returns.rolling(vol_window).std().dropna()
-        volatility = float(vol_value.iloc[-1]) if not vol_value.empty else float(returns.std())
+        volatility = _scalar(vol_value.iloc[-1]) if not vol_value.empty else _scalar(returns.std())
     else:
         volatility = 0.0
     volatility_score = indicator_common.normalise_score(0.06 - volatility, lower=-0.06, upper=0.06)
@@ -207,8 +207,8 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
 
     # Volume ratio & multiple
     if volumes is not None and not volumes.dropna().empty:
-        avg_volume = float(volumes.rolling(volume_window).mean().iloc[-1])
-        last_volume = float(volumes.iloc[-1])
+        avg_volume  = _scalar(volumes.rolling(volume_window).mean().iloc[-1])
+        last_volume = _scalar(volumes.iloc[-1])
         volume_ratio = (last_volume - avg_volume) / avg_volume if avg_volume != 0.0 else 0.0
         vol_mult = (last_volume / avg_volume) if avg_volume != 0.0 else 0.0
     else:
@@ -295,7 +295,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
     vol_mult = float(comps_meta.get("volume_mult", 0.0))
     chart = _chart_payload(candles, trend_series)
 
-    last_close = float(history["Close"].iloc[-1]) if not history.empty else None
+    last_close = _scalar(history["Close"].iloc[-1]) if not history.empty else None
     action_bias = "long" if readiness_score >= 55 else "short" if readiness_score <= 40 else "neutral"
     entries = [{
         "type": action_bias,
@@ -317,15 +317,25 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         closes = history.get("Close", pd.Series(dtype=float)).astype(float)
 
         def _rsi(series: pd.Series, length: int = 14) -> float:
-            if series.empty: return 0.0
-            delta = series.diff()
+            s = pd.Series(series).astype(float)
+            if s.size < 2:
+                return 0.0
+        
+            delta = s.diff()
             up = delta.clip(lower=0.0)
             down = -delta.clip(upper=0.0)
+        
             roll_up = up.ewm(span=length, adjust=False).mean()
             roll_down = down.ewm(span=length, adjust=False).mean()
-            rs = roll_up / roll_down.replace(0, np.nan)
-            r = (100 - (100 / (1 + rs))).iloc[-1]
-            return float(r if pd.notna(r) else 0.0)
+        
+            rs = roll_up / roll_down.replace(0.0, np.nan)
+            rsi_series = 100 - (100 / (1 + rs))
+        
+            val = rsi_series.iloc[-1]
+            # Robust scalar coercion (handles scalar, 0-dim ndarray, 1-len Series)
+            if isinstance(val, (pd.Series, np.ndarray)):
+                val = np.asarray(val).ravel()[-1]
+            return float(val) if not pd.isna(val) else 0.0
 
         last_rsi = _rsi(closes, 14)
         prev_rsi = _rsi(closes.iloc[:-1], 14) if len(closes) > 15 else last_rsi
@@ -334,9 +344,9 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         from indicators.common import adx as _adx
         _last_adx = float(_adx(history["High"], history["Low"], history["Close"], 14).iloc[-1]) if not history.empty else 0.0
 
-        price  = float(history["Close"].iloc[-1]) if not history.empty else 0.0
-        ema50  = float(history["Close"].ewm(span=50,  adjust=False).mean().iloc[-1]) if len(history) else 0.0
-        ema200 = float(history["Close"].ewm(span=200, adjust=False).mean().iloc[-1]) if len(history) else 0.0
+        price  = _scalar(history["Close"].iloc[-1]) if not history.empty else 0.0
+        ema50  = _scalar(history["Close"].ewm(span=50,  adjust=False).mean().iloc[-1]) if len(history) else 0.0
+        ema200 = _scalar(history["Close"].ewm(span=200, adjust=False).mean().iloc[-1]) if len(history) else 0.0
         trend_pass = (price > ema50 > ema200) or (ema50 > ema200)
 
         panels = [
@@ -745,9 +755,9 @@ def _exit_levels(symbol: str, action: str, price: float) -> tuple[dict | None, s
             (low  - close.shift()).abs(),
         ], axis=1).max(axis=1)
 
-        atr_val = float(tr.rolling(14, min_periods=14).mean().iloc[-1])
-        sup_val = float(low.rolling(20,  min_periods=20).min().iloc[-1])
-        res_val = float(high.rolling(20, min_periods=20).max().iloc[-1])
+        atr_val = _scalar(tr.rolling(14, min_periods=14).mean().iloc[-1])
+        sup_val = _scalar(low.rolling(20,  min_periods=20).min().iloc[-1])
+        res_val = _scalar(high.rolling(20, min_periods=20).max().iloc[-1])
 
         # Guard NaNs
         if any(math.isnan(v) for v in (atr_val, sup_val, res_val)):
