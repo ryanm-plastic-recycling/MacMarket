@@ -281,11 +281,47 @@ def _chart_payload(candles: list[dict], trend_series: list[float]) -> dict:
 def _ensure_series_1d(obj) -> pd.Series:
     """Return a 1-D float Series, even if input is a DataFrame or (N,1) array."""
     if isinstance(obj, pd.DataFrame):
-        # take the first column if it's a single-column DF or multi-col by mistake
         obj = obj.iloc[:, 0]
-    # np.ravel ensures 1-D even if input was (N,1)
     arr = np.ravel(np.asarray(obj, dtype=float))
     return pd.Series(arr)
+
+
+def _adx_from_hlc(high: pd.Series, low: pd.Series, close: pd.Series, length: int = 14) -> float:
+    """Wilder's ADX (scalar latest). Safe for ragged inputs."""
+    h = _ensure_series_1d(high)
+    l = _ensure_series_1d(low)
+    c = _ensure_series_1d(close)
+    n = min(len(h), len(l), len(c))
+    if n < length + 2:
+        return 0.0
+
+    h = h.iloc[-n:].reset_index(drop=True)
+    l = l.iloc[-n:].reset_index(drop=True)
+    c = c.iloc[-n:].reset_index(drop=True)
+
+    up_move = h.diff()
+    down_move = -l.diff()
+
+    plus_dm  = up_move.where((up_move > down_move) & (up_move > 0.0), 0.0)
+    minus_dm = down_move.where((down_move > up_move) & (down_move > 0.0), 0.0)
+
+    tr = pd.concat([
+        (h - l),
+        (h - c.shift()).abs(),
+        (l - c.shift()).abs()
+    ], axis=1).max(axis=1)
+
+    # Wilder’s smoothing via EMA with alpha = 1/length
+    alpha = 1.0 / float(length)
+    atr      = tr.ewm(alpha=alpha, adjust=False, min_periods=length).mean()
+    plus_di  = 100.0 * plus_dm.ewm(alpha=alpha, adjust=False, min_periods=length).mean()  / atr.replace(0.0, np.nan)
+    minus_di = 100.0 * minus_dm.ewm(alpha=alpha, adjust=False, min_periods=length).mean() / atr.replace(0.0, np.nan)
+
+    dx = (100.0 * (plus_di - minus_di).abs() / (plus_di + minus_di)).replace([np.inf, -np.inf], np.nan)
+    adx = dx.ewm(alpha=alpha, adjust=False, min_periods=length).mean()
+
+    val = adx.iloc[-1]
+    return float(val) if pd.notna(val) else 0.0
 
 
 def compute_signals(symbol: str, mode: str = "swing") -> dict:
@@ -349,9 +385,16 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         last_rsi = _rsi(closes, 14)
         prev_rsi = _rsi(closes.iloc[:-1], 14) if len(closes) > 15 else last_rsi
         rising = last_rsi >= prev_rsi
+        
+        high_raw = history.get("High", pd.Series(dtype=float))
+        low_raw  = history.get("Low",  pd.Series(dtype=float))
+        closes_raw = history.get("Close", pd.Series(dtype=float))
+        
+        high   = _ensure_series_1d(high_raw)
+        low    = _ensure_series_1d(low_raw)
+        closes = _ensure_series_1d(closes_raw)
 
-        from indicators.common import adx as _adx
-        _last_adx = float(_adx(history["High"], history["Low"], history["Close"], 14).iloc[-1]) if not history.empty else 0.0
+        _last_adx = _adx_from_hlc(high, low, closes, 14)
 
         price  = _scalar(history["Close"].iloc[-1]) if not history.empty else 0.0
         ema50  = _scalar(history["Close"].ewm(span=50,  adjust=False).mean().iloc[-1]) if len(history) else 0.0
