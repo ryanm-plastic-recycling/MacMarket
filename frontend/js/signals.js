@@ -114,6 +114,42 @@
   return state.haco.main;
 }
 
+  function ensureHacoMinis() {
+    // Create the two mini charts (once) under the existing HACO chart
+    if (!state.haco.miniHaco)   state.haco.miniHaco   = ensureMini('haco-mini-haco');
+    if (!state.haco.miniHacolt) state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
+  
+    // Try to find the existing HACO main chart that haco-ui.js created
+    // Option 1: global object set by your HACO module
+    if (!state.haco.main && window.HACO && window.HACO.chart) {
+      state.haco.main = window.HACO.chart;
+    }
+  
+    // If still not available, wait for haco-ui to announce it's ready
+    if (!state.haco.main) {
+      window.addEventListener('haco:ready', (e) => {
+        if (e?.detail?.chart) {
+          state.haco.main = e.detail.chart;
+          // lock minis to HACO main
+          const chartsToSync = [
+            state.haco.main,
+            state.haco.miniHaco?.chart,
+            state.haco.miniHacolt?.chart,
+          ].filter(Boolean);
+          syncTime(chartsToSync);
+        }
+      }, { once: true });
+    } else {
+      // lock minis to HACO main now
+      const chartsToSync = [
+        state.haco.main,
+        state.haco.miniHaco?.chart,
+        state.haco.miniHacolt?.chart,
+      ].filter(Boolean);
+      syncTime(chartsToSync);
+    }
+  }
+
 function toMiniBars(series) {
   return (series || []).map(p => {
     let color = '#64748b';           // 50 = neutral
@@ -124,23 +160,15 @@ function toMiniBars(series) {
 }
 
 function renderHacoSection(chartPayload) {
-  const hacoChart = ensureHacoCharts();
-  if (!hacoChart || !chartPayload) return;
+  ensureHacoMinis();
+  if (!chartPayload) return;
 
-  // set HACO candles (reuse main candles; or in future, load HACO timeframe-specific)
-  const candles = (chartPayload.candles || []).map(c => ({
-    time: Number(c.time), open: c.o, high: c.h, low: c.l, close: c.c,
-  }));
-  state.haco.candle.setData(candles);
-
-  // set HACO + HACOLT strips
   const hacoBars   = toMiniBars(chartPayload.haco);
   const hacoltBars = toMiniBars(chartPayload.hacolt);
 
   if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars.length ? hacoBars : []);
   if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars.length ? hacoltBars : []);
 }
-
 
   function ensureChart() {
     const container = el('signals-chart');
