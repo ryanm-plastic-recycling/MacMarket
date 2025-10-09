@@ -110,9 +110,17 @@
       </form>
     
       <div id="haco-chart" style="height:420px; position:relative;"></div>
-      <div id="haco-toast" class="toast" style="display:none;"></div>
-      <div id="haco-signal-chart" style="height:100px;"></div>
-      <div id="haco-explain"></div>
+
+        <!-- NEW: two synced strips under the HACO candles -->
+        <div id="haco-mini-strips">
+          <div id="haco-mini-haco" class="mini-strip"></div>
+          <div id="haco-mini-hacolt" class="mini-strip"></div>
+        </div>
+        
+        <!-- (optional) keep these if you still use them elsewhere; otherwise remove -->
+        <div id="haco-toast" class="toast" style="display:none;"></div>
+        <div id="haco-explain"></div>
+
     </section>
 
     <!-- full-width rows under the grid -->
