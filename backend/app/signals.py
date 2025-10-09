@@ -64,6 +64,21 @@ def _get_mode_profile(mode: str) -> tuple[str, dict]:
     return canonical, profile
 
 
+def _goal_lines_for_mode(mode_key: str) -> dict:
+    m = (mode_key or "swing").lower()
+    if m == "day":       return dict(rsi=52, adx=20, vol_mult=1.10)
+    if m == "position":  return dict(rsi=55, adx=20, vol_mult=1.10)
+    if m == "crypto":    return dict(rsi=55, adx=23, vol_mult=1.20)
+    # swing default
+    return dict(rsi=55, adx=25, vol_mult=1.15)
+
+
+def _to_pct(value: float, lo: float, hi: float) -> float:
+    if hi == lo: return 0.0
+    v = max(lo, min(hi, float(value)))
+    return float((v - lo) / (hi - lo) * 100.0)
+
+
 def _to_float(x, default: float = 0.0) -> float:
     """Coerce pandas/ndarray/scalar to a plain float, mapping NaN/None to default."""
     try:
@@ -195,6 +210,7 @@ def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict])
         avg_volume = float(volumes.rolling(volume_window).mean().iloc[-1])
         last_volume = float(volumes.iloc[-1])
         volume_ratio = (last_volume - avg_volume) / avg_volume if avg_volume != 0.0 else 0.0
+        vol_mult = (last_volume / avg_volume) if avg_volume != 0.0 else 0.0
     else:
         volume_ratio = 0.0
 
@@ -288,6 +304,8 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
     """Return the consolidated Signals payload for ``symbol``."""
 
     canonical_mode, profile = _get_mode_profile(mode)
+    mode_key = canonical_mode  # already lower-cased in _get_mode_profile
+    goals = _goal_lines_for_mode(mode_key)
     history = _load_history(symbol, profile)
     candles = _prepare_candles(history)
     components, readiness_score = _component_scores(history, profile, candles)
@@ -313,17 +331,103 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
     exits_payload, exit_reason = (None, "")
     if last_close is not None:
         exits_payload, exit_reason = _exit_levels(symbol, "buy" if action_bias != "short" else "sell", float(last_close))
-
-    panels = [
+        # quick recomputes for panel display (consistent with _component_scores)
+        closes = history.get("Close", pd.Series(dtype=float)).astype(float)
+        last_rsi = float(closes.rolling(14).apply(lambda s: 0, raw=False))  # placeholder; you already computed RSI in _component_scores
+        # Better: compute RSI again using your same helper so values match:
+        from indicators.common import ema as _ema  # or your rsi helper if exposed here
+        def _rsi(series: pd.Series, length: int=14) -> float:
+            if series.empty: return 0.0
+            delta = series.diff()
+            up = delta.clip(lower=0.0)
+            down = -delta.clip(upper=0.0)
+            roll_up = up.ewm(span=length, adjust=False).mean()
+            roll_down = down.ewm(span=length, adjust=False).mean()
+            rs = roll_up / roll_down.replace(0, np.nan)
+            r = (100 - (100 / (1 + rs))).iloc[-1]
+            return float(r if pd.notna(r) else 0.0)
+        
+        last_rsi = _rsi(closes, 14)
+        prev_rsi = _rsi(closes.iloc[:-1], 14) if len(closes) > 15 else last_rsi
+        rising = last_rsi >= prev_rsi
+        
+        # ADX for goal display (you already compute for score; reuse or recompute quickly)
+        from indicators.common import adx as _adx  # if not available here, you can pass last_adx from _component_scores
+        _last_adx = float(_adx(history["High"], history["Low"], history["Close"], 14).iloc[-1]) if not history.empty else 0.0
+        
+        # Trend EMAs and price (for display + PASS)
+        price = float(history["Close"].iloc[-1]) if not history.empty else 0.0
+        ema50 = float(history["Close"].ewm(span=50, adjust=False).mean().iloc[-1]) if len(history) else 0.0
+        ema200= float(history["Close"].ewm(span=200,adjust=False).mean().iloc[-1]) if len(history) else 0.0
+        trend_pass = (price > ema50 > ema200) or (ema50 > ema200)
+    
+     panels = [
         {
-            "id": comp["id"],
-            "title": comp["title"],
-            "score": comp["score"],
-            "status": comp["status"],
-            "summary": f"{comp['title']} is {comp['status']} (value {comp['value']}).",
-        }
-        for comp in components
+            "id": "trend",
+            "title": "Trend",
+            "status": "PASS" if trend_pass else "FAIL",
+            "score": next(c["score"] for c in components if c["id"]=="trend"),
+            "goal": "Close > EMA50 > EMA200",
+            "goal_pct": 70,  # static tick hint
+            "reason": f"Close {price:.2f} vs EMA50 {ema50:.2f} / EMA200 {ema200:.2f}",
+            "summary": f"Trend is {'aligned' if trend_pass else 'mixed'}."
+        },
+        {
+            "id": "momentum",
+            "title": "Momentum",
+            "status": "PASS" if (last_rsi >= goals["rsi"] and rising) else "FAIL",
+            "score": next(c["score"] for c in components if c["id"]=="momentum"),
+            "goal": f"RSI ≥ {goals['rsi']} & rising",
+            "goal_pct": _to_pct(goals["rsi"], 40, 70),
+            "reason": f"RSI14={last_rsi:.1f} ({'↑' if rising else '↓'})",
+            "summary": f"RSI {last_rsi:.1f} {'rising' if rising else 'falling'}; goal ≥ {goals['rsi']}."
+        },
+        {
+            "id": "volatility",
+            "title": "Volatility",
+            "status": "PASS" if _last_adx >= goals["adx"] else "FAIL",
+            "score": next(c["score"] for c in components if c["id"]=="volatility"),
+            "goal": f"ADX ≥ {goals['adx']}",
+            "goal_pct": _to_pct(goals["adx"], 10, 40),
+            "reason": f"ADX14={_last_adx:.1f}",
+            "summary": f"ADX { _last_adx:.1f } vs {goals['adx']}."
+        },
+        {
+            "id": "volume",
+            "title": "Volume",
+            "status": "PASS" if (vol_mult >= goals["vol_mult"]) else "FAIL",
+            "score": next(c["score"] for c in components if c["id"]=="volume"),
+            "goal": f"Vol ≥ {goals['vol_mult']:.2f}× avg",
+            "goal_pct": _to_pct(goals["vol_mult"], 0.8, 1.3),
+            "reason": f"Vol={vol_mult:.2f}× avg",
+            "summary": f"Volume {vol_mult:.2f}× avg; goal {goals['vol_mult']:.2f}×."
+        },
     ]
+
+    # simple HACOLT state proxy: sign of trend_series slope
+    hacolt_state_series = []
+    if trend_series:
+        for i in range(len(trend_series)):
+            if i==0:
+                hacolt_state_series.append(50)
+            else:
+                up = trend_series[i] >= trend_series[i-1]
+                hacolt_state_series.append(100 if up else 0)
+    else:
+        hacolt_state_series = []
+    
+    chart["hacolt"] = [{"time": c["time"], "value": int(hacolt_state_series[idx])}
+                       for idx, c in enumerate(chart["candles"][-len(hacolt_state_series):])] if chart["candles"] else []
+    
+    payload_meta = {
+        "trend_pass": trend_pass,
+        "adx": _last_adx,
+        "hacolt_now": (hacolt_state_series[-1] if hacolt_state_series else 50),
+    }
+    
+    # include meta in return
+    ...
+    "meta": payload_meta,
 
     advanced_tabs = [
         {
