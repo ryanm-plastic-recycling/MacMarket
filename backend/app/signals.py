@@ -430,7 +430,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
                 "goal": f"ADX ≥ {goals['adx']}",
                 "goal_pct": _to_pct(goals["adx"], 10, 40),
                 "reason": f"ADX14={_last_adx:.1f}",
-                "summary": f"ADX { _last_adx:.1f } vs {goals['adx']}.",
+                "summary": f"ADX {_last_adx:.1f} vs {goals['adx']}.",
             },
             {
                 "id": "volume",
