@@ -317,10 +317,16 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         closes = history.get("Close", pd.Series(dtype=float)).astype(float)
 
         def _rsi(series: pd.Series, length: int = 14) -> float:
-            s = pd.Series(series).astype(float)
-            if s.size < 2:
+            # Ensure 1-D float array
+            arr = np.asarray(series, dtype=float)
+            if arr.ndim > 1:
+                arr = np.squeeze(arr)           # drop singleton dims, e.g. (N,1) -> (N,)
+            arr = arr.ravel()                   # guarantee 1-D
+        
+            if arr.size < 2:
                 return 0.0
         
+            s = pd.Series(arr)
             delta = s.diff()
             up = delta.clip(lower=0.0)
             down = -delta.clip(upper=0.0)
@@ -332,9 +338,6 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
             rsi_series = 100 - (100 / (1 + rs))
         
             val = rsi_series.iloc[-1]
-            # Robust scalar coercion (handles scalar, 0-dim ndarray, 1-len Series)
-            if isinstance(val, (pd.Series, np.ndarray)):
-                val = np.asarray(val).ravel()[-1]
             return float(val) if not pd.isna(val) else 0.0
 
         last_rsi = _rsi(closes, 14)
