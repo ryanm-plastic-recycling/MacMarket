@@ -166,7 +166,8 @@ def _prepare_candles(history: pd.DataFrame) -> list[dict]:
 
 def _component_scores(history: pd.DataFrame, profile: dict, candles: list[dict]) -> tuple[list[dict], float, dict]:
     chart_cfg = profile.get("chart", {})
-    closes = history.get("Close", pd.Series(dtype=float)).astype(float)
+    closes_raw = history.get("Close", pd.Series(dtype=float))
+    closes = _ensure_series_1d(closes_raw)
     volumes = history.get("Volume")
     trend_window = chart_cfg.get("trend_window", 34)
     momentum_window = chart_cfg.get("momentum_window", 14)
@@ -277,6 +278,16 @@ def _chart_payload(candles: list[dict], trend_series: list[float]) -> dict:
     }
 
 
+def _ensure_series_1d(obj) -> pd.Series:
+    """Return a 1-D float Series, even if input is a DataFrame or (N,1) array."""
+    if isinstance(obj, pd.DataFrame):
+        # take the first column if it's a single-column DF or multi-col by mistake
+        obj = obj.iloc[:, 0]
+    # np.ravel ensures 1-D even if input was (N,1)
+    arr = np.ravel(np.asarray(obj, dtype=float))
+    return pd.Series(arr)
+
+
 def compute_signals(symbol: str, mode: str = "swing") -> dict:
     canonical_mode, profile = _get_mode_profile(mode)
     mode_key = canonical_mode
@@ -314,15 +325,11 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
     if last_close is not None:
         exits_payload, exit_reason = _exit_levels(symbol, "buy" if action_bias != "short" else "sell", float(last_close))
 
-        closes = history.get("Close", pd.Series(dtype=float)).astype(float)
+        closes_raw = history.get("Close", pd.Series(dtype=float))
+        closes = _ensure_series_1d(closes_raw)
 
-        def _rsi(series: pd.Series, length: int = 14) -> float:
-            # Ensure 1-D float array
-            arr = np.asarray(series, dtype=float)
-            if arr.ndim > 1:
-                arr = np.squeeze(arr)           # drop singleton dims, e.g. (N,1) -> (N,)
-            arr = arr.ravel()                   # guarantee 1-D
-        
+        def _rsi(series_like, length: int = 14) -> float:
+            arr = np.ravel(np.asarray(series_like, dtype=float))  # force 1-D
             if arr.size < 2:
                 return 0.0
         
@@ -336,7 +343,6 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         
             rs = roll_up / roll_down.replace(0.0, np.nan)
             rsi_series = 100 - (100 / (1 + rs))
-        
             val = rsi_series.iloc[-1]
             return float(val) if not pd.isna(val) else 0.0
 
