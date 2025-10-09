@@ -6,6 +6,7 @@
     sma50Series: null,
     trendSeries: null,
     mini: { haco: null, hacolt: null },
+    haco: { main: null, candle: null, miniHaco: null, miniHacolt: null },
     resizeObs: null,
     tabs: [],
     activeTab: null,
@@ -32,6 +33,17 @@
     ['mini-haco','mini-hacolt'].forEach(id => {
       const host = document.getElementById(id);
       const obj = id === 'mini-haco' ? state.mini.haco : state.mini.hacolt;
+      if (host && obj?.chart) obj.chart.resize(host.clientWidth || 0, host.clientHeight || 64);
+    });
+    // HACO main
+    const hhost = document.getElementById('haco-chart');
+    if (hhost && state.haco.main) {
+      state.haco.main.resize(hhost.clientWidth || 0, hhost.clientHeight || 420);
+    }
+    // HACO minis
+    ['haco-mini-haco','haco-mini-hacolt'].forEach(id => {
+      const host = document.getElementById(id);
+      const obj = (id === 'haco-mini-haco') ? state.haco.miniHaco : state.haco.miniHacolt;
       if (host && obj?.chart) obj.chart.resize(host.clientWidth || 0, host.clientHeight || 64);
     });
   }
@@ -69,6 +81,66 @@
       syncTo(o, main); // allow dragging minis to move main too
     });
   }
+
+  function ensureHacoCharts() {
+  const host = document.getElementById('haco-chart');
+  if (!host || typeof LightweightCharts === 'undefined') return null;
+
+  if (!state.haco.main) {
+    // main HACO candles
+    state.haco.main = LightweightCharts.createChart(host, {
+      height: host.clientHeight || 420,
+      layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
+      rightPriceScale: { borderVisible: false },
+      timeScale: { borderVisible: false },
+      grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
+    });
+    state.haco.candle = state.haco.main.addCandlestickSeries({
+      upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350',
+    });
+
+    // two minis under HACO candles
+    state.haco.miniHaco   = ensureMini('haco-mini-haco');
+    state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
+
+    // keep HACO minis in lockstep with HACO main
+    const chartsToSync = [
+      state.haco.main,
+      state.haco.miniHaco?.chart,
+      state.haco.miniHacolt?.chart,
+    ].filter(Boolean);
+    syncTime(chartsToSync);
+  }
+  return state.haco.main;
+}
+
+function toMiniBars(series) {
+  return (series || []).map(p => {
+    let color = '#64748b';           // 50 = neutral
+    if (p.value === 100) color = '#16a34a';   // up
+    else if (p.value === 0) color = '#ef4444'; // down
+    return { time: Number(p.time), value: p.value || 0, color };
+  });
+}
+
+function renderHacoSection(chartPayload) {
+  const hacoChart = ensureHacoCharts();
+  if (!hacoChart || !chartPayload) return;
+
+  // set HACO candles (reuse main candles; or in future, load HACO timeframe-specific)
+  const candles = (chartPayload.candles || []).map(c => ({
+    time: Number(c.time), open: c.o, high: c.h, low: c.l, close: c.c,
+  }));
+  state.haco.candle.setData(candles);
+
+  // set HACO + HACOLT strips
+  const hacoBars   = toMiniBars(chartPayload.haco);
+  const hacoltBars = toMiniBars(chartPayload.hacolt);
+
+  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars);
+  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars);
+}
+
 
   function ensureChart() {
     const container = el('signals-chart');
@@ -401,6 +473,7 @@
       renderReadiness(data.readiness);
       renderPanels(data.panels);
       renderChart(data.chart);
+      renderHacoSection(data.chart);
       renderChecklist(data.panels, data.readiness, data.meta);
       renderHacoltBars(data.chart?.hacolt || []);
       // chart subtitle cues
@@ -440,7 +513,7 @@
       return null;
     }
   }
-
+  
   function renderHacoltBars(series) {
     // expects [{time, value: 0|50|100}]
     const host = document.getElementById('haco-signal-chart');
