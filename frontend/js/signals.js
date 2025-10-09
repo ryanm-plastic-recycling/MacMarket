@@ -128,6 +128,9 @@
         <p>${panel.summary || ''}</p>
         <footer>${panel.status || ''}</footer>`;
       grid.appendChild(card);
+      // panel.score is 0..100; panel.goal_pct is 0..100
+    span.style.width = `${Math.max(0, Math.min(100, panel.score))}%`;
+    card.querySelector('.bar').style.setProperty('--goal-pct', `${panel.goal_pct || 60}%`);
     });
   }
 
