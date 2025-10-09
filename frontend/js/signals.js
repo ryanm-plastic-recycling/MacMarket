@@ -513,8 +513,8 @@
     body.innerHTML = '';
     (data.recommendations || []).forEach((r) => {
       const tr = document.createElement('tr');
-      const exit = r.exit ? r.exit.toFixed(2) : '';
-      const prob = `${Math.round(r.probability * 100)}%`;
+      const exit = (r.exit_price != null) ? Number(r.exit_price).toFixed(2) : '';
+      const prob = `${Math.round((r.probability || 0) * 100)}%`;
       tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
       body.appendChild(tr);
     });
@@ -531,8 +531,8 @@
     if (!body || !data.recommendation) return;
     body.innerHTML = '';
     const r = data.recommendation;
-    const exit = r.exit ? r.exit.toFixed(2) : '';
-    const prob = `${Math.round(r.probability * 100)}%`;
+    const exit = (r.exit_price != null) ? Number(r.exit_price).toFixed(2) : '';
+    const prob = `${Math.round((r.probability || 0) * 100)}%`;
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${r.symbol}</td><td>${r.action}</td><td>${exit}</td><td>${prob}</td><td>${r.reason}</td>`;
     body.appendChild(tr);
