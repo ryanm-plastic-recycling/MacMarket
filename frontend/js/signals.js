@@ -137,8 +137,8 @@ function renderHacoSection(chartPayload) {
   const hacoBars   = toMiniBars(chartPayload.haco);
   const hacoltBars = toMiniBars(chartPayload.hacolt);
 
-  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars);
-  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars);
+  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars.length ? hacoBars : []);
+  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars.length ? hacoltBars : []);
 }
 
 
@@ -207,23 +207,13 @@ function renderHacoSection(chartPayload) {
       close: c.c,
     }));
     state.candleSeries.setData(candles);
-    // Build HACO and HACOLT bar points: [{ time, value, color }]
-    function toMiniBars(series) {
-      // series is expected like [{time, value: 0|50|100}]
-      return (series || []).map(p => {
-        let color = '#64748b'; // 50 = neutral
-        if (p.value === 100) color = '#16a34a'; // up
-        else if (p.value === 0) color = '#ef4444'; // down
-        return { time: Number(p.time), value: p.value || 0, color };
-      });
-    }
     
     // Set minis if present
     const hacoBars   = toMiniBars(chartPayload.haco);
     const hacoltBars = toMiniBars(chartPayload.hacolt);
     
-    if (state.mini.haco?.series && hacoBars.length)   state.mini.haco.series.setData(hacoBars);
-    if (state.mini.hacolt?.series && hacoltBars.length) state.mini.hacolt.series.setData(hacoltBars);
+    if (state.mini.haco?.series)     state.mini.haco.series.setData(hacoBars.length ? hacoBars : []);
+    if (state.mini.hacolt?.series)   state.mini.hacolt.series.setData(hacoltBars.length ? hacoltBars : []);
 
     const indicators = chartPayload.indicators || {};
     state.sma20Series.setData((indicators.sma20 || []).map((p) => ({ time: Number(p.time), value: p.value })));
@@ -475,7 +465,7 @@ function renderHacoSection(chartPayload) {
       renderChart(data.chart);
       renderHacoSection(data.chart);
       renderChecklist(data.panels, data.readiness, data.meta);
-      renderHacoltBars(data.chart?.hacolt || []);
+      //renderHacoltBars(data.chart?.hacolt || []);
       // chart subtitle cues
       const subtitle = document.getElementById('chart-subtitle') || document.createElement('span');
       subtitle.id = 'chart-subtitle';
