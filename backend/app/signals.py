@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-
+from typing import Iterable
 from indicators import haco as haco_indicator, haco_ha, hacolt, common as indicator_common
 
 from .mode_profiles import MODE_PROFILES
@@ -31,6 +31,7 @@ EXIT_STOP_LOSS_PCT = 0.02     # 2% stop-loss
 EXIT_MAX_HOLD_DAYS = 30       # time-based exit after 30 trading days
 
 DEFAULT_WATCHLIST = ["SPY", "QQQ", "DIA", "IWM", "AAPL", "MSFT", "NVDA"]
+
 DEFAULT_ADVANCED_TABS = [
     {
         "id": "playbook",
@@ -64,6 +65,16 @@ DEFAULT_UNIVERSE = [
 
 DEFAULT_CRYPTO_UNIVERSE = ["BTC-USD","ETH-USD","XMR-USD","RVN-USD","SOL-USD","AVAX-USD","LINK-USD","ADA-USD","DOGE-USD"]
 
+def _fallback_watchlist_for_mode(mode_key: str) -> list[str]:
+    # use your mode universe helper if you added it; otherwise handle crypto directly
+    mk = (mode_key or "swing").lower()
+    try:
+        return list(_mode_universe(mk))  # if you implemented _mode_universe as in earlier patch
+    except Exception:
+        if mk == "crypto":
+            return ["BTC-USD","ETH-USD","SOL-USD","AVAX-USD","LINK-USD","ADA-USD","DOGE-USD"]
+        return ["SPY","QQQ","DIA","IWM","AAPL","MSFT","NVDA"]
+        
 def _compute_readiness_only(symbol: str, mode: str = "swing") -> float:
     """
     Fast path: compute just the readiness score using your existing logic.
@@ -613,7 +624,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         },
         "advanced_tabs": advanced_tabs,
         "available_modes": sorted(MODE_PROFILES.keys()),
-        "watchlist": profile.get("watchlist", DEFAULT_WATCHLIST),
+        "watchlist": profile.get("watchlist") or _fallback_watchlist_for_mode(canonical_mode),
         "ranked_watchlist": get_dynamic_watchlist(canonical_mode, limit=10),
         "mindset": profile.get("mindset", {}),
         "meta": payload_meta,
