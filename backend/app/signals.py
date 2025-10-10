@@ -52,6 +52,66 @@ DEFAULT_ADVANCED_TABS = [
     },
 ]
 
+# --- Dynamic watchlist plumbing (small + safe) ---
+DEFAULT_UNIVERSE = [
+    # ETFs
+    "SPY","QQQ","DIA","IWM","XLK","XLF","XLE","XLV",
+    # Liquid mega-caps / semis
+    "AAPL","MSFT","NVDA","META","AMZN","GOOGL","TSLA","AMD","AVGO","NFLX",
+    # Some high-turnover names
+    "SMCI","CRM","INTC","UBER","JPM","WMT",
+]
+
+DEFAULT_CRYPTO_UNIVERSE = ["BTC-USD","ETH-USD","XMR-USD","RVN-USD","SOL-USD","AVAX-USD","LINK-USD","ADA-USD","DOGE-USD"]
+
+def _compute_readiness_only(symbol: str, mode: str = "swing") -> float:
+    """
+    Fast path: compute just the readiness score using your existing logic.
+    No charts/exits. Returns 0.0 on error.
+    """
+    try:
+        canonical_mode, profile = _get_mode_profile(mode)
+        history = _load_history(symbol, profile)
+        if history.empty:
+            return 0.0
+        candles = _prepare_candles(history)
+        _components, readiness_score, _meta = _component_scores(history, profile, candles)
+        return float(readiness_score or 0.0)
+    except Exception:
+        return 0.0
+
+
+def _mode_universe(mode_key: str) -> list[str]:
+    mk = (mode_key or "swing").lower()
+    if mk == "crypto":
+        return DEFAULT_CRYPTO_UNIVERSE[:]
+    # day/position/swing can share for now; tweak later if desired
+    return DEFAULT_UNIVERSE[:]
+
+
+def get_dynamic_watchlist(mode: str, limit: int = 10, extra: list[str] | None = None) -> list[dict]:
+    """
+    Rank a mode-specific universe by current readiness. Returns
+    a list of dicts: [{"symbol": "NVDA", "score": 78.5}, ...]
+    """
+    universe = _mode_universe(mode)
+    if extra:
+        # merge & dedupe (keep order)
+        seen, merged = set(), []
+        for s in [*universe, *extra]:
+            u = str(s).upper().strip()
+            if u and u not in seen:
+                seen.add(u); merged.append(u)
+        universe = merged
+
+    ranked: list[tuple[str, float]] = []
+    for sym in universe:
+        sc = _compute_readiness_only(sym, mode)
+        ranked.append((sym, sc))
+
+    ranked.sort(key=lambda x: x[1], reverse=True)
+    top = [{"symbol": s, "score": round(float(sc), 1)} for s, sc in ranked[:max(1, limit)]]
+    return top
 
 def _get_mode_profile(mode: str) -> tuple[str, dict]:
     """Return the canonical mode key and its profile definition."""
