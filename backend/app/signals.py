@@ -102,8 +102,6 @@ def _ttl_cache(seconds: int):
     return decorator
 
 @_ttl_cache(60)
-
-
 def _compute_readiness_only(symbol: str, mode: str = "swing") -> float:
     """
     Fast readiness scorer reusing your component logic (cached ~60s).
