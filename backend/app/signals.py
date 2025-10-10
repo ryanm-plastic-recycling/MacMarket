@@ -10,6 +10,8 @@ import requests
 import pandas as pd
 import numpy as np
 import yfinance as yf
+from functools import lru_cache
+import time
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from typing import Iterable
 from indicators import haco as haco_indicator, haco_ha, hacolt, common as indicator_common
@@ -83,9 +85,28 @@ def _mode_universe(mode_key: str) -> list[str]:
     return UNIVERSE_SWING[:]
 
 
+# poor-man's TTL wrapper around lru_cache
+def _ttl_cache(seconds: int):
+    def decorator(fn):
+        cache = lru_cache(maxsize=512)(fn)
+        last = {"t": 0}
+        def wrapped(*a, **k):
+            now = int(time.time())
+            # reset the cache once per TTL window
+            if now - last["t"] >= seconds:
+                cache.cache_clear()
+                last["t"] = now
+            return cache(*a, **k)
+        wrapped.cache_clear = cache.cache_clear  # expose if you need it
+        return wrapped
+    return decorator
+
+@_ttl_cache(60)
+
+
 def _compute_readiness_only(symbol: str, mode: str = "swing") -> float:
     """
-    Fast readiness scorer reusing your component logic.
+    Fast readiness scorer reusing your component logic (cached ~60s).
     """
     try:
         canonical_mode, profile = _get_mode_profile(mode)
@@ -121,6 +142,7 @@ def get_dynamic_watchlist(mode: str, limit: int = 10, extra: list[str] | None = 
     ranked.sort(key=lambda x: x[1], reverse=True)
     return [{"symbol": s, "score": round(float(sc), 1)} for s, sc in ranked[:max(1, limit)]]
 
+
 def _fallback_watchlist_for_mode(mode_key: str) -> list[str]:
     # use your mode universe helper if you added it; otherwise handle crypto directly
     mk = (mode_key or "swing").lower()
@@ -130,6 +152,7 @@ def _fallback_watchlist_for_mode(mode_key: str) -> list[str]:
         if mk == "crypto":
             return ["BTC-USD","ETH-USD","SOL-USD","AVAX-USD","LINK-USD","ADA-USD","DOGE-USD"]
         return ["SPY","QQQ","DIA","IWM","AAPL","MSFT","NVDA"]
+
 
 def _get_mode_profile(mode: str) -> tuple[str, dict]:
     """Return the canonical mode key and its profile definition."""
@@ -617,6 +640,14 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
 
     readiness = {"score": readiness_score, "components": components}
 
+        # --- never let the ranked list crash the endpoint ---
+    ranked_watchlist: list[dict] = []
+    try:
+        # keep this small so the page is snappy; adjust as you like
+        ranked_watchlist = get_dynamic_watchlist(canonical_mode, limit=10)
+    except Exception:
+        ranked_watchlist = []
+
     return {
         "symbol": symbol.upper(),
         "mode": canonical_mode,
@@ -631,8 +662,8 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         },
         "advanced_tabs": advanced_tabs,
         "available_modes": sorted(MODE_PROFILES.keys()),
-        "watchlist": profile.get("watchlist") or _fallback_watchlist_for_mode(canonical_mode),
-        "ranked_watchlist": get_dynamic_watchlist(canonical_mode, limit=10),
+                "watchlist": profile.get("watchlist") or _fallback_watchlist_for_mode(canonical_mode),
+        "ranked_watchlist": ranked_watchlist,
         "mindset": profile.get("mindset", {}),
         "meta": payload_meta,
     }
