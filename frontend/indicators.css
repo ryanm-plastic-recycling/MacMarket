@@ -62,10 +62,10 @@
   background: rgba(15, 23, 42, 0.6);
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
-  padding: 1rem;
+  padding: 1.2rem;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 1.0rem;
   height: 100%;
   box-shadow: 0 10px 26px rgba(0,0,0,.24);
 }
@@ -88,13 +88,13 @@
   border-radius: 999px;
   color: #dbeafe;
   font-weight: 600;
-  padding: 0.65rem 0.65rem;
+  padding: 0.25rem 0.65rem;
   font-size: .85rem;
 }
 
 .panel-card footer {
   color: var(--muted, #94a3b8);
-  font-size: 1.2rem;
+  font-size: 2.0rem;
   margin-top: auto;
   padding-top: 4px;
 }
