@@ -195,6 +195,58 @@
   padding: 2px 6px;
 }
 
+/* Top Signals grid */
+#live-top-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+#live-top-list li {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: transform .08s ease, border-color .15s ease, background .15s ease;
+}
+#live-top-list li:hover {
+  transform: translateY(-1px);
+  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(148,163,184,.30);
+}
+
+#live-top-list .live-sym {
+  font-weight: 700;
+  letter-spacing: .02em;
+  margin-bottom: 4px;
+}
+
+#live-top-list .live-score {
+  font-size: .85rem;
+  color: #cbd5e1;
+  margin-bottom: 6px;
+}
+
+/* tiny fill bar under score */
+#live-top-list .live-bar {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148,163,184,.18);
+  overflow: hidden;
+}
+#live-top-list .live-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #F83838 0%, #ffbe0b 50%, #22C525 100%);
+  width: 0%;
+  transition: width .25s ease;
+}
+
 /* --- Tabs --- */
 .tabs-shell {
   background: rgba(15, 23, 42, 0.35);
