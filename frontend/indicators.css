@@ -340,3 +340,58 @@
 
 /* Your existing mini-strip height is good */
 .mini-strip { height: 64px; border: 1px solid rgba(148,163,184,.15); border-radius: 8px; }
+
+  /* Two-column wrapper for paired sections */
+  .pair-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+    margin: 16px 0;
+  }
+  @media (max-width: 1100px) {
+    .pair-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Make Entries/Exits cards stretch nicely */
+  .pair-grid .overview-entries,
+  .pair-grid .overview-exits,
+  .pair-grid .overview-tabs,
+  .pair-grid .overview-mindset {
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  /* Watchlist: compact, inline pills that wrap */
+  .overview-watchlist .watchlist-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  /* Remove the big card look from watchlist items */
+  .overview-watchlist .watchlist-list li {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Make the buttons look like small pills */
+  .overview-watchlist .watchlist-list li button {
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    background: rgba(148, 163, 184, 0.08) !important;
+    border-radius: 999px !important;
+    padding: 6px 10px !important;
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
+  }
+  .overview-watchlist .watchlist-list li button:hover {
+    background: rgba(148, 163, 184, 0.18) !important;
+  }
+
+
