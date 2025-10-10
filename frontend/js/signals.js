@@ -476,6 +476,37 @@ function renderHacoSection(chartPayload) {
     });
   }
 
+  function renderLiveTop(rankedList, modeLabel) {
+  const list = document.getElementById('live-top-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  // rankedList: [{symbol, score}]
+  (rankedList || []).forEach(item => {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = item.symbol;
+    btn.title = `Readiness: ${item.score}% (${modeLabel || ''})`;
+    btn.addEventListener('click', () => {
+      const symbolInput = document.getElementById('symbol');
+      if (symbolInput) symbolInput.value = item.symbol;
+      runSignal();
+    });
+
+    // small score badge
+    const badge = document.createElement('span');
+    badge.textContent = `${Math.round(item.score)}%`;
+    badge.style.marginLeft = '6px';
+    badge.style.fontSize = '0.8rem';
+    badge.style.opacity = '0.85';
+
+    li.appendChild(btn);
+    li.appendChild(badge);
+    list.appendChild(li);
+  });
+}
+
   function renderModes(modes, selected) {
     const select = el('mode-select');
     if (!select) return;
@@ -566,6 +597,7 @@ function renderHacoSection(chartPayload) {
       renderAdvancedTabs(data.advanced_tabs);
       renderMindset(data.mindset);
       renderWatchlist(data.watchlist);
+      renderLiveTop(data.ranked_watchlist, data.mode);
       applyLegacySections(data);
       if (sym) renderTechChart(sym);
       setStatus('Signal updated', 'ok');
