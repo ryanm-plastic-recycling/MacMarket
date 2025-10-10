@@ -219,10 +219,20 @@ function renderHacoSection(chartPayload) {
       state.chart = LightweightCharts.createChart(container, {
         height: 360,
         layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
-        rightPriceScale: { visible: false },    // no gutter on the right
-        leftPriceScale:  { visible: false },    // match minis exactly
+        // turn ON the right price scale so numbers are visible
+        rightPriceScale: { visible: true, borderVisible: false },
+        // keep left scale hidden (you can turn it on too if you want)
+        leftPriceScale:  { visible: false },
         timeScale: { borderVisible: false, rightOffset: 0 },
-        grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
+        grid: {
+          vertLines: { color: 'rgba(70, 70, 70, 0.2)' },
+          horzLines: { color: 'rgba(70, 70, 70, 0.2)' },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+          vertLine: { width: 1, color: 'rgba(197, 203, 206, 0.6)' },
+          horzLine: { width: 1, color: 'rgba(197, 203, 206, 0.6)' },
+        },
       });
       state.candleSeries = state.chart.addCandlestickSeries({
         upColor: '#26a69a',
@@ -231,13 +241,26 @@ function renderHacoSection(chartPayload) {
         wickUpColor: '#26a69a',
         wickDownColor: '#ef5350',
       });
+      // make the last price line + label visible
+      state.candleSeries.applyOptions({
+        priceLineVisible: true,
+        lastValueVisible: true,
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+      });
+      
       state.sma20Series = state.chart.addLineSeries({ color: '#4c78ff', lineWidth: 2 });
+      state.sma20Series.applyOptions({ priceLineVisible: true, lastValueVisible: true });
+      
       state.sma50Series = state.chart.addLineSeries({ color: '#ffa600', lineWidth: 2 });
+      state.sma50Series.applyOptions({ priceLineVisible: true, lastValueVisible: true });
+      
       state.trendSeries = state.chart.addLineSeries({
         color: '#ab47bc',
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Dotted,
       });
+      state.trendSeries.applyOptions({ priceLineVisible: false, lastValueVisible: false }); // keep the dotted trend unobtrusive
+
     // after state.chart is created:
     if (state.chart) {
       const slaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
