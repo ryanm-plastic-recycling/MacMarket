@@ -128,8 +128,9 @@
       state.haco.main = LightweightCharts.createChart(host, {
         height: host.clientHeight || 420,
         layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
-        rightPriceScale: { borderVisible: false },
-        timeScale: { borderVisible: false },
+        rightPriceScale: { visible: false },
+        leftPriceScale:  { visible: false },
+        timeScale: { borderVisible: false, rightOffset: 0 },
         grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
       });
       state.haco.candle = state.haco.main.addCandlestickSeries({
@@ -218,8 +219,9 @@ function renderHacoSection(chartPayload) {
       state.chart = LightweightCharts.createChart(container, {
         height: 360,
         layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
-        rightPriceScale: { borderVisible: false },
-        timeScale: { borderVisible: false },
+        rightPriceScale: { visible: false },    // no gutter on the right
+        leftPriceScale:  { visible: false },    // match minis exactly
+        timeScale: { borderVisible: false, rightOffset: 0 },
         grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
       });
       state.candleSeries = state.chart.addCandlestickSeries({
