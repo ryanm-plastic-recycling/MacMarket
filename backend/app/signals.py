@@ -31,6 +31,8 @@ NEGATIVE_WORDS = {"loss", "drop", "bear", "pessimistic", "down"}
 EXIT_PROFIT_TARGET_PCT = 0.05  # 5% profit target
 EXIT_STOP_LOSS_PCT = 0.02     # 2% stop-loss
 EXIT_MAX_HOLD_DAYS = 30       # time-based exit after 30 trading days
+# Back-compat default used by get_watchlist()
+DEFAULT_WATCHLIST = ["SPY", "QQQ", "DIA", "IWM", "AAPL", "MSFT", "NVDA"]
 
 # --- Dynamic watchlist plumbing (mode-aware) -----------------
 
@@ -637,14 +639,13 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
             advanced_tabs.append(tab)
 
     readiness = {"score": readiness_score, "components": components}
-
         # --- never let the ranked list crash the endpoint ---
     ranked_watchlist: list[dict] = []
     try:
-        # keep this small so the page is snappy; adjust as you like
         ranked_watchlist = get_dynamic_watchlist(canonical_mode, limit=10)
     except Exception:
         ranked_watchlist = []
+
 
     return {
         "symbol": symbol.upper(),
