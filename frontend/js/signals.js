@@ -48,6 +48,19 @@
     });
   }
   
+  function buildBarsAligned(candles, points) {
+    // points: [{time, value}] (HACO/HACOLT) — may be sparse
+    const byTime = new Map((points || []).map(p => [Number(p.time), p.value]));
+    return (candles || []).map(c => {
+      const t = Number(c.time);
+      const v = byTime.has(t) ? byTime.get(t) : null; // null draws nothing but reserves the time slot
+      let color = '#64748b';
+      if (v === 100) color = '#16a34a';
+      else if (v === 0) color = '#ef4444';
+      return { time: t, value: v, color };
+    });
+  }
+
   function ensureMini(id) {
     const host = document.getElementById(id);
     if (!host || typeof LightweightCharts === 'undefined') return null;
@@ -62,6 +75,7 @@
         fixRightEdge: false,
         // minis are driven by master only:
         rightBarStaysOnScroll: false,
+        rightOffset: 0,
       },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
       handleScroll: false, // <- disable direct scroll on minis
@@ -117,6 +131,12 @@
     // Prefer time range; LC will keep bar spacing coherent. Logical is a fallback signal.
     master.timeScale().subscribeVisibleTimeRangeChange(applyTimeRange);
     master.timeScale().subscribeVisibleLogicalRangeChange(applyLogicalRange);
+    // Initial align (after data set)
+    const kick = () => {
+      const r = masterChart.timeScale().getVisibleRange();
+      if (r) pushTimeRange(r);
+    };
+    kick(); setTimeout(kick, 0);
   }
 
   function ensureHacoCharts() {
@@ -141,6 +161,7 @@
       state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
       const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
       linkMasterToSlaves(state.haco.main, hacoSlaves);
+
 
       // keep HACO minis in lockstep with HACO main
       const chartsToSync = [
@@ -202,11 +223,11 @@ function renderHacoSection(chartPayload) {
   ensureHacoMinis();
   if (!chartPayload) return;
 
-  const hacoBars   = toMiniBars(chartPayload.haco);
-  const hacoltBars = toMiniBars(chartPayload.hacolt);
-
-  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars.length ? hacoBars : []);
-  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars.length ? hacoltBars : []);
+  const hacoBars   = buildBarsAligned(candles, chartPayload.haco || []);
+  const hacoltBars = buildBarsAligned(candles, chartPayload.hacolt || []);
+  
+  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars);
+  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars);
 }
 
   function ensureChart() {
@@ -252,6 +273,8 @@ function renderHacoSection(chartPayload) {
     ].filter(Boolean);
     syncTime(chartsToSync);
 
+    const topSlaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
+    linkMasterToSlaves(state.chart, topSlaves);
     // Initial resize once it's created
      resizeChart();
      // Resize on window size changes
@@ -279,12 +302,12 @@ function renderHacoSection(chartPayload) {
     }));
     state.candleSeries.setData(candles);
     
-    // Set minis if present
-    const hacoBars   = toMiniBars(chartPayload.haco);
-    const hacoltBars = toMiniBars(chartPayload.hacolt);
+    // ALIGN minis to candle times (critical)
+    const hacoBars   = buildBarsAligned(candles, chartPayload.haco || []);
+    const hacoltBars = buildBarsAligned(candles, chartPayload.hacolt || []);
     
-    if (state.mini.haco?.series)     state.mini.haco.series.setData(hacoBars.length ? hacoBars : []);
-    if (state.mini.hacolt?.series)   state.mini.hacolt.series.setData(hacoltBars.length ? hacoltBars : []);
+    if (state.mini.haco?.series)   state.mini.haco.series.setData(hacoBars);
+    if (state.mini.hacolt?.series) state.mini.hacolt.series.setData(hacoltBars);
 
     const indicators = chartPayload.indicators || {};
     state.sma20Series.setData((indicators.sma20 || []).map((p) => ({ time: Number(p.time), value: p.value })));
@@ -293,6 +316,7 @@ function renderHacoSection(chartPayload) {
 
     // Ensure the chart fits the new container width after data
    resizeChart();
+   
   }
 
   function renderReadiness(readiness) {
