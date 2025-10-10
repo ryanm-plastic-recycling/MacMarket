@@ -21,16 +21,15 @@
     node.textContent = message;
     node.dataset.tone = tone;
   }
-
-  // ---------- Resize ----------
+  
   function resizeChart() {
-    const hostTop = document.getElementById('signals-chart');
-    if (hostTop && state.chart) {
-      const w = Math.max(320, hostTop.clientWidth || hostTop.offsetWidth || 0);
-      const h = Math.max(300, hostTop.clientHeight || 360);
+    const el = document.getElementById('signals-chart');
+    if (el && state.chart) {
+      const w = Math.max(320, el.clientWidth || el.offsetWidth || 0);
+      const h = Math.max(300, el.clientHeight || 360);
       state.chart.resize(w, h);
     }
-    // top minis
+    // minis follow width
     ['mini-haco','mini-hacolt'].forEach(id => {
       const host = document.getElementById(id);
       const obj = id === 'mini-haco' ? state.mini.haco : state.mini.hacolt;
@@ -48,41 +47,7 @@
       if (host && obj?.chart) obj.chart.resize(host.clientWidth || 0, host.clientHeight || 64);
     });
   }
-
-  // ---------- Helpers ----------
-  // tolerant alignment of HACO/HACOLT points to the candle time axis (prevents X-axis drift)
-  function buildBarsAligned(candles, points) {
-    const out = [];
-    const pts = (points || []).map(p => ({ t: Number(p.time), v: p.value })).sort((a,b)=>a.t-b.t);
-    let i = 0;
-    const TOL = 2*60*60;                    // 2 hours tolerance for intraday
-    const dayKey = t => Math.floor(t / 86400);
-
-    for (const c of (candles || [])) {
-      const ct = Number(c.time);
-      const cday = dayKey(ct);
-      while (i+1 < pts.length && pts[i+1].t <= ct) i++;
-
-      const cand = [pts[i], pts[i+1]].filter(Boolean);
-      let v = null;
-      if (cand.length) {
-        const sameDay = cand.find(p => dayKey(p.t) === cday);
-        if (sameDay) v = sameDay.v;
-        else {
-          const nearest = cand.reduce((a,b) => (Math.abs(a.t-ct) < Math.abs(b.t-ct) ? a : b));
-          if (Math.abs(nearest.t - ct) <= TOL) v = nearest.v;
-        }
-      }
-
-      let color = '#64748b';
-      if (v === 100) color = '#16a34a';
-      else if (v === 0) color = '#ef4444';
-
-      out.push({ time: ct, value: v, color });
-    }
-    return out;
-  }
-
+  
   function ensureMini(id) {
     const host = document.getElementById(id);
     if (!host || typeof LightweightCharts === 'undefined') return null;
@@ -97,45 +62,67 @@
         fixRightEdge: false,
         // minis are driven by master only:
         rightBarStaysOnScroll: false,
-        rightOffset: 0,
       },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-      handleScroll: false, // disable direct scroll on minis
-      handleScale:  false, // disable direct zoom on minis
+      handleScroll: false, // <- disable direct scroll on minis
+      handleScale:  false, // <- disable direct zoom on minis
     });
     const series = chart.addHistogramSeries({ priceScaleId: '' });
     return { chart, series };
   }
 
-  // one-way, time-based sync (master -> slaves)
+  function syncTime(scopedCharts) {
+    // keep all charts in lockstep on logical range changes
+    const [main, ...others] = scopedCharts;
+    if (!main) return;
+    const syncTo = (src, dst) => {
+      src.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        if (!range) return;
+        // avoid feedback loops by try/catch; LC dedupes internally
+        try { dst.timeScale().setVisibleLogicalRange(range); } catch {}
+      });
+    };
+    others.forEach(o => {
+      syncTo(main, o);
+      syncTo(o, main); // allow dragging minis to move main too
+    });
+  }
+
   function linkMasterToSlaves(master, slaves) {
     if (!master || !slaves?.length) return;
-
+  
+    // guard to avoid loops
     let syncing = false;
-
+  
     const applyTimeRange = (range) => {
       if (!range || syncing) return;
       syncing = true;
-      try { slaves.forEach(s => s.timeScale().setVisibleRange(range)); }
-      finally { syncing = false; }
+      try {
+        slaves.forEach(s => s.timeScale().setVisibleRange(range));
+      } finally {
+        syncing = false;
+      }
     };
-
+  
     const applyLogicalRange = (range) => {
       if (!range || syncing) return;
       syncing = true;
-      try { slaves.forEach(s => s.timeScale().setVisibleLogicalRange(range)); }
-      finally { syncing = false; }
+      try {
+        slaves.forEach(s => s.timeScale().setVisibleLogicalRange(range));
+      } finally {
+        syncing = false;
+      }
     };
-
+  
+    // Prefer time range; LC will keep bar spacing coherent. Logical is a fallback signal.
     master.timeScale().subscribeVisibleTimeRangeChange(applyTimeRange);
     master.timeScale().subscribeVisibleLogicalRangeChange(applyLogicalRange);
   }
 
-  // ---------- HACO Strategy section ----------
   function ensureHacoCharts() {
     const host = document.getElementById('haco-chart');
     if (!host || typeof LightweightCharts === 'undefined') return null;
-
+  
     if (!state.haco.main) {
       // main HACO candles
       state.haco.main = LightweightCharts.createChart(host, {
@@ -148,62 +135,85 @@
       state.haco.candle = state.haco.main.addCandlestickSeries({
         upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350',
       });
-
+  
       // two minis under HACO candles
       state.haco.miniHaco   = ensureMini('haco-mini-haco');
       state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
-
-      // one-way sync: HACO main drives HACO minis
       const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
       linkMasterToSlaves(state.haco.main, hacoSlaves);
+
+      // keep HACO minis in lockstep with HACO main
+      const chartsToSync = [
+        state.haco.main,
+        state.haco.miniHaco?.chart,
+        state.haco.miniHacolt?.chart,
+      ].filter(Boolean);
+      syncTime(chartsToSync);
     }
     return state.haco.main;
   }
 
   function ensureHacoMinis() {
+    // Create the two mini charts (once) under the existing HACO chart
     if (!state.haco.miniHaco)   state.haco.miniHaco   = ensureMini('haco-mini-haco');
     if (!state.haco.miniHacolt) state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
-
-    // if HACO main comes from haco-ui.js later
+  
+    // Try to find the existing HACO main chart that haco-ui.js created
+    // Option 1: global object set by your HACO module
     if (!state.haco.main && window.HACO && window.HACO.chart) {
       state.haco.main = window.HACO.chart;
     }
+  
+    // If still not available, wait for haco-ui to announce it's ready
     if (!state.haco.main) {
       window.addEventListener('haco:ready', (e) => {
         if (e?.detail?.chart) {
           state.haco.main = e.detail.chart;
-          const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
-          linkMasterToSlaves(state.haco.main, hacoSlaves);
+          // lock minis to HACO main
+          const chartsToSync = [
+            state.haco.main,
+            state.haco.miniHaco?.chart,
+            state.haco.miniHacolt?.chart,
+          ].filter(Boolean);
+          syncTime(chartsToSync);
         }
       }, { once: true });
     } else {
-      const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
-      linkMasterToSlaves(state.haco.main, hacoSlaves);
+      // lock minis to HACO main now
+      const chartsToSync = [
+        state.haco.main,
+        state.haco.miniHaco?.chart,
+        state.haco.miniHacolt?.chart,
+      ].filter(Boolean);
+      syncTime(chartsToSync);
     }
   }
 
-  function renderHacoSection(chartPayload) {
-    ensureHacoCharts();
-    ensureHacoMinis();
-    if (!chartPayload) return;
+function toMiniBars(series) {
+  return (series || []).map(p => {
+    let color = '#64748b';           // 50 = neutral
+    if (p.value === 100) color = '#16a34a';   // up
+    else if (p.value === 0) color = '#ef4444'; // down
+    return { time: Number(p.time), value: p.value || 0, color };
+  });
+}
 
-    // Align minis to the SAME candle times to prevent X-axis drift
-    const candles = (chartPayload.candles || []).map(c => ({
-      time: Number(c.time), open: c.o, high: c.h, low: c.l, close: c.c,
-    }));
+function renderHacoSection(chartPayload) {
+  ensureHacoMinis();
+  if (!chartPayload) return;
 
-    const hacoBars   = buildBarsAligned(candles, chartPayload.haco   || []);
-    const hacoltBars = buildBarsAligned(candles, chartPayload.hacolt || []);
+  const hacoBars   = toMiniBars(chartPayload.haco);
+  const hacoltBars = toMiniBars(chartPayload.hacolt);
 
-    if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars);
-    if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars);
-  }
+  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars.length ? hacoBars : []);
+  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars.length ? hacoltBars : []);
+}
 
-  // ---------- Top section ("Symbol Signal") ----------
   function ensureChart() {
     const container = el('signals-chart');
-    if (!container || typeof LightweightCharts === 'undefined') return null;
-
+    if (!container || typeof LightweightCharts === 'undefined') {
+      return null;
+    }
     if (!state.chart) {
       state.chart = LightweightCharts.createChart(container, {
         height: 360,
@@ -226,22 +236,32 @@
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Dotted,
       });
+    // after state.chart is created:
+    if (state.chart) {
+      const slaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
+      linkMasterToSlaves(state.chart, slaves);
+    }
+    if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
+    if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
+    
+    // keep them in sync with the main chart
+    const chartsToSync = [
+      state.chart,
+      state.mini.haco?.chart,
+      state.mini.hacolt?.chart,
+    ].filter(Boolean);
+    syncTime(chartsToSync);
 
-      if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
-      if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
-
-      // one-way sync: top candles drive top minis
-      const topSlaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
-      linkMasterToSlaves(state.chart, topSlaves);
-
-      // Initial resize + observers
-      resizeChart();
-      window.addEventListener('resize', resizeChart);
-      if ('ResizeObserver' in window) {
-        state.resizeObs?.disconnect();
-        state.resizeObs = new ResizeObserver(() => resizeChart());
-        state.resizeObs.observe(container);
-      }
+    // Initial resize once it's created
+     resizeChart();
+     // Resize on window size changes
+     window.addEventListener('resize', resizeChart);
+     // Resize when the container’s box changes
+     if ('ResizeObserver' in window) {
+       state.resizeObs?.disconnect();
+       state.resizeObs = new ResizeObserver(() => resizeChart());
+       state.resizeObs.observe(container);
+     }
     }
     return state.chart;
   }
@@ -258,23 +278,23 @@
       close: c.c,
     }));
     state.candleSeries.setData(candles);
-
-    // Minis aligned to candle times (critical for pixel-perfect X-axis)
-    const hacoBars   = buildBarsAligned(candles, chartPayload.haco   || []);
-    const hacoltBars = buildBarsAligned(candles, chartPayload.hacolt || []);
-
-    if (state.mini.haco?.series)   state.mini.haco.series.setData(hacoBars);
-    if (state.mini.hacolt?.series) state.mini.hacolt.series.setData(hacoltBars);
+    
+    // Set minis if present
+    const hacoBars   = toMiniBars(chartPayload.haco);
+    const hacoltBars = toMiniBars(chartPayload.hacolt);
+    
+    if (state.mini.haco?.series)     state.mini.haco.series.setData(hacoBars.length ? hacoBars : []);
+    if (state.mini.hacolt?.series)   state.mini.hacolt.series.setData(hacoltBars.length ? hacoltBars : []);
 
     const indicators = chartPayload.indicators || {};
     state.sma20Series.setData((indicators.sma20 || []).map((p) => ({ time: Number(p.time), value: p.value })));
     state.sma50Series.setData((indicators.sma50 || []).map((p) => ({ time: Number(p.time), value: p.value })));
     state.trendSeries.setData((indicators.trend || []).map((p) => ({ time: Number(p.time), value: p.value })));
 
-    resizeChart();
+    // Ensure the chart fits the new container width after data
+   resizeChart();
   }
 
-  // ---------- Legacy/other UI ----------
   function renderReadiness(readiness) {
     const scoreEl = el('readiness-score');
     const componentsEl = el('readiness-components');
@@ -295,7 +315,7 @@
     });
   }
 
-  function renderPanels(panels) {
+    function renderPanels(panels) {
     const grid = el('panels-grid');
     if (!grid) return;
     grid.innerHTML = '';
@@ -305,7 +325,9 @@
       const bar = document.createElement('div');
       bar.className = 'bar';
       const span = document.createElement('span');
+  
       bar.appendChild(span);
+  
       card.innerHTML = `
         <header>
           <h4>${panel.title}</h4>
@@ -315,12 +337,17 @@
         <small>${panel.goal || ''}</small>
         <footer>${panel.status || ''}</footer>
       `;
+      // insert bar between <p> and <small>
       card.querySelector('p').after(bar);
+  
+      // width & tick
       span.style.width = `${Math.max(0, Math.min(100, panel.score || 0))}%`;
       bar.style.setProperty('--goal-pct', `${Math.max(0, Math.min(100, panel.goal_pct || 60))}%`);
+  
       grid.appendChild(card);
     });
   }
+
 
   function renderEntries(entries) {
     const list = el('entries-list');
@@ -397,7 +424,7 @@
     [...nav.querySelectorAll('button')].forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tabId === tabId);
     });
-    const tab = state.tabs.find(t => t.id === tabId) || state.tabs[0];
+    const tab = findTab(tabId);
     content.innerHTML = '';
     if (!tab) return;
     const items = Array.isArray(tab.content) ? tab.content : [tab.content];
@@ -503,15 +530,14 @@
       const res = await fetch(`/api/signals/${encodeURIComponent(sym)}?mode=${encodeURIComponent(mode)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-
       renderModes(data.available_modes || [], data.mode || mode);
       renderReadiness(data.readiness);
       renderPanels(data.panels);
-      renderChart(data.chart);       // top
-      renderHacoSection(data.chart); // haco section
+      renderChart(data.chart);
+      renderHacoSection(data.chart);
       renderChecklist(data.panels, data.readiness, data.meta);
-
-      // subtitle near top chart
+      //renderHacoltBars(data.chart?.hacolt || []);
+      // chart subtitle cues
       const subtitle = document.getElementById('chart-subtitle') || document.createElement('span');
       subtitle.id = 'chart-subtitle';
       const meta = data.meta || {};
@@ -521,7 +547,8 @@
       if (meta.hacolt_now === 100) hacoltChip = 'LT Up';
       else if (meta.hacolt_now === 0) hacoltChip = 'LT Down';
       subtitle.textContent = [trendChip, adxChip, hacoltChip].filter(Boolean).join(' • ');
-
+      
+      // Put the subtitle near the chart title if you have one
       const chartCol = document.querySelector('#signals-top .chart-col') || document.querySelector('.overview-chart');
       if (chartCol && !document.getElementById('chart-subtitle')) {
         const h = document.createElement('div');
@@ -532,14 +559,13 @@
       } else if (document.getElementById('chart-subtitle')) {
         document.getElementById('chart-subtitle').textContent = subtitle.textContent;
       }
-
       renderEntries(data.entries);
       renderExits(data.exits);
       renderAdvancedTabs(data.advanced_tabs);
       renderMindset(data.mindset);
       renderWatchlist(data.watchlist);
       applyLegacySections(data);
-
+      if (sym) renderTechChart(sym);
       setStatus('Signal updated', 'ok');
       return data;
     } catch (err) {
@@ -548,11 +574,12 @@
       return null;
     }
   }
-
+  
   function renderHacoltBars(series) {
-    // legacy canvas renderer (unused now, safe to keep)
+    // expects [{time, value: 0|50|100}]
     const host = document.getElementById('haco-signal-chart');
     if (!host) return;
+    // simple 1D canvas bars
     const width = host.clientWidth || 600;
     const height = host.clientHeight || 100;
     host.innerHTML = '';
@@ -564,17 +591,19 @@
     if (!n) return;
     const w = width / n;
     for (let i=0;i<n;i++){
-      const v = series[i].value;
+      const v = series[i].value; // 0/50/100
       ctx.fillStyle = v === 100 ? '#16a34a' : v === 0 ? '#ef4444' : '#64748b';
       ctx.fillRect(i*w, 0, Math.ceil(w), height);
     }
   }
 
   function renderChecklist(panels, readiness, meta) {
-    const container = document.getElementById('advanced-tab-content'); if (!container) return;
+    const container = document.getElementById('advanced-tab-content'); // or create a new div near readiness
+    if (!container) return;
     const byId = Object.fromEntries((panels||[]).map(p => [p.id, p]));
     const pass = id => (byId[id]?.status === 'PASS');
     const ready = Math.round(readiness?.score || 0);
+  
     const items = [
       {label:'Trend PASS', ok: pass('trend')},
       {label:'Momentum PASS', ok: pass('momentum')},
@@ -608,7 +637,8 @@
         longArr[i] == null ||
         shortArr[i - 1] == null ||
         longArr[i - 1] == null
-      ) continue;
+      )
+        continue;
       if (shortArr[i - 1] < longArr[i - 1] && shortArr[i] > longArr[i]) return { index: i, dir: 'up' };
       if (shortArr[i - 1] > longArr[i - 1] && shortArr[i] < longArr[i]) return { index: i, dir: 'down' };
     }
@@ -637,15 +667,19 @@
       ma50Series.setData(dates.map((d, i) => (ma50[i] ? { time: d, value: ma50[i] } : null)).filter(Boolean));
       const cross = findLastCross(ma20, ma50);
       if (cross) {
-        priceSeries.setMarkers([{
-          time: dates[cross.index],
-          position: cross.dir === 'up' ? 'belowBar' : 'aboveBar',
-          color: cross.dir === 'up' ? 'green' : 'red',
-          shape: cross.dir === 'up' ? 'arrowUp' : 'arrowDown',
-          text: '20/50',
-        }]);
+        priceSeries.setMarkers([
+          {
+            time: dates[cross.index],
+            position: cross.dir === 'up' ? 'belowBar' : 'aboveBar',
+            color: cross.dir === 'up' ? 'green' : 'red',
+            shape: cross.dir === 'up' ? 'arrowUp' : 'arrowDown',
+            text: '20/50',
+          },
+        ]);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async function fetchMacro() {
