@@ -30,55 +30,62 @@ EXIT_PROFIT_TARGET_PCT = 0.05  # 5% profit target
 EXIT_STOP_LOSS_PCT = 0.02     # 2% stop-loss
 EXIT_MAX_HOLD_DAYS = 30       # time-based exit after 30 trading days
 
-DEFAULT_WATCHLIST = ["SPY", "QQQ", "DIA", "IWM", "AAPL", "MSFT", "NVDA"]
+# --- Dynamic watchlist plumbing (mode-aware) -----------------
 
-DEFAULT_ADVANCED_TABS = [
-    {
-        "id": "playbook",
-        "title": "Playbook",
-        "content": [
-            "Review macro tone and sector strength before the open.",
-            "Stagger entries to avoid chasing extended moves.",
-            "Lock gains aggressively when readiness deteriorates.",
-        ],
-    },
-    {
-        "id": "checklist",
-        "title": "Checklist",
-        "content": [
-            "Is trend aligned across the chosen timeframe?",
-            "Do momentum and volume confirm the move?",
-            "Have risk parameters been staged?",
-        ],
-    },
+# Day / intraday movers: high liquidity + high turnover
+UNIVERSE_DAY = [
+    # ETFs / indices
+    "SPY","QQQ","IWM",
+    # High-beta tech / semis / momentum names
+    "TSLA","NVDA","AMD","META","AMZN","AAPL","MSFT","AVGO","NFLX","SMCI",
+    "COIN","PLTR","INTC","NIO","MARA","RIVN","BABA","UBER",
 ]
 
-# --- Dynamic watchlist plumbing (small + safe) ---
-DEFAULT_UNIVERSE = [
-    # ETFs
-    "SPY","QQQ","DIA","IWM","XLK","XLF","XLE","XLV",
-    # Liquid mega-caps / semis
-    "AAPL","MSFT","NVDA","META","AMZN","GOOGL","TSLA","AMD","AVGO","NFLX",
-    # Some high-turnover names
-    "SMCI","CRM","INTC","UBER","JPM","WMT",
+# Swing: clean daily trends across mega-caps, sector ETFs, and leaders
+UNIVERSE_SWING = [
+    # Core ETFs
+    "SPY","QQQ","DIA","IWM","XLK","XLF","XLE","XLV","XLI","XLU","XLRE","XLB",
+    # Mega caps / leaders
+    "AAPL","MSFT","NVDA","META","AMZN","GOOGL","TSLA","AVGO","CRM","COST",
+    # Semis / AI infra
+    "AMD","SMCI","MU","INTC",
 ]
 
-DEFAULT_CRYPTO_UNIVERSE = ["BTC-USD","ETH-USD","XMR-USD","RVN-USD","SOL-USD","AVAX-USD","LINK-USD","ADA-USD","DOGE-USD"]
+# Position: broader, steadier names + sectors (lower churn)
+UNIVERSE_POSITION = [
+    # Broad ETFs + factors/sectors
+    "SPY","QQQ","DIA","IWM","XLK","XLF","XLE","XLV","XLU","XLP","XLY","XLI",
+    # Durable megacaps
+    "AAPL","MSFT","NVDA","META","AMZN","GOOGL","BRK-B","UNH","JPM","WMT",
+    # Select staples/energy/health for rotation
+    "PG","PEP","XOM","CVX","LLY","ABBV",
+]
 
-def _fallback_watchlist_for_mode(mode_key: str) -> list[str]:
-    # use your mode universe helper if you added it; otherwise handle crypto directly
+# Crypto: majors + a few liquid alts
+UNIVERSE_CRYPTO = [
+    "BTC-USD","ETH-USD","SOL-USD","AVAX-USD","LINK-USD",
+    "ADA-USD","DOGE-USD","XMR-USD","RVN-USD",
+]
+
+def _mode_universe(mode_key: str) -> list[str]:
+    """
+    Return a liquid, mode-appropriate universe.
+    Supports a few synonyms (e.g., 'trade' or 'intraday' => day).
+    """
     mk = (mode_key or "swing").lower()
-    try:
-        return list(_mode_universe(mk))  # if you implemented _mode_universe as in earlier patch
-    except Exception:
-        if mk == "crypto":
-            return ["BTC-USD","ETH-USD","SOL-USD","AVAX-USD","LINK-USD","ADA-USD","DOGE-USD"]
-        return ["SPY","QQQ","DIA","IWM","AAPL","MSFT","NVDA"]
-        
+    if mk in ("day","intraday","trade"):
+        return UNIVERSE_DAY[:]
+    if mk == "position":
+        return UNIVERSE_POSITION[:]
+    if mk == "crypto":
+        return UNIVERSE_CRYPTO[:]
+    # default: swing
+    return UNIVERSE_SWING[:]
+
+
 def _compute_readiness_only(symbol: str, mode: str = "swing") -> float:
     """
-    Fast path: compute just the readiness score using your existing logic.
-    No charts/exits. Returns 0.0 on error.
+    Fast readiness scorer reusing your component logic.
     """
     try:
         canonical_mode, profile = _get_mode_profile(mode)
@@ -92,22 +99,13 @@ def _compute_readiness_only(symbol: str, mode: str = "swing") -> float:
         return 0.0
 
 
-def _mode_universe(mode_key: str) -> list[str]:
-    mk = (mode_key or "swing").lower()
-    if mk == "crypto":
-        return DEFAULT_CRYPTO_UNIVERSE[:]
-    # day/position/swing can share for now; tweak later if desired
-    return DEFAULT_UNIVERSE[:]
-
-
 def get_dynamic_watchlist(mode: str, limit: int = 10, extra: list[str] | None = None) -> list[dict]:
     """
-    Rank a mode-specific universe by current readiness. Returns
-    a list of dicts: [{"symbol": "NVDA", "score": 78.5}, ...]
+    Rank the mode's universe by current readiness and return
+    a list like [{"symbol":"NVDA","score":78.5}, ...].
     """
     universe = _mode_universe(mode)
     if extra:
-        # merge & dedupe (keep order)
         seen, merged = set(), []
         for s in [*universe, *extra]:
             u = str(s).upper().strip()
@@ -121,8 +119,17 @@ def get_dynamic_watchlist(mode: str, limit: int = 10, extra: list[str] | None = 
         ranked.append((sym, sc))
 
     ranked.sort(key=lambda x: x[1], reverse=True)
-    top = [{"symbol": s, "score": round(float(sc), 1)} for s, sc in ranked[:max(1, limit)]]
-    return top
+    return [{"symbol": s, "score": round(float(sc), 1)} for s, sc in ranked[:max(1, limit)]]
+
+def _fallback_watchlist_for_mode(mode_key: str) -> list[str]:
+    # use your mode universe helper if you added it; otherwise handle crypto directly
+    mk = (mode_key or "swing").lower()
+    try:
+        return _mode_universe(mode_key)
+    except Exception:
+        if mk == "crypto":
+            return ["BTC-USD","ETH-USD","SOL-USD","AVAX-USD","LINK-USD","ADA-USD","DOGE-USD"]
+        return ["SPY","QQQ","DIA","IWM","AAPL","MSFT","NVDA"]
 
 def _get_mode_profile(mode: str) -> tuple[str, dict]:
     """Return the canonical mode key and its profile definition."""
