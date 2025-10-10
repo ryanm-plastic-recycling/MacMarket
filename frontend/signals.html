@@ -1,15 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Trade Signals - MacMarket</title>
-    <link rel="stylesheet" href="/style.css">
-    <script src="/theme.js" defer></script>
-    <script src="/ticker.js" defer></script>
-    <link rel="stylesheet" href="/indicators.css?v=12">
+  <meta charset="UTF-8" />
+  <title>Trade Signals - MacMarket</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="/theme.js" defer></script>
+  <script src="/ticker.js" defer></script>
+  <link rel="stylesheet" href="/indicators.css?v=12" />
+  <style>
+    /* --- layout helpers for the rearranged bits --- */
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 0.8fr;
+      gap: 16px;
+      align-items: start;
+      margin: 10px 0 14px;
+    }
+    .controls-grid .row-controls {
+      margin: 0;
+    }
+    .controls-grid .overview-readiness {
+      /* reuse existing readiness styles; just keep it aligned*/
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+    .mini-stack {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .mini-group {
+      display: grid;
+      gap: 4px;
+    }
+    .mini-title {
+      font-size: 0.9rem;
+      opacity: 0.85;
+      padding-left: 2px;
+    }
+    /* panels below the top mini strips should be 2x2 */
+    #panels-below-top {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    #panels-below-top .panels-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2x2 grid */
+    }
+
+    /* keep the original chart column stretchy */
+    #signals-top .chart-col { min-width: 0; }
+
+    /* shrink signal-container a touch */
+    #signal-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 10px !important;
+    }
+  </style>
 </head>
 <body>
-<div id="sidebar">
+  <div id="sidebar">
     <a href="index.html">Home</a>
     <a href="login.html">Login</a>
     <a href="account.html">Account</a>
@@ -23,46 +78,69 @@
     <a href="admin.html" id="admin-link" style="display:none;">Admin</a>
     <a href="#" id="logout-link">Logout</a>
     <button id="theme-toggle">Toggle Theme</button>
-</div>
-<header>
-    <img id="header-logo" src="images/logo-light.png" alt="Logo">
+  </div>
+
+  <header>
+    <img id="header-logo" src="images/logo-light.png" alt="Logo" />
     <h1>MacMarket</h1>
     <div id="user-info"></div>
     <div id="time"></div>
     <div id="status"></div>
-</header>
-<main class="signals-page">
-  <div id="ticker-bar"><button id="ticker-toggle">Pause</button><div id="ticker-track"></div></div>
-  <h2>Signals</h2>
+  </header>
 
-  <!-- === NEW TOP SECTION (full width) === -->
-  <section id="signals-top" class="signal-section span-2">
-    <h3 style="margin-top:0">Symbol Signal</h3>
+  <main class="signals-page">
+    <div id="ticker-bar">
+      <button id="ticker-toggle">Pause</button>
+      <div id="ticker-track"></div>
+    </div>
 
-    <form id="symbol-form" class="row-controls" onsubmit="return false">
-      <label>Symbol <input id="symbol" type="text" value="SPY"></label>
-      <label>Mode
-        <select id="mode-select" aria-label="Trading mode"></select>
-      </label>
-      <button id="get-signal" type="submit" aria-label="Run HACO">Run</button>
-    </form>
+    <h2>Signals</h2>
 
-    <!-- internal grid only for the new section -->
-    <div class="top-grid">
+    <!-- === TOP SECTION === -->
+    <section id="signals-top" class="signal-section span-2">
+      <h3 style="margin-top:0">Symbol Signal</h3>
+
+      <!-- NEW: form + readiness side by side -->
+      <div class="controls-grid">
+        <form id="symbol-form" class="row-controls" onsubmit="return false">
+          <label>Symbol
+            <input id="symbol" type="text" value="SPY" spellcheck="false" />
+          </label>
+          <label>Mode
+            <select id="mode-select" aria-label="Trading mode">
+              <option value="crypto">Crypto</option>
+              <option value="day">Day</option>
+              <option value="position">Position</option>
+              <option value="swing" selected>Swing</option>
+            </select>
+          </label>
+          <button id="get-signal" type="submit" aria-label="Run HACO">Run</button>
+        </form>
+
+        <!-- readiness bubbles moved here -->
+        <div class="overview-readiness">
+          <div id="readiness-score" class="readiness-score">--</div>
+          <ul id="readiness-components" class="readiness-components"></ul>
+        </div>
+      </div>
+
+      <!-- chart column now spans full width -->
       <div class="chart-col">
         <div id="signals-chart" class="chart-frame"></div>
-          <div id="signals-mini-strips" class="mini-stack">
-              <div class="mini-group">
-                <div class="mini-title">HACO</div>
-                <div id="mini-haco" class="mini-strip"></div>
-              </div>
-              <div class="mini-group">
-                <div class="mini-title">HACOLT</div>
-                <div id="mini-hacolt" class="mini-strip"></div>
-              </div>
-            </div>
 
-        <!-- keep legacy “news/tech” readouts under the chart if you want -->
+        <!-- top minis with labels -->
+        <div id="signals-mini-strips" class="mini-stack">
+          <div class="mini-group">
+            <div class="mini-title">HACO</div>
+            <div id="mini-haco" class="mini-strip"></div>
+          </div>
+          <div class="mini-group">
+            <div class="mini-title">HACOLT</div>
+            <div id="mini-hacolt" class="mini-strip"></div>
+          </div>
+        </div>
+
+        <!-- news/tech summaries (NO tech sub-chart) -->
         <div id="signal-container" style="margin-top:1rem">
           <div>
             <h4>News Sentiment</h4>
@@ -73,30 +151,21 @@
             <h4>Technical Signal</h4>
             <div id="tech-output"></div>
             <small>Based on 20/50 day moving average crossover.</small>
-            <div id="tech-chart" style="height:300px;margin-top:1rem;"></div>
           </div>
         </div>
-      </div>
 
-      <aside class="confirm-col">
-        <!-- Readiness ring + components -->
-        <div class="overview-readiness">
-          <div id="readiness-score" class="readiness-score">--</div>
-          <ul id="readiness-components" class="readiness-components"></ul>
-        </div>
-
-        <!-- Panel cards -->
-        <div class="overview-panels">
+        <!-- panels moved here under the top minis; force 2x2 -->
+        <div id="panels-below-top">
           <div id="panels-grid" class="panels-grid"></div>
         </div>
-      </aside>
-    </div>
-      
-    <!-- 3) HACO Strategy (full width, includes charts) -->
+      </div>
+    </section>
+
+    <!-- === HACO STRATEGY === -->
     <section class="signal-section span-2" id="haco-section">
       <h3>HACO Strategy</h3>
       <form id="haco-form" class="row" onsubmit="return false" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-        <label>Symbol <input id="haco-symbol" value="SPY"></label>
+        <label>Symbol <input id="haco-symbol" value="SPY" /></label>
         <label>Timeframe
           <select id="haco-timeframe">
             <option>Day</option>
@@ -106,43 +175,43 @@
             <option>Month</option>
           </select>
         </label>
-        <label>Length Up <input id="haco-lenUp" value="34" type="number" min="1"></label>
-        <label>Length Down <input id="haco-lenDown" value="34" type="number" min="1"></label>
-        <label>Alert Lookback <input id="haco-alertLookback" value="1" type="number" min="1"></label>
-        <label>Lookback <input id="haco-lookback" value="200" type="number" min="50"></label>
-        <label><input type="checkbox" id="haco-toggleHa"> Show Heikin-Ashi</label>
+        <label>Length Up <input id="haco-lenUp" value="34" type="number" min="1" /></label>
+        <label>Length Down <input id="haco-lenDown" value="34" type="number" min="1" /></label>
+        <label>Alert Lookback <input id="haco-alertLookback" value="1" type="number" min="1" /></label>
+        <label>Lookback <input id="haco-lookback" value="200" type="number" min="50" /></label>
+        <label><input type="checkbox" id="haco-toggleHa" /> Show Heikin-Ashi</label>
         <button id="haco-run" type="submit">Run</button>
       </form>
-    
+
       <div id="haco-chart" style="height:420px; position:relative;"></div>
 
-        <!-- NEW: two synced strips under the HACO candles -->
-        <div id="haco-mini-strips" class="mini-stack">
-          <div class="mini-group">
-            <div class="mini-title">HACO</div>
-            <div id="haco-mini-haco" class="mini-strip"></div>
-          </div>
-          <div class="mini-group">
-            <div class="mini-title">HACOLT</div>
-            <div id="haco-mini-hacolt" class="mini-strip"></div>
-          </div>
+      <!-- HACO minis with labels -->
+      <div id="haco-mini-strips" class="mini-stack">
+        <div class="mini-group">
+          <div class="mini-title">HACO</div>
+          <div id="haco-mini-haco" class="mini-strip"></div>
         </div>
+        <div class="mini-group">
+          <div class="mini-title">HACOLT</div>
+          <div id="haco-mini-hacolt" class="mini-strip"></div>
+        </div>
+      </div>
 
-        <!-- (optional) keep these if you still use them elsewhere; otherwise remove -->
-        <div id="haco-toast" class="toast" style="display:none;"></div>
-        <div id="haco-explain"></div>
-
+      <div id="haco-toast" class="toast" style="display:none;"></div>
+      <div id="haco-explain"></div>
     </section>
 
-    <!-- full-width rows under the grid -->
+    <!-- === Remaining sections === -->
     <section class="overview-entries">
       <h4>Entries</h4>
       <ul id="entries-list" class="entries-list"></ul>
     </section>
+
     <section class="overview-exits">
       <h4>Exits</h4>
       <div id="exits-summary"></div>
     </section>
+
     <section class="overview-tabs">
       <h4>Advanced Tabs</h4>
       <div class="tabs-shell">
@@ -150,41 +219,45 @@
         <div id="advanced-tab-content" class="tabs-content"></div>
       </div>
     </section>
+
     <section class="overview-mindset">
       <h4>Mindset</h4>
       <p id="mindset-tagline" class="muted"></p>
       <ul id="mindset-focus" class="mindset-focus"></ul>
     </section>
+
     <section class="overview-watchlist">
       <h4>Watchlist</h4>
       <ul id="watchlist-list" class="watchlist-list"></ul>
     </section>
-  </section>
 
-  <!-- === LEGACY / HACO SECTIONS BELOW (unchanged) === -->
-  <section class="signal-section span-2">
-    <h3>Recommendations to Invest</h3>
-    <button id="get-recs">Get Recommendations</button>
-    <table id="recs-table">
-      <thead><tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </section>
+    <!-- Recommendations -->
+    <section class="signal-section span-2">
+      <h3>Recommendations to Invest</h3>
+      <button id="get-recs">Get Recommendations</button>
+      <table id="recs-table">
+        <thead>
+          <tr><th>Symbol</th><th>Action</th><th>Exit</th><th>Probability</th><th>Reason</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
 
+    <!-- Macro -->
+    <section class="signal-section span-2">
+      <h3>Macro Outlook</h3>
+      <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
+      <br /><button id="run-macro">Analyze</button>
+      <div id="macro-output"></div>
+      <small>LLM interpretation of the provided text.</small>
+    </section>
+  </main>
 
-  <section class="signal-section span-2">
-    <h3>Macro Outlook</h3>
-    <textarea id="macro-text" rows="5" cols="60" placeholder="Paste macroeconomic summary..."></textarea>
-    <br><button id="run-macro">Analyze</button>
-    <div id="macro-output"></div>
-    <small>LLM interpretation of the provided text.</small>
-  </section>
-</main>
-    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="/js/signals.js?v=1"></script>
-    <!-- Use frontend/js via /js mount and bust cache -->
-    <script src="/js/haco-ui.js?v=15"></script>
-    <script src="/js/haco-scan.js?v=18"></script>
-    <script src="help.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
+  <script src="/js/signals.js?v=1"></script>
+  <!-- Use frontend/js via /js mount and bust cache -->
+  <script src="/js/haco-ui.js?v=15"></script>
+  <script src="/js/haco-scan.js?v=18"></script>
+  <script src="help.js"></script>
 </body>
 </html>
