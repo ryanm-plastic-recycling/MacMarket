@@ -162,6 +162,31 @@
   border-color: rgba(148,163,184,.6);
 }
 
+/* Single-row horizontal watchlist (scrolls if too long) */
+.overview-watchlist .watchlist-list {
+  display: flex;
+  flex-wrap: nowrap;              /* <-- no wrapping */
+  overflow-x: auto;               /* <-- allow horizontal scroll */
+  gap: 8px 10px;
+  margin: 8px 0 0;
+  padding: 0 2px 6px 2px;         /* little bottom pad so scrollbar doesn't hug */
+  scrollbar-width: thin;          /* Firefox thin bar */
+  scrollbar-color: rgba(148,163,184,.35) transparent;
+}
+.overview-watchlist .watchlist-list li {
+  flex: 0 0 auto;                 /* <-- keep each pill from stretching */
+}
+
+/* Optional: cleaner WebKit scrollbar */
+.overview-watchlist .watchlist-list::-webkit-scrollbar { height: 8px; }
+.overview-watchlist .watchlist-list::-webkit-scrollbar-thumb {
+  background: rgba(148,163,184,.35);
+  border-radius: 999px;
+}
+.overview-watchlist .watchlist-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* --- Tabs --- */
 .tabs-shell {
   background: rgba(15, 23, 42, 0.35);
