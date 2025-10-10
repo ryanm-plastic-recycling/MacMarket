@@ -133,8 +133,8 @@
     master.timeScale().subscribeVisibleLogicalRangeChange(applyLogicalRange);
     // Initial align (after data set)
     const kick = () => {
-      const r = masterChart.timeScale().getVisibleRange();
-      if (r) pushTimeRange(r);
+      const r = master.timeScale().getVisibleRange();
+      if (r) applyTimeRange(r);
     };
     kick(); setTimeout(kick, 0);
   }
@@ -161,15 +161,6 @@
       state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
       const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
       linkMasterToSlaves(state.haco.main, hacoSlaves);
-
-
-      // keep HACO minis in lockstep with HACO main
-      const chartsToSync = [
-        state.haco.main,
-        state.haco.miniHaco?.chart,
-        state.haco.miniHacolt?.chart,
-      ].filter(Boolean);
-      syncTime(chartsToSync);
     }
     return state.haco.main;
   }
@@ -219,16 +210,27 @@ function toMiniBars(series) {
   });
 }
 
-function renderHacoSection(chartPayload) {
-  ensureHacoMinis();
-  if (!chartPayload) return;
-
-  const hacoBars   = buildBarsAligned(candles, chartPayload.haco || []);
-  const hacoltBars = buildBarsAligned(candles, chartPayload.hacolt || []);
+  function renderHacoSection(chartPayload) {
+    ensureHacoMinis();
+    if (!chartPayload) return;
   
-  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars);
-  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars);
-}
+    // use the SAME candle times for alignment
+    const candles = (chartPayload.candles || []).map(c => ({
+      time: Number(c.time), open: c.o, high: c.h, low: c.l, close: c.c,
+    }));
+  
+    const hacoBars   = buildBarsAligned(candles, chartPayload.haco   || []);
+    const hacoltBars = buildBarsAligned(candles, chartPayload.hacolt || []);
+  
+    if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars);
+    if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars);
+  
+    // hard-link ranges (master = HACO candle chart; slaves = the two minis)
+    if (state.haco.main) {
+      const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
+      linkMasterToSlaves(state.haco.main, hacoSlaves);
+    }
+  }
 
   function ensureChart() {
     const container = el('signals-chart');
@@ -257,21 +259,8 @@ function renderHacoSection(chartPayload) {
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Dotted,
       });
-    // after state.chart is created:
-    if (state.chart) {
-      const slaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
-      linkMasterToSlaves(state.chart, slaves);
-    }
     if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
     if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
-    
-    // keep them in sync with the main chart
-    const chartsToSync = [
-      state.chart,
-      state.mini.haco?.chart,
-      state.mini.hacolt?.chart,
-    ].filter(Boolean);
-    syncTime(chartsToSync);
 
     const topSlaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
     linkMasterToSlaves(state.chart, topSlaves);
