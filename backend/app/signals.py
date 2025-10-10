@@ -645,8 +645,6 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         ranked_watchlist = get_dynamic_watchlist(canonical_mode, limit=10)
     except Exception:
         ranked_watchlist = []
-
-
     return {
         "symbol": symbol.upper(),
         "mode": canonical_mode,
