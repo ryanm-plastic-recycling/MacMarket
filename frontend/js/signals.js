@@ -182,22 +182,14 @@
         if (e?.detail?.chart) {
           state.haco.main = e.detail.chart;
           // lock minis to HACO main
-          const chartsToSync = [
-            state.haco.main,
-            state.haco.miniHaco?.chart,
-            state.haco.miniHacolt?.chart,
-          ].filter(Boolean);
-          syncTime(chartsToSync);
+          const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
+          linkMasterToSlaves(state.haco.main, hacoSlaves);
         }
       }, { once: true });
     } else {
       // lock minis to HACO main now
-      const chartsToSync = [
-        state.haco.main,
-        state.haco.miniHaco?.chart,
-        state.haco.miniHacolt?.chart,
-      ].filter(Boolean);
-      syncTime(chartsToSync);
+      const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
+      linkMasterToSlaves(state.haco.main, hacoSlaves);
     }
   }
 
