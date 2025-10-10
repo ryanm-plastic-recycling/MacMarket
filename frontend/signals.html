@@ -16,50 +16,40 @@
       align-items: start;
       margin: 10px 0 14px;
     }
-    .controls-grid .row-controls {
-      margin: 0;
-    }
+    .controls-grid .row-controls { margin: 0; }
     .controls-grid .overview-readiness {
-      /* reuse existing readiness styles; just keep it aligned*/
-      display: grid;
-      gap: 8px;
-      justify-items: center;
+      display: grid; gap: 8px; justify-items: center;
     }
-    .mini-stack {
-      display: grid;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .mini-group {
-      display: grid;
-      gap: 4px;
-    }
+    .mini-stack { display: grid; gap: 8px; margin-top: 8px; }
+    .mini-group { display: grid; gap: 4px; }
     .mini-title {
-      font-size: 0.9rem;
-      opacity: 0.85;
-      padding-left: 2px;
+      font-size: .9rem; opacity: .85; padding-left: 2px;
+      text-transform: uppercase; letter-spacing: .04em;
     }
+
     /* panels below the top mini strips should be 2x2 */
-    #panels-below-top {
-      display: grid;
-      gap: 12px;
-      margin-top: 12px;
-    }
+    #panels-below-top { display: grid; gap: 14px; margin-top: 14px; }
     #panels-below-top .panels-grid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(2, minmax(0, 1fr)); /* 2x2 grid */
+      display: grid; gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     /* keep the original chart column stretchy */
     #signals-top .chart-col { min-width: 0; }
 
-    /* shrink signal-container a touch */
+    /* news/tech summary cards */
     #signal-container {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 14px;
       margin-top: 10px !important;
+    }
+    #signal-container > div {
+      background: rgba(15,23,42,.45);
+      border: 1px solid rgba(148,163,184,.15);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 6px 22px rgba(0,0,0,.25);
     }
   </style>
 </head>
@@ -100,7 +90,7 @@
       <h3>Watchlist</h3>
       <ul id="watchlist-list" class="watchlist-list"></ul>
     </section>
-    
+
     <!-- === TOP SECTION === -->
     <section id="signals-top" class="signal-section span-2">
       <h3 style="margin-top:6">Symbol Signal</h3>
@@ -129,7 +119,6 @@
         </div>
       </div>
 
-      <!-- chart column now spans full width -->
       <div class="chart-col">
         <div id="signals-chart" class="chart-frame"></div>
 
@@ -145,7 +134,7 @@
           </div>
         </div>
 
-        <!-- news/tech summaries (NO tech sub-chart) -->
+        <!-- news/tech summaries (no sub-chart) -->
         <div id="signal-container" style="margin-top:1rem">
           <div>
             <h4>News Sentiment</h4>
@@ -206,20 +195,19 @@
       <div id="haco-explain"></div>
     </section>
 
-    <!-- === Remaining sections === -->
     <!-- NEW: Entries + Exits side-by-side -->
     <div class="pair-grid">
       <section class="overview-entries">
         <h4>Entries</h4>
         <ul id="entries-list" class="entries-list"></ul>
       </section>
-    
+
       <section class="overview-exits">
         <h4>Exits</h4>
         <div id="exits-summary"></div>
       </section>
     </div>
-    
+
     <!-- NEW: Advanced Tabs + Mindset side-by-side -->
     <div class="pair-grid">
       <section class="overview-tabs">
@@ -229,7 +217,7 @@
           <div id="advanced-tab-content" class="tabs-content"></div>
         </div>
       </section>
-    
+
       <section class="overview-mindset">
         <h4>Mindset</h4>
         <p id="mindset-tagline" class="muted"></p>
@@ -261,9 +249,29 @@
 
   <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
   <script src="/js/signals.js?v=1"></script>
-  <!-- Use frontend/js via /js mount and bust cache -->
   <script src="/js/haco-ui.js?v=15"></script>
   <script src="/js/haco-scan.js?v=18"></script>
   <script src="help.js"></script>
+
+  <!-- helper: upgrade PASS/FAIL footers into badges -->
+  <script>
+    (function enhanceStatusBadges(){
+      const grid = document.getElementById('panels-grid');
+      if (!grid) return;
+      const upgrade = () => {
+        grid.querySelectorAll('.panel-card').forEach(card => {
+          const ft = card.querySelector('footer');
+          if (!ft) return;
+          const t = (ft.textContent || '').trim().toUpperCase();
+          card.classList.remove('is-pass','is-fail');
+          if (t === 'PASS') card.classList.add('is-pass');
+          else if (t === 'FAIL') card.classList.add('is-fail');
+        });
+      };
+      const obs = new MutationObserver(upgrade);
+      obs.observe(grid, { childList: true, subtree: true });
+      upgrade();
+    })();
+  </script>
 </body>
 </html>
