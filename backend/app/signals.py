@@ -614,6 +614,7 @@ def compute_signals(symbol: str, mode: str = "swing") -> dict:
         "advanced_tabs": advanced_tabs,
         "available_modes": sorted(MODE_PROFILES.keys()),
         "watchlist": profile.get("watchlist", DEFAULT_WATCHLIST),
+        "ranked_watchlist": get_dynamic_watchlist(canonical_mode, limit=10),
         "mindset": profile.get("mindset", {}),
         "meta": payload_meta,
     }
