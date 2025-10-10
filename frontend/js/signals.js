@@ -246,7 +246,7 @@ function renderHacoSection(chartPayload) {
       state.candleSeries.applyOptions({
         priceLineVisible: true,
         lastValueVisible: true,
-        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        priceFormat: { type: 'price', precision: 4, minMove: 0.0001 },
       });
       
       state.sma20Series = state.chart.addLineSeries({ color: '#4c78ff', lineWidth: 2 });
@@ -304,7 +304,21 @@ function renderHacoSection(chartPayload) {
       close: c.c,
     }));
     state.candleSeries.setData(candles);
-    
+    // ---- snap initial view to the last ~220 bars (or all if fewer) ----
+    try {
+      const n = candles.length;
+      if (n > 0) {
+        const last = n - 1;
+        const span = Math.min(220, Math.max(20, n - 1)); // pick a sensible window
+        state.chart.timeScale().setVisibleLogicalRange({
+          from: Math.max(0, last - span),
+          to: last + 2, // a tiny breathing room to the right
+        });
+      } else {
+        state.chart.timeScale().fitContent();
+      }
+    } catch {}
+
     // Set minis if present
     const hacoBars   = toMiniBars(chartPayload.haco);
     const hacoltBars = toMiniBars(chartPayload.hacolt);
