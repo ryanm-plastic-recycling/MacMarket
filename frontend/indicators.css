@@ -1,215 +1,395 @@
-/* =====================================================
-   Signals UI — “original but cleaner” polish stylesheet
-   ===================================================== */
-
-/* ---------- Shared containers ---------- */
-.signals-page .signal-section { box-sizing: border-box; margin-bottom: 18px; }
-#signals-top .chart-col { min-width: 0; }
-
-/* ---------- Minis (HACO/HACOLT) ---------- */
-#signals-mini-strips { margin-top: 6px; display: grid; gap: 6px; }
-.mini-stack { display: grid; gap: 8px; margin-top: 6px; }
-.mini-group { display: grid; gap: 4px; }
-.mini-title {
-  font-size: .8rem; color: var(--muted, #94a3b8);
-  text-transform: uppercase; letter-spacing: .04em; margin-left: 2px;
-}
-.mini-strip {
-  height: 64px; border: 1px solid rgba(148,163,184,.15);
-  border-radius: 10px; background: rgba(15,23,42,.45);
-}
-
-/* ---------- News / Technical tiles under the chart ---------- */
-#signal-container {
+.overview-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 14px; margin-top: 12px !important;
-}
-#signal-container > div {
-  background: rgba(15,23,42,.35);
-  border: 1px solid rgba(148,163,184,.18);
-  border-radius: 12px; padding: 12px 14px;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin: 1rem 0 2rem;
 }
 
-/* ---------- Watchlist pills (single row that wraps) ---------- */
-.overview-watchlist .watchlist-list {
-  display:flex; flex-wrap:wrap; gap: 8px 10px; margin:8px 0 0; padding:0; list-style:none;
-}
-.overview-watchlist .watchlist-list li {
-  background: transparent !important; border:none !important; padding:0 !important; margin:0 !important;
-}
-.overview-watchlist .watchlist-list li button {
-  border:1px solid rgba(148,163,184,.35) !important;
-  background: rgba(148,163,184,.08) !important;
-  border-radius: 999px !important;
-  padding:6px 10px !important; font-size:.9rem !important; line-height:1 !important;
-}
-.overview-watchlist .watchlist-list li button:hover { background: rgba(148,163,184,.18) !important; }
-
-/* ---------- Two-column wrappers for paired sections ---------- */
-.pair-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; margin:16px 0; }
-@media (max-width:1100px){ .pair-grid { grid-template-columns:1fr; } }
-.pair-grid .overview-entries,
-.pair-grid .overview-exits,
-.pair-grid .overview-tabs,
-.pair-grid .overview-mindset{
-  background: rgba(15,23,42,.35);
-  border: 1px solid rgba(148,163,184,.15);
-  border-radius: 12px; padding: 12px;
+.readiness-score {
+  --score: 0;
+  --ready-color: #4caf50;
+  align-items: center;
+  background: conic-gradient(var(--ready-color) calc(var(--score) * 1%), rgba(255, 255, 255, 0.08) 0);
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  font-size: 2.75rem;
+  font-weight: 600;
+  height: 140px;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  position: relative;
+  width: 140px;
 }
 
-/* ---------- Readiness ring + list ---------- */
-.overview-grid{
-  display:grid; gap:1.25rem; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-  margin:1rem 0 2rem;
+.readiness-score::after {
+  background: var(--page-bg, #0f172a);
+  border-radius: 50%;
+  bottom: 12px;
+  content: '';
+  left: 12px;
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  z-index: -1;
 }
-.readiness-score{
-  --score:0; --ready-color:#4caf50;
-  display:flex; align-items:center; justify-content:center;
-  width:140px; height:140px; margin:0 auto 1rem;
-  color:#fff; font-weight:600; font-size:2.75rem;
-  background: conic-gradient(var(--ready-color) calc(var(--score)*1%), rgba(255,255,255,.08) 0);
-  border-radius:50%; position:relative; box-shadow:0 6px 18px rgba(0,0,0,.28);
-}
-.readiness-score::after{
-  content:""; position:absolute; inset:12px; border-radius:50%;
-  background: var(--page-bg,#0f172a); z-index:-1;
-}
-.readiness-score.is-weak{   --ready-color:#ef5350; }
-.readiness-score.is-neutral{--ready-color:#ffb300; }
-.readiness-score.is-strong{ --ready-color:#26a69a; }
 
-.readiness-components{ list-style:none; margin:0; padding:0; }
-.readiness-components li{
-  display:flex; align-items:baseline; justify-content:space-between; margin-bottom:.45rem;
+.readiness-score.is-weak {
+  --ready-color: #ef5350;
 }
-.readiness-components li strong{ font-size:1.05rem; min-width:2.5rem; text-align:right; }
-.readiness-components li small{ color:var(--muted,#94a3b8); font-size:.85rem; margin-left:.5rem; }
 
-/* ---------- Panels (your original, but cleaner) ---------- */
-.panels-grid{ display:grid; gap:.9rem; }
-.panel-card{
-  background: rgba(15,23,42,.58);
-  border: 1px solid rgba(148,163,184,.2);
+.readiness-score.is-neutral {
+  --ready-color: #ffb300;
+}
+
+.readiness-score.is-strong {
+  --ready-color: #26a69a;
+}
+
+.readiness-components {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.readiness-components li {
+  align-items: baseline;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.readiness-components li strong {
+  font-size: 1.1rem;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.readiness-components li small {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+.panels-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.panel-card {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
-  padding: 12px 14px;
-  display:flex; flex-direction:column; gap:10px; min-height:160px;
-  box-shadow:0 8px 22px rgba(0,0,0,.28);
-}
-.panel-card header{
-  display:flex; justify-content:space-between; align-items:center;
-  padding:6px 10px; border-radius: 10px;
-  background: rgba(255,255,255,.02);
-  border: 1px solid rgba(148,163,184,.12);
-}
-.panel-card h4{ margin:0; }
-.panel-card .badge{
-  background: rgba(76,120,255,.22);
-  color:#dbeafe; border:1px solid rgba(76,120,255,.35);
-  border-radius:999px; padding:.22rem .55rem; font-weight:600; font-size:.84rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
 }
 
-/* --- Goal/value line (optional text rows you already render) --- */
-.panel-card .explain{
-  display:flex; justify-content:space-between; gap:10px; font-size:.9rem; color:#cbd5e1;
-}
-.panel-card .explain .goal{ color:#e2e8f0; font-weight:600; }
-
-/* --- Progress bar: filled gradient to current value, remainder muted --- */
-.panel-card .bar{
-  --goal-pct:60%;
-  position:relative; height:12px; border-radius:999px;
-  background: rgba(148,163,184,.18);   /* remainder */
-  overflow:hidden; margin:.35rem 0 .25rem;
-}
-.panel-card .bar span{
-  display:block; height:100%;
-  background: linear-gradient(90deg,#F83838 0%, #ffbe0b 50%, #22C525 100%);
-  width: 0%; transition: width .3s ease;
-}
-/* goal tick */
-.panel-card .bar::after{
-  content:""; position:absolute; top:-3px; width:4px; height:16px;
-  left: calc(var(--goal-pct,60%) - 2px);
-  background:#fff; opacity:.95; border-radius:1px;
+.panel-card header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
 }
 
-/* --- PASS / FAIL more obvious --- */
-.panel-card footer{
-  margin-top:auto; display:flex; align-items:center; justify-content:flex-start;
+.panel-card .badge {
+  background: rgba(76, 120, 255, 0.2);
+  border-radius: 999px;
+  color: #4c78ff;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
 }
-.panel-card footer .status{
-  display:inline-block; padding:6px 12px; border-radius:999px; font-weight:700; letter-spacing:.02em;
-  border:1px solid transparent; font-size:.9rem;
+
+.panel-card footer {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
+  margin-top: auto;
 }
-/* if your text is just PASS/FAIL, this styles both; if you add a class, even better */
-.panel-card footer { text-transform: uppercase; }
-.panel-card footer:has(> .status-pass),
-.panel-card footer:has(> .status-fail){ text-transform:none; } /* when you inject spans */
 
-.status-pass{ background: rgba(34,197,94,.16); color:#86efac; border-color:rgba(34,197,94,.35); }
-.status-fail{ background: rgba(239,68,68,.16); color:#fca5a5; border-color:rgba(239,68,68,.35); }
+.chart-frame {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  height: 320px;
+}
 
-/* If you can’t inject spans, this still boosts simple text */
-.panel-card footer { color:#e2e8f0; font-weight:700; }
+.panel-card .bar{ position:relative; height:12px; background:rgba(148,163,184,.2);
+  border-radius:999px; overflow:hidden; margin:.35rem 0 .25rem; }
+.panel-card .bar span{ display:block; height:100%; width:0%;
+  background:linear-gradient(90deg,#F83838,#22C525); transition: width .3s ease; }
+.panel-card .bar::after{ content:""; position:absolute; top:-3px; width:5px; height:16px;
+  left: calc(var(--goal-pct, 60%) - 1px); background:#fff; opacity:1.0; border-radius:1px; }
 
-/* ---------- Card lists ---------- */
 .entries-list,
 .mindset-focus,
-.watchlist-list{ list-style:none; margin:0; padding:0; }
+.watchlist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
 .entries-list li,
 .mindset-focus li,
-.watchlist-list li{
-  background: rgba(15,23,42,.35);
-  border: 1px solid rgba(148,163,184,.12);
-  border-radius:10px;
-  margin-bottom:.6rem; padding:.6rem .8rem;
-  display:flex; flex-direction:column; gap:.25rem;
+.watchlist-list li {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 10px;
+  margin-bottom: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
-.entries-list li strong{ font-size:1rem; text-transform:uppercase; }
-.entries-list li em{ color:var(--muted,#94a3b8); font-size:.85rem; }
 
-/* ---------- Tabs ---------- */
-.tabs-shell{
-  background: rgba(15,23,42,.35);
-  border:1px solid rgba(148,163,184,.2);
-  border-radius:12px; padding:.75rem; display:flex; flex-direction:column; gap:.75rem;
+.entries-list li strong {
+  font-size: 1rem;
+  text-transform: uppercase;
 }
-.tabs-nav{ display:flex; flex-wrap:wrap; gap:.5rem; }
-.tabs-nav button{
-  background: rgba(148,163,184,.12); border:1px solid transparent;
-  border-radius:6px; padding:.35rem .75rem; color:inherit; cursor:pointer; font:inherit;
-}
-.tabs-nav button.active{
-  background: rgba(76,120,255,.18); border-color:rgba(76,120,255,.4); color:#dbeafe;
-}
-.tabs-content ul{ list-style:disc; margin:0; padding-left:1.2rem; }
 
-/* ---------- Exits table ---------- */
-.levels-table{ border-collapse:collapse; width:100%; margin-bottom:.5rem; }
-.levels-table th, .levels-table td{
-  border:1px solid rgba(148,163,184,.2); padding:.4rem .6rem; text-align:left;
+.entries-list li em {
+  color: var(--muted, #94a3b8);
+  font-size: 0.85rem;
 }
-.levels-table th{ background: rgba(148,163,184,.15); }
 
-/* ---------- Legacy layout neutralizers ---------- */
+.watchlist-list li button {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.25rem 0.5rem;
+  transition: background 0.2s ease;
+}
+
+.watchlist-list li button:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.tabs-shell {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.tabs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tabs-nav button {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.35rem 0.75rem;
+}
+
+.tabs-nav button.active {
+  background: rgba(76, 120, 255, 0.18);
+  border-color: rgba(76, 120, 255, 0.4);
+  color: #dbeafe;
+}
+
+.tabs-content ul {
+  list-style: disc;
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.levels-table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.levels-table th,
+.levels-table td {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.levels-table th {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+/* ==== Signals page: kill legacy wrappers that force narrow/right float ==== */
 .signals-page #content,
 .signals-page .content,
 .signals-page .container,
 .signals-page .wrapper,
 .signals-page .main,
 .signals-page .col,
-.signals-page .column{
-  width:auto !important; max-width:none !important; margin:0 !important; padding:0 !important;
-  float:none !important; display:block !important; clear:none !important; position:static !important;
-  text-align:left !important;
+.signals-page .column {
+  width: auto !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  float: none !important;
+  display: block !important;
+  clear: none !important;
+  position: static !important;
+  text-align: left !important;
 }
 
-/* Chart container must own width/height so LC renders */
-#signals-chart{ width:100% !important; min-height:360px !important; }
+/* Make sure our grid actually stretches */
+.signals-page .signals-grid {
+  width: 100% !important;
+  margin: 0 !important;
+}
 
-/* Responsive tweaks for older grids */
-@media (max-width:1200px){ #signals-top .top-grid{ grid-template-columns:1fr; } }
-#haco-section .row{ display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
-#haco-chart{ height:420px; }
-#haco-signal-chart{ height:100px; }
+/* Chart container must own width/height so LightweightCharts renders */
+#signals-chart {
+  width: 100% !important;
+  min-height: 360px !important;
+}
+
+/* The big left column should really be big */
+.signals-page .signals-grid {
+  grid-template-columns: minmax(800px, 1fr) minmax(360px, 1fr); /* widen left */
+}
+
+/* If anything still squeezes right via old flex rules, neutralize */
+.signals-page,
+.signals-page header,
+.signals-page .signals-grid,
+.signals-page .symbol-signal .overview-grid {
+  display: block; /* start clean */
+}
+.signals-page .signals-grid { display: grid !important; }
+.signals-page .symbol-signal .overview-grid { display: grid !important; }
+
+/* Give the first section a clear visual container */
+.signals-page .signal-section {
+  box-sizing: border-box;
+}
+
+/* Ensure no inherited text-align messes with layout */
+.signals-page * { text-align: initial; }
+
+/* As a safety net, keep the sidebar push */
+#sidebar { position: fixed; top: 0; left: 0; width: 230px; }
+.signals-page, .signals-page header { margin-left: 250px !important; }
+
+/* Responsive collapse */
+@media (max-width: 1280px) {
+  .signals-page .signals-grid { grid-template-columns: 1.2fr 1fr; }
+}
+@media (max-width: 1100px) {
+  #sidebar { position: static; width: auto; }
+  .signals-page, .signals-page header { margin-left: 0 !important; }
+  .signals-page .signals-grid { grid-template-columns: 1fr; }
+  .signals-page .symbol-signal .overview-grid { grid-template-columns: 1fr; }
+}
+/* internal grid for the TOP section only */
+#signals-top .top-grid{
+  display:grid;
+  grid-template-columns: minmax(720px, 2fr) minmax(360px, 1fr);
+  gap:20px;
+  align-items:start;
+}
+#signals-top .chart-col { min-width: 0; }   /* allow chart to shrink without overflow */
+#signals-top .confirm-col { min-width: 0; }
+
+@media (max-width: 1200px){
+  #signals-top .top-grid{ grid-template-columns: 1fr; }
+}
+
+#haco-section .row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; }
+#haco-chart { height:420px; }
+#haco-signal-chart { height:100px; }
+
+#signals-mini-strips { margin-top: 6px; display: grid; gap: 6px; }
+.mini-strip { height: 64px; border: 1px solid rgba(148,163,184,.15); border-radius: 8px; }
+
+.mini-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.mini-label {
+  font-size: .85rem;
+  color: var(--muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+/* Stack of labeled strips: label on its own row above the bar */
+.mini-stack { display: grid; gap: 8px; margin-top: 6px; }
+
+.mini-group { display: grid; gap: 4px; }
+
+.mini-title {
+  font-size: .78rem;
+  color: var(--muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1;
+  margin-left: 2px; /* tiny indent so it doesn’t touch the border */
+}
+
+/* Your existing mini-strip height is good */
+.mini-strip { height: 64px; border: 1px solid rgba(148,163,184,.15); border-radius: 8px; }
+
+  /* Two-column wrapper for paired sections */
+  .pair-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+    margin: 16px 0;
+  }
+  @media (max-width: 1100px) {
+    .pair-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Make Entries/Exits cards stretch nicely */
+  .pair-grid .overview-entries,
+  .pair-grid .overview-exits,
+  .pair-grid .overview-tabs,
+  .pair-grid .overview-mindset {
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.15);
+    border-radius: 12px;
+    padding: 12px;
+  }
+
+  /* Watchlist: compact, inline pills that wrap */
+  .overview-watchlist .watchlist-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  /* Remove the big card look from watchlist items */
+  .overview-watchlist .watchlist-list li {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  /* Make the buttons look like small pills */
+  .overview-watchlist .watchlist-list li button {
+    border: 1px solid rgba(148, 163, 184, 0.35) !important;
+    background: rgba(148, 163, 184, 0.08) !important;
+    border-radius: 999px !important;
+    padding: 6px 10px !important;
+    font-size: 0.9rem !important;
+    line-height: 1 !important;
+  }
+  .overview-watchlist .watchlist-list li button:hover {
+    background: rgba(148, 163, 184, 0.18) !important;
+  }
