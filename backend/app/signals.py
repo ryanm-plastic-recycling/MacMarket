@@ -33,6 +33,27 @@ EXIT_STOP_LOSS_PCT = 0.02     # 2% stop-loss
 EXIT_MAX_HOLD_DAYS = 30       # time-based exit after 30 trading days
 # Back-compat default used by get_watchlist()
 DEFAULT_WATCHLIST = ["SPY", "QQQ", "DIA", "IWM", "AAPL", "MSFT", "NVDA"]
+# Default content for the "Advanced Tabs" section if a mode doesn't provide its own
+DEFAULT_ADVANCED_TABS = [
+    {
+        "id": "playbook",
+        "title": "Playbook",
+        "content": [
+            "Review macro tone and sector strength before the open.",
+            "Stagger entries to avoid chasing extended moves.",
+            "Lock gains aggressively when readiness deteriorates.",
+        ],
+    },
+    {
+        "id": "checklist",
+        "title": "Checklist",
+        "content": [
+            "Is trend aligned across the chosen timeframe?",
+            "Do momentum and volume confirm the move?",
+            "Have risk parameters been staged?",
+        ],
+    },
+]
 
 # --- Dynamic watchlist plumbing (mode-aware) -----------------
 
