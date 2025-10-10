@@ -130,7 +130,7 @@
         layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
         rightPriceScale: { visible: false },
         leftPriceScale:  { visible: false },
-        timeScale: { borderVisible: false, rightOffset: 0 },
+        timeScale: { borderVisible: false, rightOffset: 2 },
         grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
       });
       state.haco.candle = state.haco.main.addCandlestickSeries({
@@ -220,7 +220,7 @@ function renderHacoSection(chartPayload) {
         height: 360,
         layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
         // turn ON the right price scale so numbers are visible
-        rightPriceScale: { visible: true, borderVisible: false },
+        rightPriceScale: { visible: true, borderVisible: false, scaleMargins: { top: 0.1, bottom: 0.15 } },
         // keep left scale hidden (you can turn it on too if you want)
         leftPriceScale:  { visible: false },
         timeScale: { borderVisible: false, rightOffset: 0 },
@@ -245,7 +245,7 @@ function renderHacoSection(chartPayload) {
       state.candleSeries.applyOptions({
         priceLineVisible: true,
         lastValueVisible: true,
-        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+        priceFormat: { type: 'price', precision: 4, minMove: 0.0001 },
       });
       
       state.sma20Series = state.chart.addLineSeries({ color: '#4c78ff', lineWidth: 2 });
@@ -262,12 +262,12 @@ function renderHacoSection(chartPayload) {
       state.trendSeries.applyOptions({ priceLineVisible: false, lastValueVisible: false }); // keep the dotted trend unobtrusive
 
     // after state.chart is created:
+    if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
+    if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
     if (state.chart) {
       const slaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
       linkMasterToSlaves(state.chart, slaves);
     }
-    if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
-    if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
     
     // keep them in sync with the main chart
     const chartsToSync = [
