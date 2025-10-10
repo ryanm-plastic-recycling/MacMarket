@@ -11,19 +11,6 @@
     tabs: [],
     activeTab: null,
     lastMode: 'swing',
-
-    // UI toggles (top section)
-    toggles: {
-      topHacoStrip: true,
-      topHacoltStrip: true,
-      topHacoArrows: true,
-      topSma20: true,
-      topSma50: true,
-      topTrend: true,
-    },
-
-    // cache last markers so we can re-apply quickly when toggling HACO arrows
-    _lastTopMarkers: [],
   };
 
   const el = (id) => document.getElementById(id);
@@ -34,17 +21,16 @@
     node.textContent = message;
     node.dataset.tone = tone;
   }
-
-  // ---------- Resize ----------
+  
   function resizeChart() {
-    const hostTop = document.getElementById('signals-chart');
-    if (hostTop && state.chart) {
-      const w = Math.max(320, hostTop.clientWidth || hostTop.offsetWidth || 0);
-      const h = Math.max(300, hostTop.clientHeight || 360);
+    const el = document.getElementById('signals-chart');
+    if (el && state.chart) {
+      const w = Math.max(320, el.clientWidth || el.offsetWidth || 0);
+      const h = Math.max(300, el.clientHeight || 360);
       state.chart.resize(w, h);
     }
     // minis follow width
-    ['mini-haco', 'mini-hacolt'].forEach(id => {
+    ['mini-haco','mini-hacolt'].forEach(id => {
       const host = document.getElementById(id);
       const obj = id === 'mini-haco' ? state.mini.haco : state.mini.hacolt;
       if (host && obj?.chart) obj.chart.resize(host.clientWidth || 0, host.clientHeight || 64);
@@ -55,121 +41,13 @@
       state.haco.main.resize(hhost.clientWidth || 0, hhost.clientHeight || 420);
     }
     // HACO minis
-    ['haco-mini-haco', 'haco-mini-hacolt'].forEach(id => {
+    ['haco-mini-haco','haco-mini-hacolt'].forEach(id => {
       const host = document.getElementById(id);
       const obj = (id === 'haco-mini-haco') ? state.haco.miniHaco : state.haco.miniHacolt;
       if (host && obj?.chart) obj.chart.resize(host.clientWidth || 0, host.clientHeight || 64);
     });
   }
-
-  // ---------- HACO arrow helpers ----------
-  // Build markers (up/down arrows) from HACO series aligned to candle times
-  function buildHacoMarkers(candles, hacoPoints) {
-    const byTime = new Map((hacoPoints || []).map(p => [Number(p.time), p.value]));
-    const markers = [];
-    for (const c of candles || []) {
-      const t = Number(c.time);
-      const v = byTime.get(t);
-      if (v === 100) {
-        markers.push({
-          time: t,
-          position: 'belowBar',
-          color: '#16a34a',
-          shape: 'arrowUp',
-          text: 'HACO',
-        });
-      } else if (v === 0) {
-        markers.push({
-          time: t,
-          position: 'aboveBar',
-          color: '#ef4444',
-          shape: 'arrowDown',
-          text: 'HACO',
-        });
-      }
-    }
-    return markers;
-  }
-
-  function applyTopArrowsVisible(visible) {
-    if (!state.candleSeries) return;
-    if (visible) {
-      state.candleSeries.setMarkers(state._lastTopMarkers || []);
-    } else {
-      state.candleSeries.setMarkers([]);
-    }
-  }
-
-  // ---------- Top toggles UI ----------
-  function ensureTopToggleUI() {
-    if (document.getElementById('chart-toggles')) return;
-
-    const chartCol = document.querySelector('#signals-top .chart-col');
-    if (!chartCol) return;
-
-    const wrap = document.createElement('div');
-    wrap.id = 'chart-toggles';
-    wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px;align-items:center;font-size:.9rem;';
-    wrap.innerHTML = `
-      <label style="display:flex;gap:6px;align-items:center;">
-        <input type="checkbox" id="tg-top-haco" checked> HACO strip
-      </label>
-      <label style="display:flex;gap:6px;align-items:center;">
-        <input type="checkbox" id="tg-top-hacolt" checked> HACOLT strip
-      </label>
-      <label style="display:flex;gap:6px;align-items:center;">
-        <input type="checkbox" id="tg-top-arrows" checked> HACO arrows
-      </label>
-      <span style="width:12px;"></span>
-      <label style="display:flex;gap:6px;align-items:center;">
-        <input type="checkbox" id="tg-top-sma20" checked> SMA 20
-      </label>
-      <label style="display:flex;gap:6px;align-items:center;">
-        <input type="checkbox" id="tg-top-sma50" checked> SMA 50
-      </label>
-      <label style="display:flex;gap:6px;align-items:center;">
-        <input type="checkbox" id="tg-top-trend" checked> Trend line
-      </label>
-    `;
-    chartCol.prepend(wrap);
-
-    // Wire events
-    const q = (id) => document.getElementById(id);
-
-    q('tg-top-haco').addEventListener('change', (e) => {
-      state.toggles.topHacoStrip = !!e.target.checked;
-      const host = document.getElementById('mini-haco');
-      if (host) host.style.display = state.toggles.topHacoStrip ? '' : 'none';
-    });
-
-    q('tg-top-hacolt').addEventListener('change', (e) => {
-      state.toggles.topHacoltStrip = !!e.target.checked;
-      const host = document.getElementById('mini-hacolt');
-      if (host) host.style.display = state.toggles.topHacoltStrip ? '' : 'none';
-    });
-
-    q('tg-top-arrows').addEventListener('change', (e) => {
-      state.toggles.topHacoArrows = !!e.target.checked;
-      applyTopArrowsVisible(state.toggles.topHacoArrows);
-    });
-
-    q('tg-top-sma20').addEventListener('change', (e) => {
-      state.toggles.topSma20 = !!e.target.checked;
-      state.sma20Series?.applyOptions({ visible: state.toggles.topSma20 });
-    });
-
-    q('tg-top-sma50').addEventListener('change', (e) => {
-      state.toggles.topSma50 = !!e.target.checked;
-      state.sma50Series?.applyOptions({ visible: state.toggles.topSma50 });
-    });
-
-    q('tg-top-trend').addEventListener('change', (e) => {
-      state.toggles.topTrend = !!e.target.checked;
-      state.trendSeries?.applyOptions({ visible: state.toggles.topTrend });
-    });
-  }
-
-  // ---------- Minis (top + haco) ----------
+  
   function ensureMini(id) {
     const host = document.getElementById(id);
     if (!host || typeof LightweightCharts === 'undefined') return null;
@@ -182,54 +60,71 @@
         borderVisible: false,
         fixLeftEdge: false,
         fixRightEdge: false,
+        // minis are driven by master only:
         rightBarStaysOnScroll: false,
       },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-      handleScroll: false,
-      handleScale: false,
+      handleScroll: false, // <- disable direct scroll on minis
+      handleScale:  false, // <- disable direct zoom on minis
     });
     const series = chart.addHistogramSeries({ priceScaleId: '' });
     return { chart, series };
   }
 
-  // (kept your two-way logical link helper; minis are still passive so this won’t fight)
   function syncTime(scopedCharts) {
+    // keep all charts in lockstep on logical range changes
     const [main, ...others] = scopedCharts;
     if (!main) return;
     const syncTo = (src, dst) => {
       src.timeScale().subscribeVisibleLogicalRangeChange((range) => {
         if (!range) return;
+        // avoid feedback loops by try/catch; LC dedupes internally
         try { dst.timeScale().setVisibleLogicalRange(range); } catch {}
       });
     };
-    others.forEach(o => { syncTo(main, o); syncTo(o, main); });
+    others.forEach(o => {
+      syncTo(main, o);
+      syncTo(o, main); // allow dragging minis to move main too
+    });
   }
 
   function linkMasterToSlaves(master, slaves) {
     if (!master || !slaves?.length) return;
+  
+    // guard to avoid loops
     let syncing = false;
+  
     const applyTimeRange = (range) => {
       if (!range || syncing) return;
       syncing = true;
-      try { slaves.forEach(s => s.timeScale().setVisibleRange(range)); }
-      finally { syncing = false; }
+      try {
+        slaves.forEach(s => s.timeScale().setVisibleRange(range));
+      } finally {
+        syncing = false;
+      }
     };
+  
     const applyLogicalRange = (range) => {
       if (!range || syncing) return;
       syncing = true;
-      try { slaves.forEach(s => s.timeScale().setVisibleLogicalRange(range)); }
-      finally { syncing = false; }
+      try {
+        slaves.forEach(s => s.timeScale().setVisibleLogicalRange(range));
+      } finally {
+        syncing = false;
+      }
     };
+  
+    // Prefer time range; LC will keep bar spacing coherent. Logical is a fallback signal.
     master.timeScale().subscribeVisibleTimeRangeChange(applyTimeRange);
     master.timeScale().subscribeVisibleLogicalRangeChange(applyLogicalRange);
   }
 
-  // ---------- HACO Strategy section ----------
   function ensureHacoCharts() {
     const host = document.getElementById('haco-chart');
     if (!host || typeof LightweightCharts === 'undefined') return null;
-
+  
     if (!state.haco.main) {
+      // main HACO candles
       state.haco.main = LightweightCharts.createChart(host, {
         height: host.clientHeight || 420,
         layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
@@ -241,76 +136,91 @@
       state.haco.candle = state.haco.main.addCandlestickSeries({
         upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350',
       });
-
+  
+      // two minis under HACO candles
       state.haco.miniHaco   = ensureMini('haco-mini-haco');
       state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
       const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
       linkMasterToSlaves(state.haco.main, hacoSlaves);
 
-      // optional: also keep two-way logical link (minis are passive anyway)
-      const chartsToSync = [state.haco.main, state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
+      // keep HACO minis in lockstep with HACO main
+      const chartsToSync = [
+        state.haco.main,
+        state.haco.miniHaco?.chart,
+        state.haco.miniHacolt?.chart,
+      ].filter(Boolean);
       syncTime(chartsToSync);
     }
     return state.haco.main;
   }
 
   function ensureHacoMinis() {
+    // Create the two mini charts (once) under the existing HACO chart
     if (!state.haco.miniHaco)   state.haco.miniHaco   = ensureMini('haco-mini-haco');
     if (!state.haco.miniHacolt) state.haco.miniHacolt = ensureMini('haco-mini-hacolt');
-
+  
+    // Try to find the existing HACO main chart that haco-ui.js created
+    // Option 1: global object set by your HACO module
     if (!state.haco.main && window.HACO && window.HACO.chart) {
       state.haco.main = window.HACO.chart;
     }
-
+  
+    // If still not available, wait for haco-ui to announce it's ready
     if (!state.haco.main) {
       window.addEventListener('haco:ready', (e) => {
         if (e?.detail?.chart) {
           state.haco.main = e.detail.chart;
-          const chartsToSync = [state.haco.main, state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
+          // lock minis to HACO main
+          const chartsToSync = [
+            state.haco.main,
+            state.haco.miniHaco?.chart,
+            state.haco.miniHacolt?.chart,
+          ].filter(Boolean);
           syncTime(chartsToSync);
-          const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
-          linkMasterToSlaves(state.haco.main, hacoSlaves);
         }
       }, { once: true });
     } else {
-      const chartsToSync = [state.haco.main, state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
+      // lock minis to HACO main now
+      const chartsToSync = [
+        state.haco.main,
+        state.haco.miniHaco?.chart,
+        state.haco.miniHacolt?.chart,
+      ].filter(Boolean);
       syncTime(chartsToSync);
-      const hacoSlaves = [state.haco.miniHaco?.chart, state.haco.miniHacolt?.chart].filter(Boolean);
-      linkMasterToSlaves(state.haco.main, hacoSlaves);
     }
   }
 
-  function toMiniBars(series) {
-    return (series || []).map(p => {
-      let color = '#64748b';           // 50 = neutral
-      if (p.value === 100) color = '#16a34a';   // up
-      else if (p.value === 0) color = '#ef4444'; // down
-      return { time: Number(p.time), value: p.value || 0, color };
-    });
-  }
+function toMiniBars(series) {
+  return (series || []).map(p => {
+    let color = '#64748b';           // 50 = neutral
+    if (p.value === 100) color = '#16a34a';   // up
+    else if (p.value === 0) color = '#ef4444'; // down
+    return { time: Number(p.time), value: p.value || 0, color };
+  });
+}
 
-  function renderHacoSection(chartPayload) {
-    ensureHacoCharts();
-    ensureHacoMinis();
-    if (!chartPayload) return;
+function renderHacoSection(chartPayload) {
+  ensureHacoMinis();
+  if (!chartPayload) return;
 
-    const hacoBars   = toMiniBars(chartPayload.haco);
-    const hacoltBars = toMiniBars(chartPayload.hacolt);
+  const hacoBars   = toMiniBars(chartPayload.haco);
+  const hacoltBars = toMiniBars(chartPayload.hacolt);
 
-    if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars.length ? hacoBars : []);
-    if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars.length ? hacoltBars : []);
-  }
+  if (state.haco.miniHaco?.series)   state.haco.miniHaco.series.setData(hacoBars.length ? hacoBars : []);
+  if (state.haco.miniHacolt?.series) state.haco.miniHacolt.series.setData(hacoltBars.length ? hacoltBars : []);
+}
 
-  // ---------- Top chart ----------
   function ensureChart() {
     const container = el('signals-chart');
-    if (!container || typeof LightweightCharts === 'undefined') return null;
+    if (!container || typeof LightweightCharts === 'undefined') {
+      return null;
+    }
     if (!state.chart) {
       state.chart = LightweightCharts.createChart(container, {
         height: 360,
         layout: { background: { color: 'transparent' }, textColor: '#d7dee7' },
-        rightPriceScale: { visible: false },    // no gutter to the right
-        leftPriceScale:  { visible: false },
+        rightPriceScale: { visible: false },    // no gutter on the right
+        leftPriceScale:  { visible: false },    // match minis exactly
         timeScale: { borderVisible: false, rightOffset: 0 },
         grid: { vertLines: { color: 'rgba(70, 70, 70, 0.2)' }, horzLines: { color: 'rgba(70, 70, 70, 0.2)' } },
       });
@@ -328,27 +238,32 @@
         lineWidth: 1,
         lineStyle: LightweightCharts.LineStyle.Dotted,
       });
-
-      // minis create + range link
-      if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
-      if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
+    // after state.chart is created:
+    if (state.chart) {
       const slaves = [state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
       linkMasterToSlaves(state.chart, slaves);
-      // optional logical link (minis are passive anyway)
-      const chartsToSync = [state.chart, state.mini.haco?.chart, state.mini.hacolt?.chart].filter(Boolean);
-      syncTime(chartsToSync);
+    }
+    if (!state.mini.haco)   state.mini.haco   = ensureMini('mini-haco');
+    if (!state.mini.hacolt) state.mini.hacolt = ensureMini('mini-hacolt');
+    
+    // keep them in sync with the main chart
+    const chartsToSync = [
+      state.chart,
+      state.mini.haco?.chart,
+      state.mini.hacolt?.chart,
+    ].filter(Boolean);
+    syncTime(chartsToSync);
 
-      // toggles UI
-      ensureTopToggleUI();
-
-      // Initial resize + observers
-      resizeChart();
-      window.addEventListener('resize', resizeChart);
-      if ('ResizeObserver' in window) {
-        state.resizeObs?.disconnect();
-        state.resizeObs = new ResizeObserver(() => resizeChart());
-        state.resizeObs.observe(container);
-      }
+    // Initial resize once it's created
+     resizeChart();
+     // Resize on window size changes
+     window.addEventListener('resize', resizeChart);
+     // Resize when the container’s box changes
+     if ('ResizeObserver' in window) {
+       state.resizeObs?.disconnect();
+       state.resizeObs = new ResizeObserver(() => resizeChart());
+       state.resizeObs.observe(container);
+     }
     }
     return state.chart;
   }
@@ -365,35 +280,23 @@
       close: c.c,
     }));
     state.candleSeries.setData(candles);
-
-    // minis
+    
+    // Set minis if present
     const hacoBars   = toMiniBars(chartPayload.haco);
     const hacoltBars = toMiniBars(chartPayload.hacolt);
-    if (state.mini.haco?.series)   state.mini.haco.series.setData(hacoBars.length ? hacoBars : []);
-    if (state.mini.hacolt?.series) state.mini.hacolt.series.setData(hacoltBars.length ? hacoltBars : []);
-    // apply visibility from toggles
-    const hostHaco   = document.getElementById('mini-haco');
-    const hostHacolt = document.getElementById('mini-hacolt');
-    if (hostHaco)   hostHaco.style.display   = state.toggles.topHacoStrip   ? '' : 'none';
-    if (hostHacolt) hostHacolt.style.display = state.toggles.topHacoltStrip ? '' : 'none';
+    
+    if (state.mini.haco?.series)     state.mini.haco.series.setData(hacoBars.length ? hacoBars : []);
+    if (state.mini.hacolt?.series)   state.mini.hacolt.series.setData(hacoltBars.length ? hacoltBars : []);
 
-    // indicators
     const indicators = chartPayload.indicators || {};
     state.sma20Series.setData((indicators.sma20 || []).map((p) => ({ time: Number(p.time), value: p.value })));
     state.sma50Series.setData((indicators.sma50 || []).map((p) => ({ time: Number(p.time), value: p.value })));
     state.trendSeries.setData((indicators.trend || []).map((p) => ({ time: Number(p.time), value: p.value })));
-    state.sma20Series.applyOptions({ visible: state.toggles.topSma20 });
-    state.sma50Series.applyOptions({ visible: state.toggles.topSma50 });
-    state.trendSeries.applyOptions({ visible: state.toggles.topTrend });
 
-    // HACO arrows on top chart
-    state._lastTopMarkers = buildHacoMarkers(candles, chartPayload.haco || []);
-    applyTopArrowsVisible(state.toggles.topHacoArrows);
-
-    resizeChart();
+    // Ensure the chart fits the new container width after data
+   resizeChart();
   }
 
-  // ---------- Legacy/other UI (unchanged) ----------
   function renderReadiness(readiness) {
     const scoreEl = el('readiness-score');
     const componentsEl = el('readiness-components');
@@ -414,7 +317,7 @@
     });
   }
 
-  function renderPanels(panels) {
+    function renderPanels(panels) {
     const grid = el('panels-grid');
     if (!grid) return;
     grid.innerHTML = '';
@@ -424,7 +327,9 @@
       const bar = document.createElement('div');
       bar.className = 'bar';
       const span = document.createElement('span');
+  
       bar.appendChild(span);
+  
       card.innerHTML = `
         <header>
           <h4>${panel.title}</h4>
@@ -434,12 +339,17 @@
         <small>${panel.goal || ''}</small>
         <footer>${panel.status || ''}</footer>
       `;
+      // insert bar between <p> and <small>
       card.querySelector('p').after(bar);
+  
+      // width & tick
       span.style.width = `${Math.max(0, Math.min(100, panel.score || 0))}%`;
       bar.style.setProperty('--goal-pct', `${Math.max(0, Math.min(100, panel.goal_pct || 60))}%`);
+  
       grid.appendChild(card);
     });
   }
+
 
   function renderEntries(entries) {
     const list = el('entries-list');
@@ -516,7 +426,7 @@
     [...nav.querySelectorAll('button')].forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.tabId === tabId);
     });
-    const tab = state.tabs.find(t => t.id === tabId) || state.tabs[0];
+    const tab = findTab(tabId);
     content.innerHTML = '';
     if (!tab) return;
     const items = Array.isArray(tab.content) ? tab.content : [tab.content];
@@ -609,7 +519,6 @@
     }
   }
 
-  // ---------- Fetch/boot ----------
   async function fetchSignal() {
     const symbolInput = el('symbol');
     const modeSelect = el('mode-select');
@@ -629,8 +538,8 @@
       renderChart(data.chart);
       renderHacoSection(data.chart);
       renderChecklist(data.panels, data.readiness, data.meta);
-
-      // chart subtitle chips
+      //renderHacoltBars(data.chart?.hacolt || []);
+      // chart subtitle cues
       const subtitle = document.getElementById('chart-subtitle') || document.createElement('span');
       subtitle.id = 'chart-subtitle';
       const meta = data.meta || {};
@@ -640,7 +549,8 @@
       if (meta.hacolt_now === 100) hacoltChip = 'LT Up';
       else if (meta.hacolt_now === 0) hacoltChip = 'LT Down';
       subtitle.textContent = [trendChip, adxChip, hacoltChip].filter(Boolean).join(' • ');
-
+      
+      // Put the subtitle near the chart title if you have one
       const chartCol = document.querySelector('#signals-top .chart-col') || document.querySelector('.overview-chart');
       if (chartCol && !document.getElementById('chart-subtitle')) {
         const h = document.createElement('div');
@@ -651,13 +561,13 @@
       } else if (document.getElementById('chart-subtitle')) {
         document.getElementById('chart-subtitle').textContent = subtitle.textContent;
       }
-
       renderEntries(data.entries);
       renderExits(data.exits);
       renderAdvancedTabs(data.advanced_tabs);
       renderMindset(data.mindset);
       renderWatchlist(data.watchlist);
       applyLegacySections(data);
+      if (sym) renderTechChart(sym);
       setStatus('Signal updated', 'ok');
       return data;
     } catch (err) {
@@ -666,10 +576,12 @@
       return null;
     }
   }
-
+  
   function renderHacoltBars(series) {
+    // expects [{time, value: 0|50|100}]
     const host = document.getElementById('haco-signal-chart');
     if (!host) return;
+    // simple 1D canvas bars
     const width = host.clientWidth || 600;
     const height = host.clientHeight || 100;
     host.innerHTML = '';
@@ -681,18 +593,19 @@
     if (!n) return;
     const w = width / n;
     for (let i=0;i<n;i++){
-      const v = series[i].value;
+      const v = series[i].value; // 0/50/100
       ctx.fillStyle = v === 100 ? '#16a34a' : v === 0 ? '#ef4444' : '#64748b';
       ctx.fillRect(i*w, 0, Math.ceil(w), height);
     }
   }
 
   function renderChecklist(panels, readiness, meta) {
-    const container = document.getElementById('advanced-tab-content');
+    const container = document.getElementById('advanced-tab-content'); // or create a new div near readiness
     if (!container) return;
     const byId = Object.fromEntries((panels||[]).map(p => [p.id, p]));
     const pass = id => (byId[id]?.status === 'PASS');
     const ready = Math.round(readiness?.score || 0);
+  
     const items = [
       {label:'Trend PASS', ok: pass('trend')},
       {label:'Momentum PASS', ok: pass('momentum')},
@@ -756,13 +669,15 @@
       ma50Series.setData(dates.map((d, i) => (ma50[i] ? { time: d, value: ma50[i] } : null)).filter(Boolean));
       const cross = findLastCross(ma20, ma50);
       if (cross) {
-        priceSeries.setMarkers([{
-          time: dates[cross.index],
-          position: cross.dir === 'up' ? 'belowBar' : 'aboveBar',
-          color: cross.dir === 'up' ? 'green' : 'red',
-          shape: cross.dir === 'up' ? 'arrowUp' : 'arrowDown',
-          text: '20/50',
-        }]);
+        priceSeries.setMarkers([
+          {
+            time: dates[cross.index],
+            position: cross.dir === 'up' ? 'belowBar' : 'aboveBar',
+            color: cross.dir === 'up' ? 'green' : 'red',
+            shape: cross.dir === 'up' ? 'arrowUp' : 'arrowDown',
+            text: '20/50',
+          },
+        ]);
       }
     } catch (err) {
       console.error(err);
