@@ -55,7 +55,7 @@
 .readiness-components li small  { color: var(--muted, #94a3b8); font-size: 0.85rem; margin-left: 0.5rem; }
 
 /* --- Panel grid --- */
-.panels-grid { display: grid; gap: 0.9rem; }
+.panels-grid { display: grid; gap: 1.1rem; }
 
 /* --- Panels --- */
 .panel-card {
@@ -88,13 +88,13 @@
   border-radius: 999px;
   color: #dbeafe;
   font-weight: 600;
-  padding: 0.25rem 0.65rem;
+  padding: 0.65rem 0.65rem;
   font-size: .85rem;
 }
 
 .panel-card footer {
   color: var(--muted, #94a3b8);
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   margin-top: auto;
   padding-top: 4px;
 }
