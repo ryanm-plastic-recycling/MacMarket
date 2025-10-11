@@ -11,15 +11,31 @@
     /* --- layout helpers for the rearranged bits --- */
     .controls-grid {
       display: grid;
-      grid-template-columns: 1.4fr 0.8fr;
+      grid-template-columns: 2fr 1fr;           /* left: form+tabs, right: readiness */
       gap: 16px;
       align-items: start;
       margin: 10px 0 14px;
+    }
+    .controls-left {
+      display: grid;
+      gap: 14px;                                /* space between form and tabs/mindset row */
     }
     .controls-grid .row-controls { margin: 0; }
     .controls-grid .overview-readiness {
       display: grid; gap: 8px; justify-items: center;
     }
+
+    /* two-up row for Advanced Tabs + Mindset inside the top controls-left */
+    .pair-inline {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 1100px) {
+      .controls-grid { grid-template-columns: 1fr; }
+      .pair-inline { grid-template-columns: 1fr; }
+    }
+
     .mini-stack { display: grid; gap: 8px; margin-top: 8px; }
     .mini-group { display: grid; gap: 4px; }
     .mini-title {
@@ -50,6 +66,27 @@
       border-radius: 14px;
       padding: 12px 14px;
       box-shadow: 0 6px 22px rgba(0,0,0,.25);
+    }
+
+    /* shared two-up pairs used further down the page */
+    .pair-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+      margin: 16px 0;
+    }
+    @media (max-width: 1100px) {
+      .pair-grid { grid-template-columns: 1fr; }
+    }
+    .pair-grid .overview-entries,
+    .pair-grid .overview-exits,
+    .pair-grid .overview-tabs,
+    .pair-grid .overview-mindset {
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      border-radius: 12px;
+      padding: 12px;
     }
   </style>
 </head>
@@ -91,7 +128,7 @@
       <ul id="watchlist-list" class="watchlist-list"></ul>
     </section>
     <section class="overview-live">
-      <h3>Top 10 Signals - Live by Mode & Best Readines %</h3>
+      <h3>Top 10 Signals - Live by Mode &amp; Best Readiness %</h3>
       <ul id="live-top-list" class="watchlist-list"></ul>
     </section>
 
@@ -99,61 +136,64 @@
     <section id="signals-top" class="signal-section span-2">
       <h3 style="margin-top:6">Symbol Signal</h3>
 
-      <!-- NEW: form + readiness side by side -->
+      <!-- form + (advanced tabs / mindset) on the left, readiness on the right -->
       <div class="controls-grid">
-        <form id="symbol-form" class="row-controls" onsubmit="return false">
-          <label>Symbol
-            <input id="symbol" type="text" value="SPY" spellcheck="false" />
-          </label>
-          <label>Mode
-            <select id="mode-select" aria-label="Trading mode">
-              <option value="crypto">Crypto</option>
-              <option value="day">Day</option>
-              <option value="position">Position</option>
-              <option value="swing" selected>Swing</option>
-            </select>
-          </label>
-          <button id="get-signal" type="submit" aria-label="Run HACO">Run</button>
-          <label>   Updating MODE runs top 10 signals, this can take time to complete.</label>
-        </form>
+        <div class="controls-left">
+          <form id="symbol-form" class="row-controls" onsubmit="return false">
+            <label>Symbol
+              <input id="symbol" type="text" value="SPY" spellcheck="false" />
+            </label>
+            <label>Mode
+              <select id="mode-select" aria-label="Trading mode">
+                <option value="crypto">Crypto</option>
+                <option value="day">Day</option>
+                <option value="position">Position</option>
+                <option value="swing" selected>Swing</option>
+              </select>
+            </label>
+            <button id="get-signal" type="submit" aria-label="Run HACO">Run</button>
+            <label>Updating MODE runs top 10 signals, this can take time to complete.</label>
+          </form>
 
-        <!-- readiness bubbles moved here -->
+          <!-- Advanced Tabs + Mindset moved UP here -->
+          <div class="pair-inline">
+            <section class="overview-tabs">
+              <h4>Advanced Tabs</h4>
+              <div class="tabs-shell">
+                <nav id="advanced-tabs-nav" class="tabs-nav"></nav>
+                <div id="advanced-tab-content" class="tabs-content"></div>
+              </div>
+            </section>
+
+            <section class="overview-mindset">
+              <h4>Mindset</h4>
+              <p id="mindset-tagline" class="muted"></p>
+              <ul id="mindset-focus" class="mindset-focus"></ul>
+            </section>
+          </div>
+        </div>
+
+        <!-- readiness summary on the right -->
         <div class="overview-readiness">
           <div id="readiness-score" class="readiness-score">--</div>
           <ul id="readiness-components" class="readiness-components"></ul>
         </div>
       </div>
 
-      <!-- NEW: Entries + Exits side-by-side -->
+      <!-- Entries + Exits side-by-side (unchanged) -->
       <div class="pair-grid">
         <section class="overview-entries">
           <h4>Entries</h4>
           <ul id="entries-list" class="entries-list"></ul>
         </section>
-  
+
         <section class="overview-exits">
           <h4>Exits</h4>
           <div id="exits-summary"></div>
         </section>
       </div>
-  
-      <!-- NEW: Advanced Tabs + Mindset side-by-side -->
-      <div class="pair-grid">
-        <section class="overview-tabs">
-          <h4>Advanced Tabs</h4>
-          <div class="tabs-shell">
-            <nav id="advanced-tabs-nav" class="tabs-nav"></nav>
-            <div id="advanced-tab-content" class="tabs-content"></div>
-          </div>
-        </section>
-  
-        <section class="overview-mindset">
-          <h4>Mindset</h4>
-          <p id="mindset-tagline" class="muted"></p>
-          <ul id="mindset-focus" class="mindset-focus"></ul>
-        </section>
-      </div>
-      
+
+      <!-- Chart + minis + panels -->
       <div class="chart-col">
         <div id="signals-chart" class="chart-frame"></div>
 
