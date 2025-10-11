@@ -1,5 +1,5 @@
 /* ==============================
-   Signals (original, cleaned up)
+   Signals 
    ============================== */
 
 /* Status pill + spinner */
@@ -397,18 +397,65 @@
 #signals-mini-strips { margin-top: 6px; display: grid; gap: 6px; }
 .mini-strip { height: 64px; border: 1px solid rgba(148,163,184,.15); border-radius: 8px; }
 
-/* Two-column pairs (Entries/Exits + Tabs/Mindset) */
-.pair-grid {
-  display: grid; grid-template-columns: 1fr 1fr;
-  gap: 16px; align-items: start; margin: 16px 0;
+/* === Make the readiness donut ~50% larger in the top controls === */
+.controls-grid .overview-readiness { gap: 12px; }
+.controls-grid .overview-readiness .readiness-score {
+  width: 210px;          /* was 140px */
+  height: 210px;         /* was 140px */
+  font-size: 3.2rem;     /* scale text with the larger ring */
 }
-@media (max-width: 1100px) { .pair-grid { grid-template-columns: 1fr; } }
+.controls-grid .overview-readiness .readiness-score::after {
+  /* keep the inner inset proportional on the bigger ring */
+  bottom: 16px; left: 16px; right: 16px; top: 16px;
+}
 
+@media (max-width: 1100px) {
+  /* scale down a bit on narrow screens */
+  .controls-grid .overview-readiness .readiness-score {
+    width: 170px;
+    height: 170px;
+    font-size: 2.6rem;
+  }
+  .controls-grid .overview-readiness .readiness-score::after {
+    bottom: 14px; left: 14px; right: 14px; top: 14px;
+  }
+}
+
+/* === Make Advanced Tabs & Mindset the same visual height === */
+/* And do the same for Entries & Exits. We “card-ify” and stretch them evenly. */
+.pair-inline > section,
+.pair-grid > section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Minimum heights so both sides feel balanced even with uneven content */
+.pair-inline .overview-tabs,
+.pair-inline .overview-mindset {
+  min-height: 240px;      /* adjust to taste */
+}
 .pair-grid .overview-entries,
-.pair-grid .overview-exits,
-.pair-grid .overview-tabs,
-.pair-grid .overview-mindset {
+.pair-grid .overview-exits {
+  min-height: 260px;      /* adjust to taste */
+}
+
+/* Ensure inner content expands and scrolls if it overflows */
+.pair-inline .tabs-shell,
+.pair-inline .mindset-focus,
+.pair-grid  #entries-list,
+.pair-grid  #exits-summary {
+  flex: 1 1 auto;
+  overflow: auto;         /* if needed, a small scrollbar appears */
+}
+
+/* Optional: make the small-card surfaces look consistent */
+.pair-inline .overview-tabs,
+.pair-inline .overview-mindset,
+.pair-grid  .overview-entries,
+.pair-grid  .overview-exits {
   background: rgba(15, 23, 42, 0.35);
   border: 1px solid rgba(148, 163, 184, 0.15);
-  border-radius: 12px; padding: 12px;
+  border-radius: 12px;
+  padding: 12px;
 }
