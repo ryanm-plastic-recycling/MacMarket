@@ -278,6 +278,70 @@
   transition: width .25s ease;
 }
 
+/* One-row “four-up” layout: Form → Tabs → Mindset → Readiness */
+.controls-grid.four-up {
+  display: grid;
+  grid-template-columns: 1.4fr 1.2fr 1.1fr 0.9fr;
+  gap: 16px;
+  align-items: start;
+  margin: 10px 0 14px;
+}
+
+/* Make the small cards (tabs/mindset) look cohesive with the theme */
+.slim-card {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+/* Tighter heading spacing in the small cards */
+.slim-card h4 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+/* Make the mode note subtle and keep layout tight */
+.row-controls .subnote {
+  display: block;
+  margin-top: 6px;
+  opacity: 0.75;
+  font-size: 0.82rem;
+}
+
+/* Readiness column: center the donut + list neatly */
+.controls-grid.four-up .overview-readiness {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+/* Large tablets: move to two columns, keep order logical */
+@media (max-width: 1200px) {
+  .controls-grid.four-up {
+    grid-template-columns: 1.5fr 1.5fr;
+    grid-template-areas:
+      "form tabs"
+      "mindset readiness";
+  }
+  .controls-grid.four-up .row-controls       { grid-area: form; }
+  .controls-grid.four-up .overview-tabs      { grid-area: tabs; }
+  .controls-grid.four-up .overview-mindset   { grid-area: mindset; }
+  .controls-grid.four-up .overview-readiness { grid-area: readiness; }
+}
+
+/* Phones: stack vertically in the same order */
+@media (max-width: 760px) {
+  .controls-grid.four-up {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "form"
+      "tabs"
+      "mindset"
+      "readiness";
+  }
+}
+
 /* --- Tabs --- */
 .tabs-shell {
   background: rgba(15, 23, 42, 0.35);
