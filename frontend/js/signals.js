@@ -814,8 +814,17 @@ function renderHacoSection(chartPayload) {
   }
 
   function runSignal() {
-    Promise.allSettled([fetchSignal(), fetchSingle()]);
-  }
+  // show spinner immediately on click / first load
+  setStatus('Loading signals…', 'loading');
+
+  Promise.allSettled([fetchSignal(), fetchSingle()])
+    .then(() => {
+      setStatus('Signal updated', 'ok');
+    })
+    .catch(() => {
+      setStatus('Failed to load', 'error');
+    });
+}
 
   document.addEventListener('DOMContentLoaded', () => {
     const getSignalBtn = el('get-signal');
@@ -840,7 +849,7 @@ function renderHacoSection(chartPayload) {
     if (modeSelect) {
       modeSelect.addEventListener('change', () => runSignal());
     }
-
+    setStatus('Loading signals…', 'loading');  // guarantees spinner on boot
     runSignal();
   });
 })();
