@@ -2,6 +2,37 @@
    Signals (original, cleaned up)
    ============================== */
 
+/* Status pill + spinner */
+#status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(148,163,184,.12);
+  border: 1px solid rgba(148,163,184,.2);
+  font-size: 0.9rem;
+}
+
+/* Color accents by tone (optional) */
+#status[data-tone="ok"]      { border-color: rgba(34,197,94,.4);  background: rgba(34,197,94,.12);  }
+#status[data-tone="error"]   { border-color: rgba(239,68,68,.4);  background: rgba(239,68,68,.12);  }
+#status[data-tone="loading"] { border-color: rgba(76,120,255,.4); background: rgba(76,120,255,.12); }
+
+/* The spinner appears only when tone=loading */
+#status[data-tone="loading"]::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #4c78ff;
+  animation: mm-spin .9s linear infinite;
+  /* place left of the text */
+}
+@keyframes mm-spin { to { transform: rotate(360deg); } }
+
 /* --- Readiness --- */
 .overview-grid {
   display: grid;
